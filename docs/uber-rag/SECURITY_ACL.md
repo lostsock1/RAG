@@ -1,0 +1,80 @@
+# Security and ACL Model
+
+## Principle
+
+ACL is enforced server-side and in retrieval filters. The frontend is not trusted.
+
+## Identity inputs
+
+- tenant id
+- user id
+- group ids
+- roles
+- scopes
+- clearance level where applicable
+- collection membership
+- document ownership
+
+## Enforcement path
+
+```text
+JWT/OIDC token
+  -> backend authentication
+  -> permission resolver
+  -> ACL filter
+  -> OpenSearch/Qdrant query filters
+  -> fusion
+  -> ACL recheck
+  -> source fetch ACL check
+  -> generation context
+  -> answer/citation ACL check
+  -> audit log
+```
+
+## Required ACL fields
+
+```json
+{
+  "tenant_id": "string",
+  "owner_user_id": "string",
+  "allowed_user_ids": ["string"],
+  "allowed_group_ids": ["string"],
+  "visibility": "private|group|tenant|public",
+  "sensitivity": "public|internal|confidential|restricted",
+  "expires_at": "timestamp|null"
+}
+```
+
+## Mandatory tests
+
+- User cannot search unauthorized document by semantic query.
+- User cannot search unauthorized document by exact phrase.
+- User cannot retrieve unauthorized source by citation id.
+- User cannot receive generated answer based on unauthorized context.
+- User cannot infer hidden document existence from result counts or error messages.
+- Deletion/tombstone removes document from search and chat.
+- Version ACL changes apply immediately to search and source fetch.
+
+## Audit events
+
+Record:
+
+- login/session id if available
+- user id
+- tenant id
+- endpoint
+- query text hash and optionally encrypted raw query
+- filters applied
+- retrieved document ids
+- denied document ids count, not titles
+- citations returned
+- model used
+- verification status
+- timestamp
+
+## Frontend rules
+
+- Do not store access decisions as truth.
+- Do not call storage/index/LLM services directly.
+- Show denied and not-found states clearly.
+- Do not leak hidden collection names or document titles.
