@@ -84,6 +84,7 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 | Date | Change | Files | Notes |
 |---|---|---|---|
+| 2026-05-16 | Real local Docling parsing slice landed | `apps/api/app/services/parsers/docling_backend.py`, `apps/api/app/main.py`, `apps/api/app/tests/unit/test_parser_backends.py`, `apps/api/app/tests/integration/test_runtime_auth_startup.py` | `DoclingDocumentParser` now supports a local filesystem-backed runtime path while preserving the injected-converter seam for tests. It raises clear errors for missing storage root, missing source file, missing `docling` package, and wrapped conversion failures. Local verification passed: targeted parser tests + full `pytest` suite (74/74). |
 | 2026-05-16 | Ingestion dispatch wired: in-process async dispatcher with three-stage pipeline | `apps/api/app/workflows/dispatcher.py`, `apps/api/app/workflows/stages.py`, `apps/api/app/repositories/ingestion.py`, `apps/api/app/api/routes/documents.py`, `apps/api/app/main.py`, `apps/api/app/tests/unit/test_dispatcher.py`, `apps/api/app/tests/integration/test_ingestion_dispatch.py` | Upload now triggers parse → persist artifact → quality report pipeline via `InProcessDispatcher`. Stages are idempotent and checkpointed. Startup recovery sweep resets orphaned `running` runs. `WorkflowDispatcher` protocol enables future swap to Temporal or Redis-queue worker. 71/71 tests pass. |
 | 2026-05-16 | Phase 2 ingestion foundation slice implemented and locally verified | `apps/api/app/**`, `infra/migrations/versions/20260516_0002_phase2_ingestion_foundation.py`, `infra/migrations/versions/20260516_0003_phase2_ingestion_uniqueness.py`, `infra/migrations/versions/20260516_0004_phase2_ingestion_workflow_backend_truthfulness.py`, `docs/uber-rag/API_CONTRACT.md`, `docs/uber-rag/api/openapi.yaml`, `PROJECT_STATE.md`, `TASKS.md` | Landed SeaweedFS-ready storage seam, ingestion run/stage/artifact/report schema, upload-created ingestion jobs, ACL/audited ingestion jobs list/detail endpoints, parser/runtime scaffolds, parsed-artifact/report persistence with per-run uniqueness, and contract truthfulness updates. Local verification passed: 30/30 targeted tests. |
 | 2026-05-16 | Phase 2 entry review closed: ADR-0009/0010/0011 accepted | `research/2026-05-16-phase-2-entry.md`, `adr/0009-object-storage-direction.md`, `adr/0010-ingestion-orchestration-direction.md`, `adr/0011-structured-document-understanding-architecture.md`, `ARCHITECTURE_DECISIONS.md`, `PROJECT_STATE.md`, `TASKS.md`, `STACK_REFERENCES.md` | Deep comparative review confirmed Docling remains a strong parser shell, accepted SeaweedFS and Temporal as Phase 2 defaults, and closed the structured document-understanding architecture across local and remote deployments. |
@@ -118,7 +119,7 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 - Browser-level frontend verification against the running VPS API is still unverified.
 - The VPS `.env` uses `OIDC_SCOPES_CLAIM=permissions`; local tests rely on the default `scope` claim path. Test isolation should be tightened so environment-specific claim mapping does not skew remote test expectations.
 - Upload dedup is serially correct but not yet concurrency-hardened; same-hash uploads racing in parallel still need DB-level dedup identity design and conflict handling.
-- Ingestion dispatch is now wired (in-process, three-stage pipeline). Stage progression is populated. Remaining gaps: real Docling conversion, SeaweedFS runtime coverage, concurrent dedup hardening, richer quality reports.
+- Ingestion dispatch is now wired (in-process, three-stage pipeline). Stage progression is populated. Remaining gaps: deployment-profile-aware remote/local parser expansion beyond the new local Docling path, SeaweedFS runtime coverage, concurrent dedup hardening, richer quality reports.
 
 ## Next recommended actions
 
@@ -126,7 +127,7 @@ Phase 1 is **complete**. Phase 2 ingestion dispatch is now wired with a three-st
 
 Near-term implementation actions:
 
-1. Replace parser stubs with real Docling-backed conversion and deployment-profile-aware remote/local backends.
+1. Expand the parser slice from the new local filesystem-backed Docling path to the broader deployment-profile-aware remote/local backend matrix.
 2. Exercise the SeaweedFS path in runtime/integration tests rather than only the S3-compatible seam.
 3. Add OCR adapter execution path compatible with ADR-0011.
 4. Harden dedup for concurrent uploads with DB-backed conflict handling.

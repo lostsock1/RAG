@@ -21,6 +21,7 @@ from app.db.models.acl import AclAllowedUser, AclGrant
 from app.db.models.document import Document
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
+from app.services.parsers.docling_backend import DoclingDocumentParser
 import app.main as main_module
 
 
@@ -243,6 +244,8 @@ def test_app_startup_wires_session_factory_and_local_storage_adapter(monkeypatch
             with TestClient(reloaded_main.app, client=("127.0.0.1", 50001)):
                 assert session_factory.kw.get("bind") is not None
                 assert hasattr(reloaded_main.app.state, "document_storage")
+                assert isinstance(reloaded_main.app.state.dispatcher._parser, DoclingDocumentParser)
+                assert reloaded_main.app.state.dispatcher._parser._storage_root == storage_dir
                 assert storage_dir.exists()
         finally:
             session_factory.configure(bind=None)

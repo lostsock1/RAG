@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -47,7 +48,9 @@ async def lifespan(app: FastAPI):
         from app.services.parsers.docling_backend import DoclingDocumentParser
         from app.workflows.dispatcher import InProcessDispatcher
 
-        parser = DoclingDocumentParser()
+        parser = DoclingDocumentParser(
+            storage_root=Path(settings.local_storage_dir) if settings.local_storage_dir else None
+        )
         app.state.dispatcher = InProcessDispatcher(parser=parser)
 
     yield
