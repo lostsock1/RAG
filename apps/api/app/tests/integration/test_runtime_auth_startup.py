@@ -278,6 +278,30 @@ def test_app_startup_builds_dispatcher_from_parser_factory(monkeypatch) -> None:
             session_factory.configure(bind=None)
 
 
+def test_app_startup_fails_fast_for_seaweedfs_with_local_docling_runtime(monkeypatch) -> None:
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'runtime-startup-seaweedfs-docling.db'}"
+        storage_dir = Path(tmp_dir) / "storage"
+
+        monkeypatch.setenv("AUTH_MODE", "dev")
+        monkeypatch.setenv("DATABASE_URL", database_url)
+        monkeypatch.setenv("LOCAL_STORAGE_DIR", str(storage_dir))
+        monkeypatch.setenv("STORAGE_BACKEND", "seaweedfs")
+        monkeypatch.setenv("PARSER_BACKEND", "docling")
+        reloaded_main = _reload_app_module()
+
+        try:
+            with TestClient(reloaded_main.app, client=("127.0.0.1", 50003)):
+                raise AssertionError("startup should fail before serving requests")
+        except RuntimeError as exc:
+            message = str(exc)
+            assert "SeaweedFS object storage is not yet compatible with the local Docling parser runtime" in message
+            assert "current parser expects files readable from local disk" in message
+            assert "use local storage for now, or implement remote object-read parsing first" in message
+        finally:
+            session_factory.configure(bind=None)
+
+
 def test_create_app_lifespan_uses_injected_settings_over_global_env(monkeypatch) -> None:
     with TemporaryDirectory() as tmp_dir:
         injected_database_url = f"sqlite:///{Path(tmp_dir) / 'injected.db'}"
