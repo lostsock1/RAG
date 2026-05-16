@@ -11,6 +11,7 @@ class ParseRequest:
     object_key: str
     content_type: str
     profile: str
+    local_source_path: str | None = None
 
 
 class DocumentParser:

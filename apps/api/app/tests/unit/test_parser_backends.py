@@ -244,3 +244,93 @@ def test_docling_document_parser_surfaces_underlying_conversion_reason(
     message = str(exc_info.value)
     assert "documents/broken.pdf" in message
     assert "malformed document stream" in message
+
+
+def test_docling_document_parser_uses_local_source_path_when_provided(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    local_file = tmp_path / "materialized.pdf"
+    local_file.write_bytes(b"%PDF-1.4")
+
+    class FakePage:
+        def __init__(self, page_no: int, markdown: str) -> None:
+            self.page_no = page_no
+            self._markdown = markdown
+
+        def export_to_markdown(self) -> str:
+            return self._markdown
+
+    class FakeDocument:
+        def __init__(self) -> None:
+            self.pages = {1: FakePage(1, "Materialized page")}
+            self.tables = []
+
+    class FakeDocumentConverter:
+        def convert(self, source: Path):
+            assert Path(source) == local_file
+            return SimpleNamespace(document=FakeDocument())
+
+    monkeypatch.setattr(
+        docling_backend,
+        "import_module",
+        lambda _module_name: SimpleNamespace(DocumentConverter=FakeDocumentConverter),
+    )
+
+    parser = DoclingDocumentParser(storage_root=tmp_path / "unused")
+    artifact = parser.parse(
+        ParseRequest(
+            document_id="11111111-1111-1111-1111-111111111111",
+            object_key="ignored/by/materialized/path.pdf",
+            content_type="application/pdf",
+            profile="local-cpu",
+            local_source_path=str(local_file),
+        )
+    )
+
+    assert artifact.pages[0].text == "Materialized page"
+    assert artifact.provenance.parser_backend == "docling"
+    assert artifact.provenance.profile == "local-cpu"
+
+
+def test_docling_document_parser_falls_back_to_storage_root_when_no_local_source_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source_file = tmp_path / "documents" / "fallback.pdf"
+    source_file.parent.mkdir(parents=True, exist_ok=True)
+    source_file.write_bytes(b"%PDF-1.4")
+
+    class FakePage:
+        def __init__(self, page_no: int, markdown: str) -> None:
+            self.page_no = page_no
+            self._markdown = markdown
+
+        def export_to_markdown(self) -> str:
+            return self._markdown
+
+    class FakeDocument:
+        def __init__(self) -> None:
+            self.pages = {1: FakePage(1, "Fallback page")}
+            self.tables = []
+
+    class FakeDocumentConverter:
+        def convert(self, source: Path):
+            assert Path(source) == source_file
+            return SimpleNamespace(document=FakeDocument())
+
+    monkeypatch.setattr(
+        docling_backend,
+        "import_module",
+        lambda _module_name: SimpleNamespace(DocumentConverter=FakeDocumentConverter),
+    )
+
+    parser = DoclingDocumentParser(storage_root=tmp_path)
+    artifact = parser.parse(
+        ParseRequest(
+            document_id="11111111-1111-1111-1111-111111111111",
+            object_key="documents/fallback.pdf",
+            content_type="application/pdf",
+            profile="local-cpu",
+        )
+    )
+
+    assert artifact.pages[0].text == "Fallback page"

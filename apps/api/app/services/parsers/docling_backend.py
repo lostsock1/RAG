@@ -31,15 +31,20 @@ class DoclingDocumentParser(DocumentParser):
             artifact.provenance.profile = request.profile
             return artifact
 
-        if self._storage_root is None:
-            raise RuntimeError(
-                "Docling parsing requires a local storage root when no converter is injected. Configure a storage root before running local Docling parsing."
-            )
+        # Resolve source path: prefer materialized local path, fall back to storage_root + object_key
+        source_path = Path(request.local_source_path) if request.local_source_path else None
+        if source_path is None:
+            if self._storage_root is None:
+                raise RuntimeError(
+                    "Docling parsing requires either a materialized local source path "
+                    "or a configured local storage root when no converter is injected. "
+                    "Configure a storage root or pass local_source_path before running local Docling parsing."
+                )
+            source_path = self._storage_root / request.object_key
 
-        source_path = self._storage_root / request.object_key
         if not source_path.is_file():
             raise RuntimeError(
-                f"Docling source file not found for object_key '{request.object_key}' under storage root '{self._storage_root}'."
+                f"Docling source file not found for object_key '{request.object_key}' at '{source_path}'."
             )
 
         try:
