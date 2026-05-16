@@ -246,7 +246,34 @@ def test_app_startup_wires_session_factory_and_local_storage_adapter(monkeypatch
                 assert hasattr(reloaded_main.app.state, "document_storage")
                 assert isinstance(reloaded_main.app.state.dispatcher._parser, DoclingDocumentParser)
                 assert reloaded_main.app.state.dispatcher._parser._storage_root == storage_dir
+                assert reloaded_main.app.state.dispatcher._parser_backend == "docling-local"
+                assert reloaded_main.app.state.dispatcher._parser_profile == "local-cpu"
                 assert storage_dir.exists()
+        finally:
+            session_factory.configure(bind=None)
+
+
+def test_app_startup_builds_dispatcher_from_parser_factory(monkeypatch) -> None:
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'runtime-startup-factory.db'}"
+        storage_dir = Path(tmp_dir) / "storage"
+        factory_result = (
+            DoclingDocumentParser(storage_root=storage_dir),
+            "factory-backend",
+            "factory-profile",
+        )
+
+        monkeypatch.setenv("AUTH_MODE", "dev")
+        monkeypatch.setenv("DATABASE_URL", database_url)
+        monkeypatch.setenv("LOCAL_STORAGE_DIR", str(storage_dir))
+        reloaded_main = _reload_app_module()
+        monkeypatch.setattr(reloaded_main, "build_document_parser", lambda settings: factory_result)
+
+        try:
+            with TestClient(reloaded_main.app, client=("127.0.0.1", 50002)):
+                assert reloaded_main.app.state.dispatcher._parser is factory_result[0]
+                assert reloaded_main.app.state.dispatcher._parser_backend == "factory-backend"
+                assert reloaded_main.app.state.dispatcher._parser_profile == "factory-profile"
         finally:
             session_factory.configure(bind=None)
 

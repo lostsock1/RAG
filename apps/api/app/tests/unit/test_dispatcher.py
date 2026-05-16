@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from app.db.base import session_factory
 from app.db.models.acl import AclAllowedUser, AclGrant
 from app.db.models.document import Document
-from app.db.models.ingestion import IngestionRun, IngestionStage
+from app.db.models.ingestion import IngestionRun, IngestionStage, ParsedArtifact as ParsedArtifactRecord
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.repositories.ingestion import (
@@ -297,7 +297,11 @@ def test_in_process_dispatcher_runs_all_stages(dispatcher_env) -> None:
 
     test_artifact = _make_test_artifact(document_id)
     parser = DoclingDocumentParser(converter=lambda _req: test_artifact)
-    dispatcher = InProcessDispatcher(parser=parser)
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+    )
 
     dispatcher._execute_pipeline(run_id)
 
@@ -313,13 +317,26 @@ def test_in_process_dispatcher_runs_all_stages(dispatcher_env) -> None:
     for stage in stages:
         assert stage.status == "completed", f"Stage {stage.stage_name} is {stage.status}, expected completed"
 
+    parse_stage = next(stage for stage in stages if stage.stage_name == "parse")
+    assert parse_stage.details["parser_backend"] == "docling-local"
+
+    with session_factory() as session:
+        artifact_record = session.scalar(select(ParsedArtifactRecord).where(ParsedArtifactRecord.run_id == run_id))
+
+    assert artifact_record is not None
+    assert artifact_record.artifact_json["provenance"]["profile"] == "local-cpu"
+
 
 def test_in_process_dispatcher_marks_run_failed_on_stage_error(dispatcher_env) -> None:
     """InProcessDispatcher marks the run as failed when a stage raises an exception."""
     run_id = dispatcher_env["run_id"]
 
     parser = DoclingDocumentParser(converter=lambda _req: (_ for _ in ()).throw(RuntimeError("Parser exploded")))
-    dispatcher = InProcessDispatcher(parser=parser)
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+    )
 
     dispatcher._execute_pipeline(run_id)
 

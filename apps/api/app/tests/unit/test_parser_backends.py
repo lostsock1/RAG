@@ -7,9 +7,11 @@ from uuid import UUID
 import pytest
 
 import app.services.parsers.docling_backend as docling_backend
+from app.core.config import Settings
 from app.schemas.parsed_artifacts import ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
 from app.services.parsers.base import ParseRequest
 from app.services.parsers.docling_backend import DoclingDocumentParser
+from app.services.parsers.factory import build_document_parser
 from app.services.parsers.remote_backend import RemoteDocumentParser
 
 
@@ -36,6 +38,44 @@ def test_remote_document_parser_overrides_profile_from_request() -> None:
 
     assert artifact.provenance.parser_backend == "remote"
     assert artifact.provenance.profile == "gpu-local"
+
+
+def test_build_document_parser_maps_docling_to_local_docling_runtime(tmp_path: Path) -> None:
+    parser, backend, profile = build_document_parser(
+        Settings(parser_backend="docling", local_storage_dir=str(tmp_path))
+    )
+
+    assert isinstance(parser, DoclingDocumentParser)
+    assert parser._storage_root == tmp_path
+    assert backend == "docling-local"
+    assert profile == "local-cpu"
+
+
+def test_build_document_parser_maps_docling_local_to_local_docling_runtime(tmp_path: Path) -> None:
+    parser, backend, profile = build_document_parser(
+        Settings(parser_backend="docling-local", local_storage_dir=str(tmp_path))
+    )
+
+    assert isinstance(parser, DoclingDocumentParser)
+    assert parser._storage_root == tmp_path
+    assert backend == "docling-local"
+    assert profile == "local-cpu"
+
+
+def test_build_document_parser_rejects_remote_backend_until_supported() -> None:
+    with pytest.raises(RuntimeError) as exc_info:
+        build_document_parser(Settings(parser_backend="remote"))
+
+    assert "not yet supported" in str(exc_info.value)
+    assert "remote" in str(exc_info.value)
+
+
+def test_build_document_parser_rejects_unknown_backend() -> None:
+    with pytest.raises(RuntimeError) as exc_info:
+        build_document_parser(Settings(parser_backend="mystery-backend"))
+
+    assert "Unknown parser backend" in str(exc_info.value)
+    assert "mystery-backend" in str(exc_info.value)
 
 
 def test_docling_document_parser_requires_configured_converter() -> None:

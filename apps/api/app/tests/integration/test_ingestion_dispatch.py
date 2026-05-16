@@ -78,11 +78,15 @@ def client(auth_context: RequestContext):
             pages=[ParsedPage(page_number=1, text="test content", blocks=[])],
             tables=[],
             provenance=ParserProvenance(
-                parser_backend="docling", parser_version="1.0.0", profile="loose"
+                parser_backend="docling", parser_version="1.0.0", profile="local-cpu"
             ),
         )
         parser = DoclingDocumentParser(converter=lambda req: expected_artifact)
-        dispatcher = InProcessDispatcher(parser=parser)
+        dispatcher = InProcessDispatcher(
+            parser=parser,
+            parser_backend="docling-local",
+            parser_profile="local-cpu",
+        )
 
         app.dependency_overrides[get_request_context] = lambda: auth_context
         app.state.document_storage = StorageStub()
@@ -135,5 +139,6 @@ def test_upload_triggers_ingestion_dispatch_to_completed(client):
         assert len(stages) == 3
         assert all(s.status == "completed" for s in stages)
         assert stages[0].stage_name == "parse"
+        assert stages[0].details["parser_backend"] == "docling-local"
         assert stages[1].stage_name == "persist_artifact"
         assert stages[2].stage_name == "quality_report"

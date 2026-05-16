@@ -32,8 +32,10 @@ class WorkflowDispatcher(Protocol):
 class InProcessDispatcher:
     """In-process dispatcher that runs the ingestion pipeline via asyncio.create_task."""
 
-    def __init__(self, parser: DocumentParser) -> None:
+    def __init__(self, parser: DocumentParser, parser_backend: str, parser_profile: str) -> None:
         self._parser = parser
+        self._parser_backend = parser_backend
+        self._parser_profile = parser_profile
 
     async def dispatch(self, run_id: UUID) -> None:
         loop = asyncio.get_event_loop()
@@ -79,8 +81,8 @@ class InProcessDispatcher:
                 document_id=document_id,
                 object_key=object_key or "",
                 content_type=content_type,
-                profile="loose",
-                parser_backend="docling",
+                profile=self._parser_profile,
+                parser_backend=self._parser_backend,
                 parser=self._parser,
             )
 
