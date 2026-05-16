@@ -154,3 +154,37 @@ def test_docling_document_parser_normalizes_pages_and_tables_from_local_file(
     assert artifact.tables[0].bbox == [0.0, 0.0, 10.0, 20.0]
     assert artifact.provenance.parser_backend == "docling"
     assert artifact.provenance.profile == "cpu-local"
+
+
+def test_docling_document_parser_surfaces_underlying_conversion_reason(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source_file = tmp_path / "documents" / "broken.pdf"
+    source_file.parent.mkdir(parents=True, exist_ok=True)
+    source_file.write_bytes(b"%PDF-1.4 broken")
+
+    class FakeDocumentConverter:
+        def convert(self, _source: Path):
+            raise ValueError("malformed document stream")
+
+    monkeypatch.setattr(
+        docling_backend,
+        "import_module",
+        lambda _module_name: SimpleNamespace(DocumentConverter=FakeDocumentConverter),
+    )
+
+    parser = DoclingDocumentParser(storage_root=tmp_path)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        parser.parse(
+            ParseRequest(
+                document_id="11111111-1111-1111-1111-111111111111",
+                object_key="documents/broken.pdf",
+                content_type="application/pdf",
+                profile="cpu-local",
+            )
+        )
+
+    message = str(exc_info.value)
+    assert "documents/broken.pdf" in message
+    assert "malformed document stream" in message

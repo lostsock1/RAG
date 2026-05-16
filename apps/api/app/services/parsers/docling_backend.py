@@ -60,7 +60,7 @@ class DoclingDocumentParser(DocumentParser):
             )
         except Exception as exc:
             raise RuntimeError(
-                f"Docling conversion failed for object_key '{request.object_key}'."
+                f"Docling conversion failed for object_key '{request.object_key}': {exc}"
             ) from exc
 
 
