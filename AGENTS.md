@@ -4,6 +4,12 @@
 
 Uber-RAG is a commercial-grade, API-first, ACL-aware RAG platform that reliably indexes and answers from both textbooks and loose documents. This file is the entry point for any AI agent entering this repository.
 
+## GitHub Repository
+
+- **Repo:** `https://github.com/lostsock1/RAG.git` (owner: `lostsock1`, repo: `RAG`)
+- **Branch:** `main`
+- **GitHub MCP:** All GitHub operations are available through the GitHub MCP server (`@modelcontextprotocol/server-github`). Prefer `github_push_files` for multi-file commits over raw `git push`. Review via `github_create_pull_request_review`.
+
 ## Project Memory Location
 
 All architecture, decisions, tasks, and state live in:

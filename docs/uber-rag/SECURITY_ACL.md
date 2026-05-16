@@ -45,6 +45,14 @@ JWT/OIDC token
 }
 ```
 
+## Gate A explicit ACL test cases
+
+- **Disjoint-group isolation:** user A in group alpha cannot retrieve, search, list, or cite documents that are only visible to group beta; user B in group beta cannot retrieve, search, list, or cite documents that are only visible to group alpha.
+- **Owner visibility:** the document owner can list, retrieve, and update ACL for their own document even when visibility is `private`.
+- **Explicit user grant visibility:** a user listed in `allowed_user_ids` can access the document without sharing the owner's groups.
+- **Tenant visibility inside tenant only:** `tenant` visibility grants access to authenticated users from the same tenant only; users from other tenants receive no results and no metadata leakage.
+- **Hidden docs omitted from counts and titles:** unauthorized documents do not appear in list counts, search counts, autocomplete, document titles, or error text.
+
 ## Mandatory tests
 
 - User cannot search unauthorized document by semantic query.

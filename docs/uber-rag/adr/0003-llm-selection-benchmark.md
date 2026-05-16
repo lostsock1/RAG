@@ -1,7 +1,8 @@
 # ADR-0003: LLM Selection — Benchmark Plan (Not Yet Closed)
 
-Status: Proposed
+Status: Superseded
 Date: 2026-05-14
+Superseded by: ADR-0004 (LLM Adapter Contract and Default API Provider)
 
 ## Context
 

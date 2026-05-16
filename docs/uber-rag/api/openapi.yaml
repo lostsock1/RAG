@@ -1,0 +1,1138 @@
+openapi: "3.1.0"
+info:
+  title: Uber-RAG API
+  description: |
+    API-first, ACL-aware RAG platform for textbooks and loose documents.
+    Every UI action is reachable through this API. Backend enforces ACL at all layers.
+  version: "0.1.0"
+  contact:
+    name: Uber-RAG Team
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ── Documents ──────────────────────────────────────────────────
+  /documents/upload:
+    post:
+      summary: Upload a document for ingestion
+      operationId: uploadDocument
+      tags: [Documents]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The document file to upload
+                title:
+                  type: string
+                  description: Optional display title (defaults to filename)
+                document_type:
+                  type: string
+                  enum: [textbook, contract, report, email, manual, memo, other]
+                  default: other
+                language:
+                  type: string
+                  description: ISO 639-1 language code (e.g., de, en, pt)
+                acl:
+                  $ref: "#/components/schemas/AclGrant"
+      responses:
+        "201":
+          description: Document uploaded, ingestion job created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentUploadResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /documents:
+    get:
+      summary: List accessible documents
+      operationId: listDocuments
+      tags: [Documents]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: document_type
+          in: query
+          schema: { type: string }
+        - name: collection_id
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Paginated document list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentList"
+
+  /documents/{document_id}:
+    get:
+      summary: Get document metadata
+      operationId: getDocument
+      tags: [Documents]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Document metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update document metadata
+      operationId: updateDocument
+      tags: [Documents]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentUpdate"
+      responses:
+        "200":
+          description: Updated document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+    delete:
+      summary: Tombstone a document (soft delete)
+      operationId: deleteDocument
+      tags: [Documents]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Tombstone applied
+
+  /documents/{document_id}/quality-report:
+    get:
+      summary: Get ingestion quality report for a document
+      operationId: getQualityReport
+      tags: [Documents]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Quality report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QualityReport"
+
+  /documents/{document_id}/chunks:
+    get:
+      summary: List indexed chunks for a document
+      operationId: listChunks
+      tags: [Documents]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Chunk list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChunkList"
+
+  # ── Collections ────────────────────────────────────────────────
+  /collections:
+    post:
+      summary: Create a collection
+      operationId: createCollection
+      tags: [Collections]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionCreate"
+      responses:
+        "201":
+          description: Collection created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+    get:
+      summary: List accessible collections
+      operationId: listCollections
+      tags: [Collections]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Collection list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionList"
+
+  /collections/{collection_id}:
+    get:
+      summary: Get collection metadata
+      operationId: getCollection
+      tags: [Collections]
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Collection"
+    patch:
+      summary: Update collection metadata
+      operationId: updateCollection
+      tags: [Collections]
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionUpdate"
+      responses:
+        "200":
+          description: Updated collection
+    delete:
+      summary: Delete a collection
+      operationId: deleteCollection
+      tags: [Collections]
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Deleted
+
+  /collections/{collection_id}/documents:
+    post:
+      summary: Add a document to a collection
+      operationId: addDocumentToCollection
+      tags: [Collections]
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [document_id]
+              properties:
+                document_id:
+                  type: string
+                  format: uuid
+      responses:
+        "200": { description: "Document added" }
+
+  /collections/{collection_id}/documents/{document_id}:
+    delete:
+      summary: Remove a document from a collection
+      operationId: removeDocumentFromCollection
+      tags: [Collections]
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: "Removed" }
+
+  # ── ACL ────────────────────────────────────────────────────────
+  /documents/{document_id}/acl:
+    get:
+      summary: Get ACL grants for a document
+      operationId: getDocumentAcl
+      tags: [ACL]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: ACL grants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AclGrant"
+    put:
+      summary: Replace ACL grants for a document
+      operationId: setDocumentAcl
+      tags: [ACL]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AclGrant"
+      responses:
+        "200":
+          description: ACL updated
+
+  /collections/{collection_id}/acl:
+    get:
+      summary: Get ACL grants for a collection
+      operationId: getCollectionAcl
+      tags: [ACL]
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: ACL grants
+    put:
+      summary: Replace ACL grants for a collection
+      operationId: setCollectionAcl
+      tags: [ACL]
+      parameters:
+        - name: collection_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AclGrant"
+      responses:
+        "200":
+          description: ACL updated
+
+  # ── Ingestion ──────────────────────────────────────────────────
+  /documents/{document_id}/parse:
+    post:
+      summary: Trigger parsing for a document
+      operationId: parseDocument
+      tags: [Ingestion]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "202":
+          description: Parse job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionJob"
+
+  /documents/{document_id}/index:
+    post:
+      summary: Trigger indexing (chunk + embed + index) for a parsed document
+      operationId: indexDocument
+      tags: [Ingestion]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "202":
+          description: Index job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionJob"
+
+  /documents/{document_id}/reindex:
+    post:
+      summary: Re-index a document (idempotent, parser-version-aware)
+      operationId: reindexDocument
+      tags: [Ingestion]
+      parameters:
+        - name: document_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "202":
+          description: Reindex job accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionJob"
+
+  /ingestion/jobs/{job_id}:
+    get:
+      summary: Get ingestion job status
+      operationId: getIngestionJob
+      tags: [Ingestion]
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Foundation-slice ingestion job metadata for persistence/status scaffolding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionJob"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /ingestion/jobs:
+    get:
+      summary: List accessible ingestion jobs
+      operationId: listIngestionJobs
+      tags: [Ingestion]
+      responses:
+        "200":
+          description: Foundation-slice ingestion job list for persistence/status scaffolding
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionJobList"
+
+  /ingestion/jobs/{job_id}/cancel:
+    post:
+      summary: Cancel an ingestion job
+      operationId: cancelIngestionJob
+      tags: [Ingestion]
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: "Cancelled" }
+
+  # ── Search ─────────────────────────────────────────────────────
+  /search:
+    post:
+      summary: Search across indexed documents
+      operationId: search
+      tags: [Search]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchRequest"
+      responses:
+        "200":
+          description: Ranked search results with citations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+
+  /retrieve:
+    post:
+      summary: Retrieve full source context for a citation
+      operationId: retrieve
+      tags: [Search]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [chunk_ids]
+              properties:
+                chunk_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: Source chunks with surrounding context
+
+  # ── Chat ───────────────────────────────────────────────────────
+  /chat:
+    post:
+      summary: Generate an answer with citations
+      operationId: chat
+      tags: [Chat]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Answer with citations and verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+
+  /chat/stream:
+    post:
+      summary: Stream an answer with citations (SSE)
+      operationId: chatStream
+      tags: [Chat]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: SSE stream of answer tokens and citation events
+
+  /citations/resolve:
+    post:
+      summary: Resolve citation IDs to source metadata
+      operationId: resolveCitations
+      tags: [Chat]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [citation_ids]
+              properties:
+                citation_ids:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Resolved citations
+
+  /answers/verify:
+    post:
+      summary: Verify answer sentences against source evidence
+      operationId: verifyAnswer
+      tags: [Chat]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answer, source_chunks]
+              properties:
+                answer:
+                  type: string
+                source_chunks:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/SourceChunk"
+      responses:
+        "200":
+          description: Sentence-level verification verdicts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationResult"
+
+  # ── Evaluation ─────────────────────────────────────────────────
+  /eval/datasets:
+    post:
+      summary: Upload an evaluation dataset
+      operationId: createEvalDataset
+      tags: [Evaluation]
+      responses:
+        "201": { description: "Dataset created" }
+    get:
+      summary: List evaluation datasets
+      operationId: listEvalDatasets
+      tags: [Evaluation]
+      responses:
+        "200": { description: "Dataset list" }
+
+  /eval/runs:
+    post:
+      summary: Run evaluation against a dataset
+      operationId: runEval
+      tags: [Evaluation]
+      responses:
+        "202": { description: "Eval run started" }
+
+  /eval/runs/{run_id}:
+    get:
+      summary: Get evaluation run status
+      operationId: getEvalRun
+      tags: [Evaluation]
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: "Run status" }
+
+  /eval/results/{run_id}:
+    get:
+      summary: Get evaluation results
+      operationId: getEvalResults
+      tags: [Evaluation]
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: "Detailed results" }
+
+  # ── Audit ──────────────────────────────────────────────────────
+  /audit/events:
+    get:
+      summary: Query audit log
+      operationId: queryAudit
+      tags: [Audit]
+      parameters:
+        - name: user_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: document_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 100 }
+      responses:
+        "200":
+          description: Audit events list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditEventList"
+
+  # ── System ─────────────────────────────────────────────────────
+  /system/health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      tags: [System]
+      security: []
+      responses:
+        "200":
+          description: Service health
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [healthy, degraded, down] }
+                  version: { type: string }
+                  services:
+                    type: object
+                    additionalProperties:
+                      type: string
+                      enum: [up, down, degraded]
+
+  /system/models:
+    get:
+      summary: List available LLM models
+      operationId: listModels
+      tags: [System]
+      responses:
+        "200":
+          description: Model list
+
+  /admin/rebuild-index:
+    post:
+      summary: Rebuild search indexes (admin)
+      operationId: rebuildIndex
+      tags: [Admin]
+      responses:
+        "202": { description: "Rebuild started" }
+
+# ── Components ───────────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OIDC access token from Keycloak
+
+  schemas:
+    # ── Core entities ──────────────────────────────────────────
+    Document:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        source_type:
+          type: string
+          enum: [book, loose_document]
+        document_type:
+          type: string
+          enum: [textbook, contract, report, email, manual, memo, other]
+        language: { type: string }
+        source_hash: { type: string }
+        file_name: { type: string }
+        file_size_bytes: { type: integer }
+        acl: { $ref: "#/components/schemas/AclGrant" }
+        ingestion_status:
+          type: string
+          enum: [uploaded, parsing, parsed, indexing, indexed, failed]
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    DocumentUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        document_type: { type: string }
+        language: { type: string }
+
+    DocumentList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Document" }
+        total: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+
+    # ── ACL ────────────────────────────────────────────────────
+    AclGrant:
+      type: object
+      properties:
+        owner_user_id: { type: string, format: uuid }
+        tenant_id: { type: string }
+        allowed_user_ids:
+          type: array
+          items: { type: string, format: uuid }
+        allowed_group_ids:
+          type: array
+          items: { type: string, format: uuid }
+        visibility:
+          type: string
+          enum: [private, group, tenant, public]
+        sensitivity:
+          type: string
+          enum: [public, internal, confidential, restricted]
+        expires_at: { type: string, format: date-time, nullable: true }
+
+    # ── Collections ────────────────────────────────────────────
+    Collection:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        acl: { $ref: "#/components/schemas/AclGrant" }
+        document_count: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    CollectionCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        acl: { $ref: "#/components/schemas/AclGrant" }
+
+    CollectionUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+
+    CollectionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Collection" }
+        total: { type: integer }
+
+    # ── Chunks ─────────────────────────────────────────────────
+    Chunk:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        document_id: { type: string, format: uuid }
+        unit_type:
+          type: string
+          enum: [chapter, section, subsection, paragraph, table, formula, figure, definition, page]
+        heading_path:
+          type: array
+          items: { type: string }
+        page_start: { type: integer }
+        page_end: { type: integer }
+        text: { type: string }
+        parent_id: { type: string, format: uuid, nullable: true }
+        embedding_model: { type: string }
+        parser_version: { type: string }
+
+    DocumentUploadResponse:
+      allOf:
+        - $ref: "#/components/schemas/Document"
+        - type: object
+          required: [ingestion_run_id]
+          properties:
+            ingestion_run_id: { type: string, format: uuid }
+
+    ChunkList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Chunk" }
+        total: { type: integer }
+
+    SourceChunk:
+      type: object
+      properties:
+        chunk_id: { type: string, format: uuid }
+        document_id: { type: string, format: uuid }
+        title: { type: string }
+        page_start: { type: integer }
+        page_end: { type: integer }
+        heading_path:
+          type: array
+          items: { type: string }
+        text: { type: string }
+
+    # ── Ingestion ──────────────────────────────────────────────
+    IngestionJob:
+      type: object
+      required: [id, document_id, tenant_id, status, workflow_backend, parser_backend, source_hash, created_at, updated_at]
+      description: Persisted ingestion-run metadata only. In the Phase 2 foundation slice, `workflow_backend` is `scaffold` until real workflow dispatch is implemented.
+      properties:
+        id: { type: string, format: uuid }
+        document_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        status: { type: string }
+        workflow_backend: { type: string }
+        parser_backend: { type: string }
+        source_hash: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    IngestionJobList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngestionJob"
+
+    IngestionStage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status:
+          type: string
+          enum: [pending, running, completed, failed, skipped]
+        started_at: { type: string, format: date-time, nullable: true }
+        completed_at: { type: string, format: date-time, nullable: true }
+        error: { type: string, nullable: true }
+
+    # ── Quality ────────────────────────────────────────────────
+    QualityReport:
+      type: object
+      properties:
+        document_id: { type: string, format: uuid }
+        pages_expected: { type: integer }
+        pages_parsed: { type: integer }
+        ocr_pages: { type: integer }
+        ocr_confidence_avg: { type: number, nullable: true }
+        tables_detected: { type: integer }
+        formulas_detected: { type: integer }
+        figures_detected: { type: integer }
+        toc_detected: { type: boolean }
+        chunks_created: { type: integer }
+        warnings:
+          type: array
+          items: { type: string }
+        failed_pages:
+          type: array
+          items: { type: integer }
+        parser_version: { type: string }
+        embedding_model: { type: string }
+        index_status: { type: string }
+
+    # ── Search ─────────────────────────────────────────────────
+    SearchRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        collections:
+          type: array
+          items: { type: string, format: uuid }
+        source_types:
+          type: array
+          items:
+            type: string
+            enum: [book, loose_document]
+        document_types:
+          type: array
+          items: { type: string }
+        filters:
+          type: object
+          properties:
+            language:
+              type: array
+              items: { type: string }
+            date_from: { type: string, format: date }
+            date_to: { type: string, format: date }
+        retrieval_mode:
+          type: string
+          enum: [auto, exact, semantic, book, table, formula, hybrid]
+          default: auto
+        top_k:
+          type: integer
+          default: 20
+        include_sources:
+          type: boolean
+          default: true
+
+    SearchResponse:
+      type: object
+      properties:
+        query: { type: string }
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResult"
+        retrieval_mode_used: { type: string }
+        total_hits: { type: integer }
+
+    SearchResult:
+      type: object
+      properties:
+        chunk_id: { type: string, format: uuid }
+        document_id: { type: string, format: uuid }
+        title: { type: string }
+        page_start: { type: integer }
+        page_end: { type: integer }
+        heading_path:
+          type: array
+          items: { type: string }
+        text: { type: string }
+        score: { type: number }
+        source: { type: string }
+
+    # ── Chat ───────────────────────────────────────────────────
+    ChatRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string }
+        collections:
+          type: array
+          items: { type: string, format: uuid }
+        retrieval_mode:
+          type: string
+          enum: [auto, exact, semantic, book, table, formula, hybrid]
+          default: auto
+        top_k:
+          type: integer
+          default: 20
+        stream:
+          type: boolean
+          default: false
+
+    ChatResponse:
+      type: object
+      properties:
+        answer: { type: string }
+        status:
+          type: string
+          enum: [answered, partial, not_found, denied]
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+        verification:
+          $ref: "#/components/schemas/VerificationSummary"
+        audit_id: { type: string, format: uuid }
+
+    Citation:
+      type: object
+      properties:
+        citation_id: { type: string }
+        document_id: { type: string, format: uuid }
+        title: { type: string }
+        page_start: { type: integer }
+        page_end: { type: integer }
+        section: { type: string }
+        chunk_id: { type: string, format: uuid }
+
+    VerificationSummary:
+      type: object
+      properties:
+        unsupported_claims:
+          type: array
+          items: { type: string }
+        confidence:
+          type: string
+          enum: [high, medium, low]
+
+    VerificationResult:
+      type: object
+      properties:
+        sentences:
+          type: array
+          items:
+            type: object
+            properties:
+              sentence: { type: string }
+              supported: { type: boolean }
+              citation_ids:
+                type: array
+                items: { type: string }
+              support_type:
+                type: string
+                enum: [direct, inferred, unsupported]
+              action:
+                type: string
+                enum: [keep, weaken, remove]
+
+    # ── Audit ──────────────────────────────────────────────────
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        tenant_id: { type: string }
+        action: { type: string }
+        resource_type: { type: string }
+        resource_id: { type: string, format: uuid }
+        details: { type: object }
+        timestamp: { type: string, format: date-time }
+
+    AuditEventList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEvent" }
+        total: { type: integer }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: Authenticated but not authorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found or not visible to caller
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object }
+
+tags:
+  - name: Documents
+  - name: Collections
+  - name: ACL
+  - name: Ingestion
+  - name: Search
+  - name: Chat
+  - name: Evaluation
+  - name: Audit
+  - name: System
+  - name: Admin

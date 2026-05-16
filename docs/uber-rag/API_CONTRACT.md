@@ -2,6 +2,8 @@
 
 The Web UI, CLI, automations, and external systems use the same public API.
 
+**Canonical specification:** `docs/uber-rag/api/openapi.yaml` — OpenAPI 3.1. This markdown document is a summary.
+
 ## Design principles
 
 - OpenAPI-first.
@@ -10,6 +12,18 @@ The Web UI, CLI, automations, and external systems use the same public API.
 - Every request is associated with user, tenant, groups, and scopes.
 - Every security-relevant action emits audit events.
 - Long-running work returns job ids.
+
+## Phase 1 frozen subset
+
+Gate A freezes the minimum Phase 1 API surface so Gate B-Gate D implementation work does not expand scope implicitly.
+
+- `GET /api/v1/system/health`
+- `POST /api/v1/documents/upload`
+- `GET /api/v1/documents`
+- `GET /api/v1/documents/{document_id}/acl`
+- `PUT /api/v1/documents/{document_id}/acl`
+
+All other endpoints in this document remain part of the broader target contract, but they are not in the Phase 1 delivery subset unless a later gate explicitly pulls them in.
 
 ## Core endpoints
 
@@ -48,6 +62,15 @@ GET    /api/v1/ingestion/jobs/{job_id}
 GET    /api/v1/ingestion/jobs
 POST   /api/v1/ingestion/jobs/{job_id}/cancel
 ```
+
+Phase 2 foundation note:
+- `GET /api/v1/ingestion/jobs` is the canonical list route.
+- `GET /api/v1/ingestion/runs` remains a compatibility alias during the foundation slice, but it is not the published contract route.
+- Current foundation payload returns persisted ingestion-run metadata only: `id`, `document_id`, `tenant_id`, `status`, `workflow_backend`, `parser_backend`, `source_hash`, `created_at`, `updated_at`.
+- In this slice, ingestion jobs are **persistence/status scaffolding**, not active workflow execution. `workflow_backend="scaffold"` means the run has been recorded but no Temporal dispatch is happening yet.
+
+Upload foundation note:
+- `POST /api/v1/documents/upload` currently returns document metadata plus `ingestion_run_id` so API clients can poll the persistence/status scaffold endpoints.
 
 ### ACL
 

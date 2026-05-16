@@ -1,0 +1,53 @@
+from functools import lru_cache
+from typing import Literal
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    app_name: str = "Uber-RAG API"
+    app_version: str = "0.1.0"
+    auth_mode: Literal["disabled", "dev", "oidc"] = "disabled"
+
+    # OIDC verifier settings used by the runtime token verifier/JWKS path.
+    oidc_issuer_url: str | None = None
+    oidc_audience: str | None = None
+    oidc_jwks_url: str | None = None
+
+    # Deferred non-verifier OIDC settings retained for current claim-mapping/runtime compatibility.
+    oidc_client_id: str | None = None
+    oidc_username_claim: str = "preferred_username"
+    oidc_groups_claim: str = "groups"
+    oidc_roles_claim: str = "realm_access.roles"
+    oidc_scopes_claim: str = "scope"
+    database_url: str | None = None
+    local_storage_dir: str | None = None
+    storage_backend: Literal["local", "seaweedfs"] = "local"
+    s3_endpoint_url: str | None = None
+    s3_access_key: str | None = None
+    s3_secret_key: str | None = None
+    s3_bucket: str = "uber-rag-documents"
+    s3_region: str = "us-east-1"
+    temporal_namespace: str = "default"
+    temporal_task_queue: str = "uber-rag-ingestion"
+    temporal_host_port: str | None = None
+    parser_backend: str = "docling"
+    postgres_user: str = "uber_rag"
+    postgres_password: str = "uber_rag"
+    postgres_db: str = "uber_rag"
+    postgres_host: str = "localhost"
+    postgres_port: int = 5432
+    minio_root_user: str = "minioadmin"
+    minio_root_password: str = "minioadmin"
+    minio_api_port: int = 9000
+    minio_console_port: int = 9001
+    keycloak_admin: str = "admin"
+    keycloak_admin_password: str = "admin"
+    keycloak_port: int = 8080
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

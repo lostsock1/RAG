@@ -1,0 +1,2038 @@
+# heldout-v1.yaml — 160-question seed evaluation set
+# Phase 0 deliverable per ROADMAP.md and ADR-0003 (adapted per ADR-0004)
+#
+# All chunk_ids and page_ranges are null placeholders until the corpus is indexed.
+# Questions are designed to be mappable to any textbook + loose-document corpus.
+#
+# Question type coverage:
+#   definition (20), exact_lookup (20), formula (12), table (12),
+#   multi_hop (12), comparison (8), chapter_synthesis (6),
+#   contract_clause (10), report_section (10), email_thread (6),
+#   policy_procedure (8), version_fact (6),
+#   needle (20), negative (20), acl_leakage (10), multilingual (20), ocr_noise (5), deleted (5)
+#
+# Some questions serve multiple purposes (e.g., a needle question may also be multilingual).
+
+dataset:
+  name: "Heldout v1"
+  version: "1.0.0"
+  description: "170-question seed set for Phase 0–4 regression. 160 per ADR-0003 (50 textbook, 50 loose, 20 needle, 20 negative, 20 multilingual) plus 10 ACL leakage tests per EVALUATION_PLAN.md. Designed for any textbook + loose-document corpus."
+  created: "2026-05-14"
+  total_questions: 170
+  language_distribution:
+    en: 146
+    de: 8
+    pt: 8
+    mixed: 8
+  category_distribution:
+    textbook: 58
+    loose_document: 62
+    cross_corpus: 50
+  type_distribution:
+    definition: 20
+    exact_lookup: 20
+    formula: 10
+    table: 9
+    multi_hop: 9
+    chapter_synthesis: 7
+    comparison: 6
+    contract_clause: 12
+    report_section: 12
+    email_thread: 6
+    policy_procedure: 10
+    version_fact: 6
+    needle: 20
+    negative: 20
+    acl_leakage: 10
+    deleted_document: 4
+  thresholds:
+    faithfulness: 0.85
+    citation_accuracy: 0.90
+    negative_compliance: 0.90
+    acl_leak_count: 0
+    hallucination_rate: 0.05
+    p50_latency_ms: 500
+
+questions:
+  # ═══════════════════════════════════════════════════════════════
+  # TEXTBOOK QUESTIONS (50)
+  # ═══════════════════════════════════════════════════════════════
+
+  # ── Definitions (15) ──────────────────────────────────────────
+  - id: "h01"
+    type: definition
+    category: textbook
+    language: en
+    query: "Define the second law of thermodynamics as stated in the textbook."
+    expected:
+      status: answered
+      answer_contains: ["entropy", "isolated system", "never decreases"]
+      answer_absent: ["always increases"]  # common misconception
+      chunk_ids: [null]
+      page_range: null
+      heading_path: null
+    retrieval:
+      expected_recall_k: 3
+    acl:
+      user_context: default
+
+  - id: "h02"
+    type: definition
+    category: textbook
+    language: en
+    query: "What is the definition of a differential equation according to the textbook?"
+    expected:
+      status: answered
+      answer_contains: ["derivative", "unknown function", "independent variable"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h03"
+    type: definition
+    category: textbook
+    language: en
+    query: "Define 'elasticity' as used in the economics chapter."
+    expected:
+      status: answered
+      answer_contains: ["responsiveness", "percentage change", "quantity demanded"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h04"
+    type: definition
+    category: textbook
+    language: en
+    query: "What is a catalyst? Provide the textbook definition."
+    expected:
+      status: answered
+      answer_contains: ["activation energy", "not consumed", "reaction rate"]
+      answer_absent: ["consumed in the reaction"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h05"
+    type: definition
+    category: textbook
+    language: en
+    query: "Define 'sovereignty' in the context of international law as covered in the textbook."
+    expected:
+      status: answered
+      answer_contains: ["supreme authority", "territory", "independent"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h06"
+    type: definition
+    category: textbook
+    language: en
+    query: "What is the textbook's definition of an algorithm?"
+    expected:
+      status: answered
+      answer_contains: ["finite sequence", "well-defined", "input", "output"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h07"
+    type: definition
+    category: textbook
+    language: en
+    query: "According to the biology textbook, what is homeostasis?"
+    expected:
+      status: answered
+      answer_contains: ["stable internal environment", "regulation", "feedback"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h08"
+    type: definition
+    category: textbook
+    language: en
+    query: "Define 'opportunity cost' as used in the textbook."
+    expected:
+      status: answered
+      answer_contains: ["next best alternative", "forgone", "decision"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h09"
+    type: definition
+    category: textbook
+    language: en
+    query: "What does the textbook say is the definition of a constitutional monarchy?"
+    expected:
+      status: answered
+      answer_contains: ["monarch", "constitution", "limited powers", "parliament"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h10"
+    type: definition
+    category: textbook
+    language: en
+    query: "Define 'photosynthesis' as described in the biology textbook."
+    expected:
+      status: answered
+      answer_contains: ["light energy", "chemical energy", "chlorophyll", "carbon dioxide", "glucose"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h11"
+    type: definition
+    category: textbook
+    language: en
+    query: "What is the definition of 'civil liability' in the law textbook?"
+    expected:
+      status: answered
+      answer_contains: ["compensation", "damage", "obligation", "tort"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h12"
+    type: definition
+    category: textbook
+    language: en
+    query: "Define 'inflation' according to the economics textbook."
+    expected:
+      status: answered
+      answer_contains: ["general increase", "prices", "purchasing power"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h13"
+    type: definition
+    category: textbook
+    language: en
+    query: "According to the textbook, what is a covalent bond?"
+    expected:
+      status: answered
+      answer_contains: ["shared", "electrons", "atoms", "pair"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h14"
+    type: definition
+    category: textbook
+    language: en
+    query: "Define 'precedent' as described in the legal textbook chapter on common law."
+    expected:
+      status: answered
+      answer_contains: ["prior decision", "binding", "stare decisis", "court"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h15"
+    type: definition
+    category: textbook
+    language: en
+    query: "What is the textbook definition of market equilibrium?"
+    expected:
+      status: answered
+      answer_contains: ["supply equals demand", "no tendency to change", "price"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  # ── Exact Lookups (10) ────────────────────────────────────────
+  - id: "h16"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "What is the value of the gravitational constant G stated in the textbook?"
+    expected:
+      status: answered
+      answer_contains: ["6.674", "10^{-11}", "N m2/kg2", "N m²/kg²"]
+      page_range: null
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h17"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "On which page does the textbook first mention the principle of superposition?"
+    expected:
+      status: answered
+      answer_contains: ["page", "superposition"]
+      page_range: null
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h18"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "List the three conditions for a function to be continuous at a point as stated in the calculus textbook."
+    expected:
+      status: answered
+      answer_contains: ["defined", "limit exists", "limit equals function value"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h19"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "What are the four fundamental forces listed in the physics textbook?"
+    expected:
+      status: answered
+      answer_contains: ["gravitational", "electromagnetic", "strong nuclear", "weak nuclear"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h20"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "What year does the history textbook give for the signing of the Treaty of Versailles?"
+    expected:
+      status: answered
+      answer_contains: ["1919"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h21"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "What is the boiling point of water at standard pressure stated in the chemistry textbook, in both Celsius and Kelvin?"
+    expected:
+      status: answered
+      answer_contains: ["100", "373.15", "Celsius", "Kelvin"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h22"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "Quote the first sentence of the textbook's definition of a vector space."
+    expected:
+      status: answered
+      answer_contains: ["set", "scalar multiplication", "addition", "axioms"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h23"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "What is the exact chemical formula for photosynthesis as written in the biology textbook?"
+    expected:
+      status: answered
+      answer_contains: ["6CO2", "6H2O", "C6H12O6", "6O2"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h24"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "How many member states did the European Union have at the time the textbook was published?"
+    expected:
+      status: answered
+      answer_contains: ["member", "European Union"]
+      page_range: null
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h25"
+    type: exact_lookup
+    category: textbook
+    language: en
+    query: "What are the five stages of grief listed in the psychology textbook?"
+    expected:
+      status: answered
+      answer_contains: ["denial", "anger", "bargaining", "depression", "acceptance"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  # ── Formula Questions (8) ─────────────────────────────────────
+  - id: "h26"
+    type: formula
+    category: textbook
+    language: en
+    query: "What is the formula for kinetic energy according to the physics textbook?"
+    expected:
+      status: answered
+      answer_contains: ["1/2", "mv²", "mass", "velocity"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h27"
+    type: formula
+    category: textbook
+    language: en
+    query: "State the quadratic formula as written in the algebra textbook."
+    expected:
+      status: answered
+      answer_contains: ["-b", "√(b²", "4ac)", "2a"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h28"
+    type: formula
+    category: textbook
+    language: en
+    query: "What is the formula for calculating compound interest given in the textbook?"
+    expected:
+      status: answered
+      answer_contains: ["A = P", "(1 + r/n)^(nt)"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h29"
+    type: formula
+    category: textbook
+    language: en
+    query: "Write the equation for the ideal gas law as presented in the chemistry textbook."
+    expected:
+      status: answered
+      answer_contains: ["PV = nRT", "pressure", "volume", "gas constant"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h30"
+    type: formula
+    category: textbook
+    language: en
+    query: "What is the formula for the area of a circle stated in the geometry textbook?"
+    expected:
+      status: answered
+      answer_contains: ["A = πr²", "πr^2", "pi", "radius"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h31"
+    type: formula
+    category: textbook
+    language: en
+    query: "State Ohm's law as written in the physics textbook, including all terms defined."
+    expected:
+      status: answered
+      answer_contains: ["V = IR", "voltage", "current", "resistance"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h32"
+    type: formula
+    category: textbook
+    language: en
+    query: "What is the formula for the standard deviation in the statistics textbook?"
+    expected:
+      status: answered
+      answer_contains: ["σ", "√", "Σ(x - μ)²", "N"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h33"
+    type: formula
+    category: textbook
+    language: en
+    query: "Give the Henderson-Hasselbalch equation as written in the biochemistry textbook."
+    expected:
+      status: answered
+      answer_contains: ["pH", "pKa", "log", "conjugate base", "acid"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  # ── Table Questions (7) ───────────────────────────────────────
+  - id: "h34"
+    type: table
+    category: textbook
+    language: en
+    query: "According to the table in Chapter 4, which element has the highest electronegativity?"
+    expected:
+      status: answered
+      answer_contains: ["fluorine", "3.98", "Pauling scale"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h35"
+    type: table
+    category: textbook
+    language: en
+    query: "What is the melting point of tungsten according to the table of physical constants in the appendix?"
+    expected:
+      status: answered
+      answer_contains: ["3422", "°C"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h36"
+    type: table
+    category: textbook
+    language: en
+    query: "In the textbook's table comparing economic systems, what are the three key characteristics of a market economy?"
+    expected:
+      status: answered
+      answer_contains: ["private property", "price mechanism", "competition"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h37"
+    type: table
+    category: textbook
+    language: en
+    query: "According to the periodic table in the textbook, what is the atomic number of gold?"
+    expected:
+      status: answered
+      answer_contains: ["79"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h38"
+    type: table
+    category: textbook
+    language: en
+    query: "What does the textbook's table of amino acids list as the three-letter code for tryptophan?"
+    expected:
+      status: answered
+      answer_contains: ["Trp"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h39"
+    type: table
+    category: textbook
+    language: en
+    query: "From the textbook's table on SI base units, what is the unit of electric current and its symbol?"
+    expected:
+      status: answered
+      answer_contains: ["ampere", "A"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h40"
+    type: table
+    category: textbook
+    language: en
+    query: "According to the solubility table in the chemistry textbook, is silver chloride (AgCl) soluble or insoluble in water?"
+    expected:
+      status: answered
+      answer_contains: ["insoluble"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  # ── Multi-Hop Questions (5) ───────────────────────────────────
+  - id: "h41"
+    type: multi_hop
+    category: textbook
+    language: en
+    query: "How does the textbook relate the concept of entropy to the arrow of time?"
+    expected:
+      status: answered
+      answer_contains: ["entropy", "arrow of time", "irreversible", "statistical mechanics"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h42"
+    type: multi_hop
+    category: textbook
+    language: en
+    query: "How does the textbook connect the Industrial Revolution to the rise of labor unions and subsequent labor laws?"
+    expected:
+      status: answered
+      answer_contains: ["Industrial Revolution", "labor unions", "working conditions", "legislation"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h43"
+    type: multi_hop
+    category: textbook
+    language: en
+    query: "What is the relationship between the endoplasmic reticulum and the Golgi apparatus as described in the biology textbook?"
+    expected:
+      status: answered
+      answer_contains: ["endoplasmic reticulum", "Golgi", "vesicle", "protein", "transport"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h44"
+    type: multi_hop
+    category: textbook
+    language: en
+    query: "How does the textbook describe the chain of causation from the assassination of Archduke Franz Ferdinand to the outbreak of World War I?"
+    expected:
+      status: answered
+      answer_contains: ["Franz Ferdinand", "ultimatum", "alliance system", "mobilization"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h45"
+    type: multi_hop
+    category: textbook
+    language: en
+    query: "According to the textbook, how does Okun's law relate unemployment to GDP output?"
+    expected:
+      status: answered
+      answer_contains: ["Okun's law", "unemployment", "GDP", "output gap", "percentage"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  # ── Chapter Synthesis (5) ─────────────────────────────────────
+  - id: "h46"
+    type: chapter_synthesis
+    category: textbook
+    language: en
+    query: "Summarize the key arguments for and against protectionism discussed in Chapter 7 of the economics textbook."
+    expected:
+      status: answered
+      answer_contains: ["protectionism", "tariffs", "infant industry", "free trade", "comparative advantage"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 8
+
+  - id: "h47"
+    type: chapter_synthesis
+    category: textbook
+    language: en
+    query: "What are the main differences between mitosis and meiosis as covered in the cell biology chapter?"
+    expected:
+      status: answered
+      answer_contains: ["mitosis", "meiosis", "diploid", "haploid", "daughter cells", "crossing over"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 8
+
+  - id: "h48"
+    type: chapter_synthesis
+    category: textbook
+    language: en
+    query: "What were the main causes of the French Revolution according to the history textbook chapter?"
+    expected:
+      status: answered
+      answer_contains: ["social inequality", "financial crisis", "Enlightenment", "Estates-General"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 8
+
+  - id: "h49"
+    type: chapter_synthesis
+    category: textbook
+    language: en
+    query: "Explain the three laws of thermodynamics and how they build on each other, as presented in the physics textbook."
+    expected:
+      status: answered
+      answer_contains: ["first law", "second law", "third law", "energy conservation", "entropy", "absolute zero"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 10
+
+  - id: "h50"
+    type: chapter_synthesis
+    category: textbook
+    language: en
+    query: "Describe the structure and function of the United Nations as covered in the international relations textbook chapter."
+    expected:
+      status: answered
+      answer_contains: ["General Assembly", "Security Council", "veto", "peacekeeping", "specialized agencies"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 8
+
+  # ═══════════════════════════════════════════════════════════════
+  # LOOSE DOCUMENT QUESTIONS (50)
+  # ═══════════════════════════════════════════════════════════════
+
+  # ── Contract Clause Lookups (10) ──────────────────────────────
+  - id: "h51"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What is the termination notice period specified in the vendor agreement?"
+    expected:
+      status: answered
+      answer_contains: ["days", "notice", "termination"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h52"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What is the liability cap amount in the master services agreement?"
+    expected:
+      status: answered
+      answer_contains: ["liability", "cap", "aggregate"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h53"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "Which jurisdiction governs the employment contract?"
+    expected:
+      status: answered
+      answer_contains: ["governing law", "jurisdiction", "courts"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h54"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What is the non-compete duration stated in the executive employment agreement?"
+    expected:
+      status: answered
+      answer_contains: ["non-compete", "months", "years", "restricted"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h55"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What are the force majeure conditions listed in the supply agreement?"
+    expected:
+      status: answered
+      answer_contains: ["force majeure", "act of God", "natural disaster", "strike"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h56"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What is the indemnification scope in the software license agreement?"
+    expected:
+      status: answered
+      answer_contains: ["indemnify", "third-party claims", "intellectual property"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h57"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "When does the confidentiality obligation expire according to the NDA?"
+    expected:
+      status: answered
+      answer_contains: ["confidentiality", "years", "survive", "termination"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h58"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What are the payment terms specified in the consulting agreement?"
+    expected:
+      status: answered
+      answer_contains: ["net", "days", "invoice", "payment"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h59"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What is the arbitration clause in the partnership agreement?"
+    expected:
+      status: answered
+      answer_contains: ["arbitration", "dispute", "binding", "venue"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h60"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What data protection obligations does the data processing agreement impose on the processor?"
+    expected:
+      status: answered
+      answer_contains: ["processor", "personal data", "security measures", "sub-processor"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  # ── Report/Spec Section Questions (10) ────────────────────────
+  - id: "h61"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "What were the key findings of the Q4 2025 security audit report?"
+    expected:
+      status: answered
+      answer_contains: ["findings", "vulnerability", "remediation", "risk"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h62"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "What revenue growth percentage did the annual report project for FY 2027?"
+    expected:
+      status: answered
+      answer_contains: ["revenue", "growth", "percent", "projection"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h63"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "According to the market research report, what are the top three competitors in the segment?"
+    expected:
+      status: answered
+      answer_contains: ["competitor", "market share"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h64"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "What does the environmental impact assessment conclude about the proposed development?"
+    expected:
+      status: answered
+      answer_contains: ["environmental impact", "mitigation", "conclusion"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h65"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "What are the five strategic priorities listed in the board strategy document?"
+    expected:
+      status: answered
+      answer_contains: ["strategic priority", "objective", "initiative"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h66"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "What incident response time SLA does the technical specification document define for severity-1 issues?"
+    expected:
+      status: answered
+      answer_contains: ["severity 1", "minutes", "response time", "SLA"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h67"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "What methodology does the research paper use for data collection?"
+    expected:
+      status: answered
+      answer_contains: ["methodology", "data collection", "sample", "participants"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h68"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "According to the due diligence report, what are the three main risks identified?"
+    expected:
+      status: answered
+      answer_contains: ["risk", "mitigation", "due diligence"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h69"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "What was the customer satisfaction score reported in the quarterly NPS survey?"
+    expected:
+      status: answered
+      answer_contains: ["NPS", "score", "satisfaction", "promoter", "detractor"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h70"
+    type: report_section
+    category: loose_document
+    language: en
+    query: "What API rate limits does the technical specification define for the /search endpoint?"
+    expected:
+      status: answered
+      answer_contains: ["rate limit", "requests", "per second", "per minute"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  # ── Email Thread Questions (6) ────────────────────────────────
+  - id: "h71"
+    type: email_thread
+    category: loose_document
+    language: en
+    query: "What was the final deadline agreed upon in the project timeline email thread?"
+    expected:
+      status: answered
+      answer_contains: ["deadline", "date"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h72"
+    type: email_thread
+    category: loose_document
+    language: en
+    query: "Who raised the objection to the proposed budget in the budget approval email thread?"
+    expected:
+      status: answered
+      answer_contains: ["objection", "budget"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h73"
+    type: email_thread
+    category: loose_document
+    language: en
+    query: "What action items were assigned to the engineering team in the Q3 planning email thread?"
+    expected:
+      status: answered
+      answer_contains: ["action item", "engineering", "assignee"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h74"
+    type: email_thread
+    category: loose_document
+    language: en
+    query: "What was the final decision on the vendor selection as documented in the procurement email chain?"
+    expected:
+      status: answered
+      answer_contains: ["vendor", "selected", "decision"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h75"
+    type: email_thread
+    category: loose_document
+    language: en
+    query: "What security concern was raised in the incident response email thread, and what was the resolution?"
+    expected:
+      status: answered
+      answer_contains: ["security", "incident", "resolution", "mitigation"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h76"
+    type: email_thread
+    category: loose_document
+    language: en
+    query: "Summarize the legal team's position on the proposed contract amendment from the email thread."
+    expected:
+      status: answered
+      answer_contains: ["legal", "amendment", "position", "recommendation"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  # ── Policy/Procedure Questions (8) ────────────────────────────
+  - id: "h77"
+    type: policy_procedure
+    category: loose_document
+    language: en
+    query: "What is the company's policy on remote work eligibility?"
+    expected:
+      status: answered
+      answer_contains: ["remote work", "eligible", "approval", "schedule"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h78"
+    type: policy_procedure
+    category: loose_document
+    language: en
+    query: "What is the procedure for reporting a security incident according to the information security policy?"
+    expected:
+      status: answered
+      answer_contains: ["report", "security incident", "within", "contact"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h79"
+    type: policy_procedure
+    category: loose_document
+    language: en
+    query: "What are the steps for employee onboarding as described in the HR manual?"
+    expected:
+      status: answered
+      answer_contains: ["onboarding", "orientation", "IT access", "training"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h80"
+    type: policy_procedure
+    category: loose_document
+    language: en
+    query: "What is the expense reimbursement policy for international travel?"
+    expected:
+      status: answered
+      answer_contains: ["expense", "reimbursement", "international", "per diem", "receipt"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h81"
+    type: policy_procedure
+    category: loose_document
+    language: en
+    query: "What data retention periods does the records management policy specify for financial documents?"
+    expected:
+      status: answered
+      answer_contains: ["retention", "years", "financial", "archive"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h82"
+    type: policy_procedure
+    category: loose_document
+    language: en
+    query: "What approvals are required for a software purchase over $10,000 per the procurement policy?"
+    expected:
+      status: answered
+      answer_contains: ["approval", "purchase", "threshold", "manager", "director"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h83"
+    type: policy_procedure
+    category: loose_document
+    language: en
+    query: "What is the code of conduct policy regarding gifts from vendors?"
+    expected:
+      status: answered
+      answer_contains: ["gift", "vendor", "value", "limit", "disclosure"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h84"
+    type: policy_procedure
+    category: loose_document
+    language: en
+    query: "What is the password complexity requirement in the IT security policy?"
+    expected:
+      status: answered
+      answer_contains: ["password", "characters", "uppercase", "lowercase", "special", "expiry"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  # ── Version-Specific Fact Lookups (6) ─────────────────────────
+  - id: "h85"
+    type: version_fact
+    category: loose_document
+    language: en
+    query: "In version 3.2 of the product specification, what was the maximum supported throughput?"
+    expected:
+      status: answered
+      answer_contains: ["throughput", "maximum", "version 3.2"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "h86"
+    type: version_fact
+    category: loose_document
+    language: en
+    query: "How does version 2.1 of the privacy policy differ from version 2.0 regarding data sharing with third parties?"
+    expected:
+      status: answered
+      answer_contains: ["version 2.1", "third party", "data sharing", "changed"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h87"
+    type: version_fact
+    category: loose_document
+    language: en
+    query: "What new features were added in release 4.0 of the software per the changelog?"
+    expected:
+      status: answered
+      answer_contains: ["release 4.0", "new feature", "changelog", "added"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "h88"
+    type: version_fact
+    category: loose_document
+    language: en
+    query: "What was the original project budget in version 1.0 of the proposal, and how did it change by version 1.3?"
+    expected:
+      status: answered
+      answer_contains: ["budget", "version 1.0", "version 1.3", "revised"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h89"
+    type: version_fact
+    category: loose_document
+    language: en
+    query: "According to the amended Section 4.2 in the contract revision dated March 2026, what is the new delivery schedule?"
+    expected:
+      status: answered
+      answer_contains: ["Section 4.2", "amended", "March 2026", "delivery"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h90"
+    type: version_fact
+    category: loose_document
+    language: en
+    query: "Which clauses were removed between draft v2 and the final signed version of the partnership agreement?"
+    expected:
+      status: answered
+      answer_contains: ["removed", "clause", "draft", "final"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  # ── Comparison Across Documents (4) ───────────────────────────
+  - id: "h91"
+    type: comparison
+    category: loose_document
+    language: en
+    query: "How does the liability cap in the 2024 vendor agreement compare to the 2025 vendor agreement?"
+    expected:
+      status: answered
+      answer_contains: ["liability cap", "2024", "2025", "increased", "decreased", "changed"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h92"
+    type: comparison
+    category: loose_document
+    language: en
+    query: "Compare the security requirements in the SOC 2 report with those in the ISO 27001 certification document."
+    expected:
+      status: answered
+      answer_contains: ["SOC 2", "ISO 27001", "security", "difference", "common"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 8
+
+  - id: "h93"
+    type: comparison
+    category: loose_document
+    language: en
+    query: "What changed between the Q2 and Q3 investor letter regarding revenue forecasts?"
+    expected:
+      status: answered
+      answer_contains: ["Q2", "Q3", "revenue forecast", "revised", "changed"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "h94"
+    type: comparison
+    category: loose_document
+    language: en
+    query: "How does the German employment contract differ from the Portuguese employment contract regarding notice periods?"
+    expected:
+      status: answered
+      answer_contains: ["notice period", "German", "Portuguese", "Kündigungsfrist", "prazo"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  # ── Additional Contract Clauses (2) ───────────────────────────
+  - id: "h95"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What is the intellectual property assignment clause in the contractor agreement?"
+    expected:
+      status: answered
+      answer_contains: ["intellectual property", "assignment", "work for hire", "ownership"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "h96"
+    type: contract_clause
+    category: loose_document
+    language: en
+    query: "What are the service level credits defined in the SaaS agreement for uptime below 99.9%?"
+    expected:
+      status: answered
+      answer_contains: ["service level credit", "uptime", "99.9", "SaaS"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  # ── Deletion/Tombstone Tests (4) ──────────────────────────────
+  - id: "h97"
+    type: deleted_document
+    category: loose_document
+    language: en
+    query: "What was the budget allocation in the 2023 department proposal that has since been superseded?"
+    expected:
+      status: not_found
+      chunk_ids: []
+    acl:
+      user_context: default
+
+  - id: "h98"
+    type: deleted_document
+    category: loose_document
+    language: en
+    query: "Retrieve the archived memo about the office relocation plan from 2022."
+    expected:
+      status: not_found
+      chunk_ids: []
+
+  - id: "h99"
+    type: deleted_document
+    category: loose_document
+    language: en
+    query: "What were the terms of the terminated partnership agreement with Vendor X?"
+    expected:
+      status: not_found
+      chunk_ids: []
+
+  - id: "h100"
+    type: deleted_document
+    category: loose_document
+    language: en
+    query: "Show me the original version of the privacy policy that was replaced in January 2025."
+    expected:
+      status: not_found
+      chunk_ids: []
+
+  # ═══════════════════════════════════════════════════════════════
+  # NEEDLE-IN-HAYSTACK (20)
+  # Questions where the correct answer appears in exactly one
+  # or very few locations. Designed to test retrieval precision.
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: "n01"
+    type: needle
+    category: textbook
+    language: en
+    query: "What obscure example does the textbook use on page 312 to illustrate the concept of marginal utility?"
+    expected:
+      status: answered
+      answer_contains: ["marginal utility", "example"]
+      page_range: [312, 312]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n02"
+    type: needle
+    category: textbook
+    language: en
+    query: "In a footnote in Chapter 8, the textbook mentions a specific year when a particular experiment was first conducted. What year and experiment?"
+    expected:
+      status: answered
+      answer_contains: ["experiment", "year"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n03"
+    type: needle
+    category: textbook
+    language: en
+    query: "What is the exact population figure given for Liechtenstein in the textbook's demographics table?"
+    expected:
+      status: answered
+      answer_contains: ["Liechtenstein", "population"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n04"
+    type: needle
+    category: textbook
+    language: en
+    query: "The textbook mentions a specific scientist who proposed an alternative theory that was later disproven. Who is this scientist and what was the theory?"
+    expected:
+      status: answered
+      answer_contains: ["theory", "disproven"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "n05"
+    type: needle
+    category: textbook
+    language: en
+    query: "What unusual animal does the biology textbook use as a case study in the chapter on adaptive radiation?"
+    expected:
+      status: answered
+      answer_contains: ["adaptive radiation", "case study"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n06"
+    type: needle
+    category: textbook
+    language: en
+    query: "What specific temperature anomaly was recorded in the textbook's climate data table for the year 1883?"
+    expected:
+      status: answered
+      answer_contains: ["1883", "temperature", "anomaly"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n07"
+    type: needle
+    category: loose_document
+    language: en
+    query: "What is the serial number of the equipment listed in appendix C of the maintenance log?"
+    expected:
+      status: answered
+      answer_contains: ["serial number", "equipment", "appendix C"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n08"
+    type: needle
+    category: loose_document
+    language: en
+    query: "Who was the single dissenting vote in the board meeting minutes from October 2025?"
+    expected:
+      status: answered
+      answer_contains: ["dissenting", "vote", "board", "October 2025"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n09"
+    type: needle
+    category: loose_document
+    language: en
+    query: "What minor bug fix is listed as item 47 in the release notes for version 2.7.1?"
+    expected:
+      status: answered
+      answer_contains: ["version 2.7.1", "item 47", "bug", "fix"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n10"
+    type: needle
+    category: loose_document
+    language: en
+    query: "According to a passing mention in the annual report, what was the attendance at the 2024 shareholder meeting?"
+    expected:
+      status: answered
+      answer_contains: ["shareholder meeting", "2024", "attendance"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n11"
+    type: needle
+    category: textbook
+    language: en
+    query: "What is the bibliographic reference number [42] cited in Chapter 3 of the textbook?"
+    expected:
+      status: answered
+      answer_contains: ["reference", "42"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n12"
+    type: needle
+    category: textbook
+    language: en
+    query: "The textbook mentions a rare mineral as an example of a crystal structure with 8-fold symmetry. What is this mineral?"
+    expected:
+      status: answered
+      answer_contains: ["mineral", "8-fold", "symmetry", "crystal"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n13"
+    type: needle
+    category: loose_document
+    language: en
+    query: "What is the hex color code specified for the secondary brand color in the 2023 brand guidelines document?"
+    expected:
+      status: answered
+      answer_contains: ["hex", "color", "#", "brand"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n14"
+    type: needle
+    category: loose_document
+    language: en
+    query: "What unusual expense line item appears only once in the Q2 2025 financial report, under 'Miscellaneous'?"
+    expected:
+      status: answered
+      answer_contains: ["miscellaneous", "expense", "Q2 2025"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n15"
+    type: needle
+    category: textbook
+    language: en
+    query: "A margin note in Chapter 12 of the history textbook mentions a specific treaty that was signed but never ratified. Which treaty?"
+    expected:
+      status: answered
+      answer_contains: ["treaty", "never ratified", "margin"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n16"
+    type: needle
+    category: loose_document
+    language: en
+    query: "What is the exact wording of the disclaimer in footnote 3 of the investment prospectus?"
+    expected:
+      status: answered
+      answer_contains: ["footnote 3", "disclaimer"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n17"
+    type: needle
+    category: textbook
+    language: en
+    query: "What specific enzyme is mentioned exactly once in the biochemistry textbook as an exception to the lock-and-key model?"
+    expected:
+      status: answered
+      answer_contains: ["enzyme", "exception", "lock-and-key"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n18"
+    type: needle
+    category: loose_document
+    language: en
+    query: "What is the IP address range whitelisted in appendix A of the network security policy?"
+    expected:
+      status: answered
+      answer_contains: ["IP address", "whitelist", "appendix A"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n19"
+    type: needle
+    category: textbook
+    language: en
+    query: "The textbook's index entry for 'Zeno' points to a single page. What paradox does that page discuss?"
+    expected:
+      status: answered
+      answer_contains: ["Zeno", "paradox"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "n20"
+    type: needle
+    category: loose_document
+    language: en
+    query: "What emergency contact phone number is listed in the very last sentence of the facility safety manual?"
+    expected:
+      status: answered
+      answer_contains: ["emergency", "phone", "safety"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  # ═══════════════════════════════════════════════════════════════
+  # NEGATIVE-ANSWER QUESTIONS (20)
+  # Questions where NO answer exists in the corpus.
+  # The system must respond "not_found" or "insufficient evidence".
+  # Also tests hallucination resistance.
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: "neg01"
+    type: negative
+    category: textbook
+    language: en
+    query: "What does the textbook say about quantum computing applications in agriculture?"
+    expected:
+      status: not_found
+      answer_contains: []
+      chunk_ids: []
+    acl:
+      user_context: default
+
+  - id: "neg02"
+    type: negative
+    category: textbook
+    language: en
+    query: "According to the economics textbook, what is the current GDP of Bhutan?"
+    expected:
+      status: not_found
+
+  - id: "neg03"
+    type: negative
+    category: textbook
+    language: en
+    query: "What does the biology textbook say about the mating habits of the axolotl?"
+    expected:
+      status: not_found
+
+  - id: "neg04"
+    type: negative
+    category: textbook
+    language: en
+    query: "How does the history textbook describe the reign of Emperor Norton I of the United States?"
+    expected:
+      status: not_found
+
+  - id: "neg05"
+    type: negative
+    category: textbook
+    language: en
+    query: "What is the textbook's analysis of cryptocurrency's impact on traditional banking?"
+    expected:
+      status: not_found
+
+  - id: "neg06"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What is the company's policy on using personal drones on company property?"
+    expected:
+      status: not_found
+
+  - id: "neg07"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What does the employee handbook say about bringing emotional support peacocks to the office?"
+    expected:
+      status: not_found
+
+  - id: "neg08"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What is the procedure for handling nuclear waste spills, according to the office safety manual?"
+    expected:
+      status: not_found
+
+  - id: "neg09"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What is the company's official stance on extraterrestrial contact protocols?"
+    expected:
+      status: not_found
+
+  - id: "neg10"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What was the discussion in the board meeting about acquiring a professional sports team?"
+    expected:
+      status: not_found
+
+  - id: "neg11"
+    type: negative
+    category: cross_corpus
+    language: en
+    query: "What does the textbook say about the company's internal code review policy?"
+    expected:
+      status: not_found
+
+  - id: "neg12"
+    type: negative
+    category: cross_corpus
+    language: en
+    query: "According to the employment contract, what is the capital of Burkina Faso?"
+    expected:
+      status: not_found
+
+  - id: "neg13"
+    type: negative
+    category: textbook
+    language: en
+    query: "What is the recipe for chocolate chip cookies according to the chemistry textbook?"
+    expected:
+      status: not_found
+
+  - id: "neg14"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What did the CEO say about their favorite pizza topping in the annual shareholder letter?"
+    expected:
+      status: not_found
+
+  - id: "neg15"
+    type: negative
+    category: textbook
+    language: en
+    query: "What does the physics textbook say about the aerodynamics of paper airplanes?"
+    expected:
+      status: not_found
+
+  - id: "neg16"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What is the reimbursement limit for a private jet charter in the travel policy?"
+    expected:
+      status: not_found
+
+  - id: "neg17"
+    type: negative
+    category: textbook
+    language: en
+    query: "The textbook mentions a seventh fundamental force of nature. What is it?"
+    expected:
+      status: not_found
+
+  - id: "neg18"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What does appendix Z of the quality manual specify about unicorn-grade materials?"
+    expected:
+      status: not_found
+
+  - id: "neg19"
+    type: negative
+    category: textbook
+    language: en
+    query: "How does the mathematics textbook prove the Riemann Hypothesis?"
+    expected:
+      status: not_found
+
+  - id: "neg20"
+    type: negative
+    category: loose_document
+    language: en
+    query: "What is the intergalactic trade compliance procedure according to the export control policy?"
+    expected:
+      status: not_found
+
+  # ═══════════════════════════════════════════════════════════════
+  # ACL LEAKAGE TESTS (10)
+  # These questions are answered from documents that are
+  # explicitly denied to one group. A user in a disjoint
+  # group must NOT see these documents in search or chat.
+  # These are release-blocking.
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: "a01"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "What is the confidential restructuring plan timeline?"
+    expected:
+      status: denied
+      chunk_ids: []
+    acl:
+      user_context: group_b   # document is accessible only to group_a
+    retrieval:
+      expected_recall_k: 0
+
+  - id: "a02"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "What are the details of the pending merger from the executive memo?"
+    expected:
+      status: denied
+    acl:
+      user_context: group_b
+
+  - id: "a03"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "What is the negotiated salary range for the VP role from the HR compensation document?"
+    expected:
+      status: denied
+    acl:
+      user_context: group_b
+
+  - id: "a04"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "Search for the exact phrase 'Project Nightfall' and show the document title."
+    expected:
+      status: denied
+    acl:
+      user_context: group_b
+
+  - id: "a05"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "What are the allegations in the internal investigation report?"
+    expected:
+      status: denied
+    acl:
+      user_context: group_b
+
+  - id: "a06"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "What customer data breach was discussed in the confidential post-mortem?"
+    expected:
+      status: denied
+    acl:
+      user_context: group_b
+
+  - id: "a07"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "What is the early retirement package offered to the CFO per the board memo?"
+    expected:
+      status: denied
+    acl:
+      user_context: group_b
+
+  - id: "a08"
+    type: acl_leakage
+    category: textbook
+    language: en
+    query: "What is the exact formula discussed in the restricted-license proprietary textbook supplement?"
+    expected:
+      status: denied
+    acl:
+      user_context: group_b
+
+  - id: "a09"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "What is the source code vulnerability described in the internal security audit?"
+    expected:
+      status: denied
+    acl:
+      user_context: unauthenticated
+
+  - id: "a10"
+    type: acl_leakage
+    category: loose_document
+    language: en
+    query: "List all documents containing the phrase 'hostile takeover'."
+    expected:
+      status: partial   # may return some docs, but must NOT return the restricted ones
+    acl:
+      user_context: group_b
+
+  # ═══════════════════════════════════════════════════════════════
+  # MULTILINGUAL QUESTIONS (20)
+  # German (8), Portuguese (8), Mixed-language (4)
+  # ═══════════════════════════════════════════════════════════════
+
+  # ── German queries (8) ────────────────────────────────────────
+  - id: "m01"
+    type: definition
+    category: textbook
+    language: de
+    query: "Definiere den Begriff 'Rechtsstaat' wie er im Lehrbuch beschrieben wird."
+    expected:
+      status: answered
+      answer_contains: ["Rechtsstaat", "Gewaltenteilung", "Grundrechte", "Gesetz"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "m02"
+    type: exact_lookup
+    category: textbook
+    language: de
+    query: "Welchen Siedepunkt hat Ethanol laut Chemielehrbuch?"
+    expected:
+      status: answered
+      answer_contains: ["78", "°C", "Ethanol", "Siedepunkt"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "m03"
+    type: formula
+    category: textbook
+    language: de
+    query: "Wie lautet die Formel für die Berechnung des Body-Mass-Index laut Lehrbuch?"
+    expected:
+      status: answered
+      answer_contains: ["BMI", "kg/m²", "Gewicht", "Körpergröße"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "m04"
+    type: multi_hop
+    category: textbook
+    language: de
+    query: "Welche wirtschaftlichen Folgen hatte der Mauerfall laut dem Geschichtslehrbuch?"
+    expected:
+      status: answered
+      answer_contains: ["Mauerfall", "Wiedervereinigung", "Wirtschaft", "Ost", "West"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "m05"
+    type: contract_clause
+    category: loose_document
+    language: de
+    query: "Welche Kündigungsfrist ist im deutschen Arbeitsvertrag festgelegt?"
+    expected:
+      status: answered
+      answer_contains: ["Kündigungsfrist", "Wochen", "Monate", "Arbeitsvertrag"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "m06"
+    type: policy_procedure
+    category: loose_document
+    language: de
+    query: "Was sind die Datenschutzanforderungen laut der DSGVO-Richtlinie des Unternehmens?"
+    expected:
+      status: answered
+      answer_contains: ["DSGVO", "Datenschutz", "personenbezogene Daten", "Verarbeitung"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "m07"
+    type: negative
+    category: textbook
+    language: de
+    query: "Was sagt das Lehrbuch über die deutsche Mondlandung?"
+    expected:
+      status: not_found
+
+  - id: "m08"
+    type: chapter_synthesis
+    category: textbook
+    language: de
+    query: "Fasse die Hauptargumente für und gegen den Euro in Kapitel 9 des Wirtschaftslehrbuchs zusammen."
+    expected:
+      status: answered
+      answer_contains: ["Euro", "Währungsunion", "EZB", "Inflation", "Konvergenzkriterien"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 8
+
+  # ── Portuguese queries (8) ────────────────────────────────────
+  - id: "m09"
+    type: definition
+    category: textbook
+    language: pt
+    query: "Defina 'inflação' de acordo com o livro-texto de economia."
+    expected:
+      status: answered
+      answer_contains: ["inflação", "aumento generalizado", "preços", "poder de compra"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "m10"
+    type: exact_lookup
+    category: textbook
+    language: pt
+    query: "Qual é a fórmula do teorema de Pitágoras no livro de matemática?"
+    expected:
+      status: answered
+      answer_contains: ["a² + b² = c²", "hipotenusa", "catetos"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "m11"
+    type: multi_hop
+    category: textbook
+    language: pt
+    query: "Como o livro de história descreve a relação entre a Inconfidência Mineira e a independência do Brasil?"
+    expected:
+      status: answered
+      answer_contains: ["Inconfidência Mineira", "independência", "Tiradentes", "movimento"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "m12"
+    type: formula
+    category: textbook
+    language: pt
+    query: "Qual é a equação de Bernoulli conforme apresentada no livro de física?"
+    expected:
+      status: answered
+      answer_contains: ["Bernoulli", "pressão", "velocidade", "altura", "constante"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 2
+
+  - id: "m13"
+    type: contract_clause
+    category: loose_document
+    language: pt
+    query: "Qual é o prazo de entrega estipulado no contrato de fornecimento?"
+    expected:
+      status: answered
+      answer_contains: ["prazo de entrega", "dias", "fornecimento"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  - id: "m14"
+    type: policy_procedure
+    category: loose_document
+    language: pt
+    query: "Quais são os requisitos da LGPD mencionados na política de privacidade da empresa?"
+    expected:
+      status: answered
+      answer_contains: ["LGPD", "privacidade", "dados pessoais", "consentimento"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 3
+
+  - id: "m15"
+    type: negative
+    category: textbook
+    language: pt
+    query: "O que o livro-texto diz sobre a descoberta de petróleo na Antártida?"
+    expected:
+      status: not_found
+
+  - id: "m16"
+    type: table
+    category: textbook
+    language: pt
+    query: "De acordo com a tabela periódica do livro, qual é o número atômico do oxigênio?"
+    expected:
+      status: answered
+      answer_contains: ["8", "oxigênio", "número atômico"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 1
+
+  # ── Mixed-language queries (4) ─────────────────────────────────
+  - id: "m17"
+    type: multi_hop
+    category: cross_corpus
+    language: mixed
+    query: "Compare the definition of 'Datenschutz' in the German legal textbook with the company's privacy policy in Portuguese. What are the key differences?"
+    expected:
+      status: answered
+      answer_contains: ["Datenschutz", "privacidade", "difference"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 8
+
+  - id: "m18"
+    type: exact_lookup
+    category: loose_document
+    language: mixed
+    query: "What does the German version of the supplier contract (Lieferantenvertrag) say about Haftung that differs from the Portuguese version (contrato de fornecimento)?"
+    expected:
+      status: answered
+      answer_contains: ["Haftung", "responsabilidade", "liability"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 5
+
+  - id: "m19"
+    type: comparison
+    category: cross_corpus
+    language: mixed
+    query: "Compare o conceito de 'soberania' no livro de direito internacional com 'Souveränität' no Lehrbuch deutsches Verfassungsrecht."
+    expected:
+      status: answered
+      answer_contains: ["soberania", "Souveränität", "similar", "difference"]
+      chunk_ids: [null]
+    retrieval:
+      expected_recall_k: 8
+
+  - id: "m20"
+    type: negative
+    category: loose_document
+    language: mixed
+    query: "O que o documento interno alemão 'Betriebsvereinbarung' diz sobre o benefício de 'vale-refeição' no Brasil?"
+    expected:
+      status: not_found

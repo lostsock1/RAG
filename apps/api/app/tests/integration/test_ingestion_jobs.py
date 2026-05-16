@@ -1,0 +1,423 @@
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+from tempfile import TemporaryDirectory
+from uuid import UUID, uuid4
+
+from alembic import command
+from alembic.config import Config
+from fastapi.testclient import TestClient
+import pytest
+from sqlalchemy import create_engine, select
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
+from app.core.request_context import RequestContext
+from app.core.security import get_request_context
+from app.db.base import session_factory
+from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.models.audit import AuditEvent
+from app.db.models.document import Document
+from app.db.models.group import Group, UserGroup
+from app.db.models.ingestion import IngestionRun
+from app.db.models.tenant import Tenant
+from app.db.models.user import User
+from app.main import app
+
+
+class StorageStub:
+    def put_object(self, *, object_key: str, content: bytes, content_type: str) -> None:
+        return None
+
+
+@pytest.fixture()
+def auth_context() -> RequestContext:
+    return RequestContext(
+        tenant_id=str(uuid4()),
+        user_id=str(uuid4()),
+        group_ids=[],
+        roles=["editor"],
+        scopes=["documents:write", "documents:read"],
+    )
+
+
+@pytest.fixture()
+def auth_headers() -> dict[str, str]:
+    return {"Authorization": "Bearer test-token"}
+
+
+@pytest.fixture()
+def client(auth_context: RequestContext):
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'ingestion.db'}"
+        engine = create_engine(database_url)
+        alembic_ini_path = Path("infra/migrations/alembic.ini")
+        config = Config(str(alembic_ini_path))
+        config.set_main_option("sqlalchemy.url", database_url)
+
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+
+        session_factory.configure(bind=engine)
+
+        with session_factory() as session:
+            session.add(Tenant(id=UUID(auth_context.tenant_id), name="Tenant", slug="tenant"))
+            session.add(
+                User(
+                    id=UUID(auth_context.user_id),
+                    tenant_id=UUID(auth_context.tenant_id),
+                    email="user@example.com",
+                    display_name="User",
+                    roles=auth_context.roles,
+                )
+            )
+            session.commit()
+
+        app.dependency_overrides[get_request_context] = lambda: auth_context
+        app.state.document_storage = StorageStub()
+
+        try:
+            yield TestClient(app)
+        finally:
+            app.dependency_overrides.clear()
+            if hasattr(app.state, "document_storage"):
+                delattr(app.state, "document_storage")
+            session_factory.configure(bind=None)
+            engine.dispose()
+
+
+def test_list_ingestion_runs_returns_runs_for_current_tenant(
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    upload = client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers,
+        files={"file": ("sample.txt", b"hello world", "text/plain")},
+        data={"title": "Sample", "source_type": "loose_document"},
+    )
+
+    assert upload.status_code == 201
+
+    response = client.get("/api/v1/ingestion/jobs", headers=auth_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["document_id"] == upload.json()["id"]
+
+    compatibility_response = client.get("/api/v1/ingestion/runs", headers=auth_headers)
+    assert compatibility_response.status_code == 200
+    assert compatibility_response.json() == payload
+
+    with session_factory() as session:
+        audit_event = session.scalar(select(AuditEvent).where(AuditEvent.action == "ingestion.run.list"))
+
+        assert audit_event is not None
+        assert audit_event.details["run_count"] == 1
+        assert audit_event.details["filters_applied"] == ["acl"]
+
+
+def test_get_ingestion_job_returns_status_payload(
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    upload = client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers,
+        files={"file": ("sample.txt", b"hello world", "text/plain")},
+        data={"title": "Sample", "source_type": "loose_document"},
+    )
+
+    assert upload.status_code == 201
+
+    response = client.get(
+        f"/api/v1/ingestion/jobs/{upload.json()['ingestion_run_id']}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == upload.json()["ingestion_run_id"]
+    assert response.json()["workflow_backend"] == "scaffold"
+
+    with session_factory() as session:
+        audit_event = session.scalar(select(AuditEvent).where(AuditEvent.action == "ingestion.job.get"))
+
+        assert audit_event is not None
+        assert audit_event.details["job_id"] == upload.json()["ingestion_run_id"]
+        assert audit_event.details["document_id"] == upload.json()["id"]
+
+
+def test_list_ingestion_runs_resolves_group_names_and_keeps_group_separation(
+    auth_context: RequestContext,
+    auth_headers: dict[str, str],
+) -> None:
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'ingestion-groups.db'}"
+        engine = create_engine(database_url)
+        alembic_ini_path = Path("infra/migrations/alembic.ini")
+        config = Config(str(alembic_ini_path))
+        config.set_main_option("sqlalchemy.url", database_url)
+
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+
+        session_factory.configure(bind=engine)
+
+        group_a_id = uuid4()
+        group_b_id = uuid4()
+        requester_user_id = UUID(auth_context.user_id)
+        owner_user_id = uuid4()
+
+        with session_factory() as session:
+            session.add(Tenant(id=UUID(auth_context.tenant_id), name="Tenant", slug="tenant-groups"))
+            session.add_all(
+                [
+                    User(
+                        id=requester_user_id,
+                        tenant_id=UUID(auth_context.tenant_id),
+                        email="requester@example.com",
+                        display_name="Requester",
+                        roles=auth_context.roles,
+                    ),
+                    User(
+                        id=owner_user_id,
+                        tenant_id=UUID(auth_context.tenant_id),
+                        email="owner@example.com",
+                        display_name="Owner",
+                        roles=["editor"],
+                    ),
+                ]
+            )
+            session.add_all(
+                [
+                    Group(id=group_a_id, tenant_id=UUID(auth_context.tenant_id), name="group-a"),
+                    Group(id=group_b_id, tenant_id=UUID(auth_context.tenant_id), name="group-b"),
+                ]
+            )
+            session.add(UserGroup(user_id=requester_user_id, group_id=group_b_id))
+
+            visible_document = Document(
+                tenant_id=UUID(auth_context.tenant_id),
+                owner_user_id=owner_user_id,
+                title="Visible Group B Document",
+                source_type="loose_document",
+                source_hash="hash-visible",
+                file_name="visible.txt",
+                file_size_bytes=1,
+                object_key="documents/visible.txt",
+                ingestion_status="uploaded",
+            )
+            hidden_document = Document(
+                tenant_id=UUID(auth_context.tenant_id),
+                owner_user_id=owner_user_id,
+                title="Hidden Group A Document",
+                source_type="loose_document",
+                source_hash="hash-hidden",
+                file_name="hidden.txt",
+                file_size_bytes=1,
+                object_key="documents/hidden.txt",
+                ingestion_status="uploaded",
+            )
+            session.add_all([visible_document, hidden_document])
+            session.flush()
+            visible_document_id = visible_document.id
+            hidden_document_id = hidden_document.id
+            visible_source_hash = visible_document.source_hash
+            hidden_source_hash = hidden_document.source_hash
+
+            visible_acl = AclGrant(
+                document_id=visible_document.id,
+                owner_user_id=owner_user_id,
+                tenant_id=UUID(auth_context.tenant_id),
+                visibility="group",
+                sensitivity="internal",
+            )
+            hidden_acl = AclGrant(
+                document_id=hidden_document.id,
+                owner_user_id=owner_user_id,
+                tenant_id=UUID(auth_context.tenant_id),
+                visibility="group",
+                sensitivity="internal",
+            )
+            session.add_all([visible_acl, hidden_acl])
+            session.flush()
+            session.add_all(
+                [
+                        AclAllowedUser(acl_grant_id=visible_acl.id, user_id=owner_user_id),
+                        AclAllowedUser(acl_grant_id=hidden_acl.id, user_id=owner_user_id),
+                    AclAllowedGroup(acl_grant_id=visible_acl.id, group_id=group_b_id),
+                    AclAllowedGroup(acl_grant_id=hidden_acl.id, group_id=group_a_id),
+                ]
+            )
+            session.commit()
+
+        app.dependency_overrides[get_request_context] = lambda: auth_context.model_copy(
+            update={"group_ids": ["group-b"], "scopes": ["documents:read"]}
+        )
+        app.state.document_storage = StorageStub()
+
+        try:
+            with session_factory() as session:
+                session.add_all(
+                    [
+                        IngestionRun(
+                            document_id=visible_document_id,
+                            tenant_id=UUID(auth_context.tenant_id),
+                            parser_backend="docling",
+                            source_hash=visible_source_hash,
+                        ),
+                        IngestionRun(
+                            document_id=hidden_document_id,
+                            tenant_id=UUID(auth_context.tenant_id),
+                            parser_backend="docling",
+                            source_hash=hidden_source_hash,
+                        ),
+                    ]
+                )
+                session.commit()
+
+            with TestClient(app) as client:
+                response = client.get("/api/v1/ingestion/jobs", headers=auth_headers)
+
+            assert response.status_code == 200
+            titles_by_document_id = {}
+            session_factory.configure(bind=engine)
+            with session_factory() as session:
+                for item in response.json()["items"]:
+                    document = session.scalar(select(Document).where(Document.id == UUID(item["document_id"])))
+                    assert document is not None
+                    titles_by_document_id[str(document.id)] = document.title
+
+            assert "Visible Group B Document" in titles_by_document_id.values()
+            assert "Hidden Group A Document" not in titles_by_document_id.values()
+        finally:
+            app.dependency_overrides.clear()
+            if hasattr(app.state, "document_storage"):
+                delattr(app.state, "document_storage")
+            session_factory.configure(bind=None)
+            engine.dispose()
+
+
+def test_group_b_user_cannot_fetch_group_a_ingestion_job_detail(
+    auth_context: RequestContext,
+    auth_headers: dict[str, str],
+) -> None:
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'ingestion-job-detail-acl.db'}"
+        engine = create_engine(database_url)
+        alembic_ini_path = Path("infra/migrations/alembic.ini")
+        config = Config(str(alembic_ini_path))
+        config.set_main_option("sqlalchemy.url", database_url)
+
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+
+        session_factory.configure(bind=engine)
+
+        group_a_id = uuid4()
+        group_b_id = uuid4()
+        requester_user_id = UUID(auth_context.user_id)
+        owner_user_id = uuid4()
+
+        with session_factory() as session:
+            session.add(Tenant(id=UUID(auth_context.tenant_id), name="Tenant", slug="tenant-job-detail-acl"))
+            session.add_all(
+                [
+                    User(
+                        id=requester_user_id,
+                        tenant_id=UUID(auth_context.tenant_id),
+                        email="requester@example.com",
+                        display_name="Requester",
+                        roles=auth_context.roles,
+                    ),
+                    User(
+                        id=owner_user_id,
+                        tenant_id=UUID(auth_context.tenant_id),
+                        email="owner@example.com",
+                        display_name="Owner",
+                        roles=["editor"],
+                    ),
+                ]
+            )
+            session.add_all(
+                [
+                    Group(id=group_a_id, tenant_id=UUID(auth_context.tenant_id), name="group-a"),
+                    Group(id=group_b_id, tenant_id=UUID(auth_context.tenant_id), name="group-b"),
+                ]
+            )
+            session.add(UserGroup(user_id=requester_user_id, group_id=group_b_id))
+
+            hidden_document = Document(
+                tenant_id=UUID(auth_context.tenant_id),
+                owner_user_id=owner_user_id,
+                title="Hidden Group A Document",
+                source_type="loose_document",
+                source_hash="hash-hidden-job-detail",
+                file_name="hidden.txt",
+                file_size_bytes=1,
+                object_key="documents/hidden.txt",
+                ingestion_status="uploaded",
+            )
+            session.add(hidden_document)
+            session.flush()
+
+            hidden_acl = AclGrant(
+                document_id=hidden_document.id,
+                owner_user_id=owner_user_id,
+                tenant_id=UUID(auth_context.tenant_id),
+                visibility="group",
+                sensitivity="internal",
+            )
+            session.add(hidden_acl)
+            session.flush()
+            session.add_all(
+                [
+                    AclAllowedUser(acl_grant_id=hidden_acl.id, user_id=owner_user_id),
+                    AclAllowedGroup(acl_grant_id=hidden_acl.id, group_id=group_a_id),
+                ]
+            )
+
+            hidden_run = IngestionRun(
+                document_id=hidden_document.id,
+                tenant_id=UUID(auth_context.tenant_id),
+                parser_backend="docling",
+                source_hash=hidden_document.source_hash,
+            )
+            session.add(hidden_run)
+            session.commit()
+            session.refresh(hidden_run)
+            hidden_run_id = hidden_run.id
+
+        app.dependency_overrides[get_request_context] = lambda: auth_context.model_copy(
+            update={"group_ids": ["group-b"], "scopes": ["documents:read"]}
+        )
+        app.state.document_storage = StorageStub()
+
+        try:
+            with TestClient(app) as client:
+                response = client.get(f"/api/v1/ingestion/jobs/{hidden_run_id}", headers=auth_headers)
+
+            assert response.status_code == 404
+            assert response.json() == {"detail": "Ingestion job not found"}
+
+            session_factory.configure(bind=engine)
+            with session_factory() as session:
+                deny_event = session.scalar(
+                    select(AuditEvent).where(AuditEvent.action == "ingestion.job.get.denied")
+                )
+                assert deny_event is not None
+                assert deny_event.details == {
+                    "job_id": str(hidden_run_id),
+                    "reason": "not_found_or_denied",
+                }
+        finally:
+            app.dependency_overrides.clear()
+            if hasattr(app.state, "document_storage"):
+                delattr(app.state, "document_storage")
+            session_factory.configure(bind=None)
+            engine.dispose()

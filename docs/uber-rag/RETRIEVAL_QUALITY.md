@@ -14,6 +14,43 @@ Reliable answers require reliable retrieval. The LLM is not a substitute for ret
 - cross-corpus route: compare textbook knowledge with loose documents
 - negative route: determine if evidence is absent
 
+## Latency-tier routing
+
+Per ADR-0008, every query must be routed into a latency tier.
+
+### Tier 1 — exact fast lane
+
+Used for IDs, quoted phrases, filenames, page requests, and rare terms.
+
+- lexical / phrase / exact first
+- skip dense+sparse if lexical confidence is sufficient
+- skip reranker by default
+- skip parent expansion by default
+- return immediately with citations
+- verifier runs asynchronously, not in the blocking path
+
+### Tier 2 — semantic normal path
+
+Used for concept explanations and ordinary semantic questions.
+
+- lexical + dense + sparse in parallel
+- fusion
+- rerank only the top fused candidates
+- minimal parent expansion only when needed
+- return immediately with citations
+- verifier runs asynchronously
+
+### Tier 3 — synthesis path
+
+Used for chapter synthesis, cross-corpus comparison, and complex multi-hop questions.
+
+- lexical + dense + sparse in parallel
+- fusion
+- rerank a slightly larger top-N set
+- parent expansion allowed
+- return immediately with citations
+- verifier runs asynchronously
+
 ## Candidate generation
 
 Use multiple candidate sources:
@@ -35,6 +72,10 @@ Use RRF or DBSF. Deduplicate by source span and parent section. Apply diversity 
 
 Use BGE-reranker-v2-m3 or equivalent cross-encoder on top candidates. Keep top-k reasonable and measure latency.
 
+- exact-route queries skip reranking by default
+- semantic-route queries rerank only the top fused candidates
+- synthesis-route queries may rerank a larger candidate set, but this is an exception path
+
 ## Context builder
 
 For each selected chunk:
@@ -46,6 +87,8 @@ For each selected chunk:
 - include neighboring definitions or formulas only when useful
 - preserve table structure for table queries
 
+Do not expand parent context eagerly on the exact fast lane. Parent expansion is route-gated and justified only when it materially improves synthesis or comprehension.
+
 ## Answer rules
 
 - Every factual claim must be traceable to a citation.
@@ -55,6 +98,8 @@ For each selected chunk:
 - Use generated summaries only as navigation.
 
 ## Sentence-level verifier
+
+Per ADR-0008, the verifier is part of the **async quality path**, not the default blocking user path.
 
 For each answer sentence:
 
