@@ -26,6 +26,7 @@ from app.repositories.ingestion import (
 )
 from app.schemas.parsed_artifacts import ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
 from app.services.parsers.docling_backend import DoclingDocumentParser
+from app.services.storage import MaterializedObject
 from app.workflows.dispatcher import InProcessDispatcher
 from app.workflows.stages import (
     run_parse_stage,
@@ -388,3 +389,67 @@ def test_stage_skips_if_already_completed(seeded_env) -> None:
     assert parse.status == "completed"
     assert parse.details["page_count"] == 99
     assert parse.details["table_count"] == 7
+
+
+def test_in_process_dispatcher_materializes_object_and_cleans_up(dispatcher_env, tmp_path: Path) -> None:
+    materialized_file = tmp_path / "materialized.txt"
+    materialized_file.write_text("hello")
+    cleanup_called = {"value": False}
+
+    class FakeStorage:
+        def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
+            def _cleanup() -> None:
+                cleanup_called["value"] = True
+            return MaterializedObject(local_path=materialized_file, cleanup=_cleanup)
+
+    run_id = dispatcher_env["run_id"]
+    document_id = dispatcher_env["document_id"]
+
+    test_artifact = _make_test_artifact(document_id)
+    parser = DoclingDocumentParser(converter=lambda _req: test_artifact)
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        storage=FakeStorage(),
+    )
+
+    dispatcher._execute_pipeline(run_id)
+
+    assert cleanup_called["value"] is True
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+    assert run is not None
+    assert run.status == "completed"
+
+
+def test_in_process_dispatcher_cleans_up_on_parse_failure(dispatcher_env, tmp_path: Path) -> None:
+    materialized_file = tmp_path / "broken.txt"
+    materialized_file.write_text("broken")
+    cleanup_called = {"value": False}
+
+    class FakeStorage:
+        def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
+            def _cleanup() -> None:
+                cleanup_called["value"] = True
+            return MaterializedObject(local_path=materialized_file, cleanup=_cleanup)
+
+    run_id = dispatcher_env["run_id"]
+
+    parser = DoclingDocumentParser(converter=lambda _req: (_ for _ in ()).throw(RuntimeError("Parse boom")))
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        storage=FakeStorage(),
+    )
+
+    dispatcher._execute_pipeline(run_id)
+
+    assert cleanup_called["value"] is True
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+    assert run is not None
+    assert run.status == "failed"

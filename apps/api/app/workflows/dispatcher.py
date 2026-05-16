@@ -18,6 +18,7 @@ from app.repositories.ingestion import (
 )
 from app.schemas.parsed_artifacts import ParsedArtifact as ParsedArtifactSchema
 from app.services.parsers.base import DocumentParser
+from app.services.storage import StorageAdapter
 from app.workflows.stages import run_parse_stage, run_persist_artifact_stage, run_quality_report_stage
 
 logger = logging.getLogger(__name__)
@@ -32,10 +33,17 @@ class WorkflowDispatcher(Protocol):
 class InProcessDispatcher:
     """In-process dispatcher that runs the ingestion pipeline via asyncio.create_task."""
 
-    def __init__(self, parser: DocumentParser, parser_backend: str, parser_profile: str) -> None:
+    def __init__(
+        self,
+        parser: DocumentParser,
+        parser_backend: str,
+        parser_profile: str,
+        storage: StorageAdapter | None = None,
+    ) -> None:
         self._parser = parser
         self._parser_backend = parser_backend
         self._parser_profile = parser_profile
+        self._storage = storage
 
     async def dispatch(self, run_id: UUID) -> None:
         loop = asyncio.get_event_loop()
@@ -73,6 +81,13 @@ class InProcessDispatcher:
         stages = create_ingestion_stages(run_id=run_id, tenant_id=tenant_id, stage_names=STAGE_NAMES)
         stage_map = {s.stage_name: s for s in stages}
 
+        # Materialize object for parsing if storage adapter is available
+        materialized = None
+        local_source_path = None
+        if self._storage is not None:
+            materialized = self._storage.materialize_for_read(object_key=object_key or "")
+            local_source_path = str(materialized.local_path)
+
         try:
             # Stage 1: Parse
             artifact = run_parse_stage(
@@ -84,6 +99,7 @@ class InProcessDispatcher:
                 profile=self._parser_profile,
                 parser_backend=self._parser_backend,
                 parser=self._parser,
+                local_source_path=local_source_path,
             )
 
             # If parse was skipped (already completed), load artifact from DB
@@ -121,3 +137,6 @@ class InProcessDispatcher:
                 if stage.status == "running":
                     update_stage_status(stage_id=stage.id, status="failed", details={"error": str(exc)})
             update_run_status(run_id=run_id, status="failed")
+        finally:
+            if materialized is not None and materialized.cleanup is not None:
+                materialized.cleanup()

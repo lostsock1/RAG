@@ -43,6 +43,7 @@ def run_parse_stage(
     profile: str,
     parser_backend: str,
     parser: DocumentParser | None = None,
+    local_source_path: str | None = None,
 ) -> ParsedArtifact | None:
     """Run the parse stage. Returns None if stage was already completed (skipped)."""
     if _is_stage_completed(run_id=run_id, stage_name="parse"):
@@ -59,6 +60,7 @@ def run_parse_stage(
         object_key=object_key,
         content_type=content_type,
         profile=profile,
+        local_source_path=local_source_path,
     )
     artifact = parser.parse(request)
 
