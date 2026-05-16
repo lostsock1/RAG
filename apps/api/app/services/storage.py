@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any
 
 from fastapi import HTTPException, Request, status
@@ -13,11 +15,20 @@ class StorageAdapter:
     def put_object(self, *, object_key: str, content: bytes, content_type: str) -> None:
         raise NotImplementedError
 
+    def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
+        raise NotImplementedError
+
 
 @dataclass(slots=True)
 class StoredObject:
     object_key: str
     content_type: str
+
+
+@dataclass(slots=True)
+class MaterializedObject:
+    local_path: Path
+    cleanup: Callable[[], None] | None = None
 
 
 class LocalFilesystemStorageAdapter(StorageAdapter):
@@ -29,6 +40,14 @@ class LocalFilesystemStorageAdapter(StorageAdapter):
         destination = self.root_dir / object_key
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
+
+    def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
+        source_path = self.root_dir / object_key
+        if not source_path.is_file():
+            raise RuntimeError(
+                f"Local storage could not find object for key '{object_key}'."
+            )
+        return MaterializedObject(local_path=source_path, cleanup=None)
 
 
 class S3CompatibleStorageAdapter(StorageAdapter):
@@ -76,6 +95,22 @@ class S3CompatibleStorageAdapter(StorageAdapter):
             Body=content,
             ContentType=content_type,
         )
+
+    def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
+        with NamedTemporaryFile(delete=False) as tmp_file:
+            temp_path = Path(tmp_file.name)
+
+        self._get_client().download_file(
+            Bucket=self.bucket,
+            Key=object_key,
+            Filename=str(temp_path),
+        )
+
+        def _cleanup() -> None:
+            if temp_path.exists():
+                temp_path.unlink()
+
+        return MaterializedObject(local_path=temp_path, cleanup=_cleanup)
 
 
 def build_storage_adapter(settings: Settings) -> StorageAdapter | None:

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from app.core.config import Settings
 from app.services.storage import (
     LocalFilesystemStorageAdapter,
+    MaterializedObject,
     S3CompatibleStorageAdapter,
     build_storage_adapter,
 )
@@ -65,3 +68,49 @@ def test_s3_compatible_storage_adapter_put_object_forwards_bucket_key_body_and_c
             "ContentType": "text/plain",
         }
     ]
+
+
+def test_local_filesystem_storage_adapter_materialize_for_read_returns_existing_path(tmp_path: Path) -> None:
+    source_path = tmp_path / "documents" / "tenant-1" / "sample.txt"
+    source_path.parent.mkdir(parents=True, exist_ok=True)
+    source_path.write_text("hello world")
+
+    adapter = LocalFilesystemStorageAdapter(tmp_path)
+    materialized = adapter.materialize_for_read(object_key="documents/tenant-1/sample.txt")
+
+    assert materialized.local_path == source_path
+    assert materialized.local_path.read_text() == "hello world"
+    assert materialized.cleanup is None
+
+
+def test_local_filesystem_storage_adapter_materialize_for_read_raises_when_file_missing(tmp_path: Path) -> None:
+    adapter = LocalFilesystemStorageAdapter(tmp_path)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        adapter.materialize_for_read(object_key="documents/missing.txt")
+
+    assert "could not find object" in str(exc_info.value)
+    assert "documents/missing.txt" in str(exc_info.value)
+
+
+def test_s3_compatible_storage_adapter_materialize_for_read_downloads_temp_file(tmp_path: Path) -> None:
+    class FakeClient:
+        def download_file(self, Bucket: str, Key: str, Filename: str) -> None:
+            Path(Filename).write_bytes(b"seaweedfs payload")
+
+    adapter = S3CompatibleStorageAdapter(
+        endpoint_url="http://seaweedfs:8333",
+        access_key="test-access",
+        secret_key="test-secret",
+        bucket="uber-rag-documents",
+        region="us-east-1",
+        client=FakeClient(),
+    )
+
+    materialized = adapter.materialize_for_read(object_key="documents/tenant-1/sample.pdf")
+
+    assert materialized.local_path.exists()
+    assert materialized.local_path.read_bytes() == b"seaweedfs payload"
+    assert materialized.cleanup is not None
+    materialized.cleanup()
+    assert not materialized.local_path.exists()
