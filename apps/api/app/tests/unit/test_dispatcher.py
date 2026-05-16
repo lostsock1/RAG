@@ -26,6 +26,7 @@ from app.repositories.ingestion import (
 )
 from app.schemas.parsed_artifacts import ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
 from app.services.parsers.docling_backend import DoclingDocumentParser
+from app.workflows.dispatcher import InProcessDispatcher
 from app.workflows.stages import (
     run_parse_stage,
     run_persist_artifact_stage,
@@ -204,6 +205,136 @@ def test_run_quality_report_stage_checkpoints_report(seeded_env) -> None:
     assert quality.status == "completed"
     assert "quality_score" in quality.details
     assert quality.details["quality_score"] == 1.0  # both pages have non-empty text
+
+
+@pytest.fixture()
+def dispatcher_env():
+    """Set up an in-memory SQLite DB with tenant, user, document, and ingestion run (no stages).
+
+    The dispatcher creates its own stages, so this fixture intentionally omits
+    the ``create_ingestion_stages`` call that ``seeded_env`` includes.
+    """
+    tenant_id = uuid4()
+    user_id = uuid4()
+
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'dispatcher-integration.db'}"
+        engine = create_engine(database_url)
+        alembic_ini_path = Path("infra/migrations/alembic.ini")
+        config = Config(str(alembic_ini_path))
+        config.set_main_option("sqlalchemy.url", database_url)
+
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+
+        session_factory.configure(bind=engine)
+
+        with session_factory() as session:
+            session.add(Tenant(id=tenant_id, name="Tenant", slug="tenant-dispatcher-int"))
+            session.add(
+                User(
+                    id=user_id,
+                    tenant_id=tenant_id,
+                    email="dispatcher-int@example.com",
+                    display_name="Dispatcher Int User",
+                    roles=["editor"],
+                )
+            )
+            document = Document(
+                tenant_id=tenant_id,
+                owner_user_id=user_id,
+                title="Dispatcher Integration Doc",
+                source_type="loose_document",
+                source_hash="hash-dispatcher-int",
+                file_name="dispatcher-int.txt",
+                file_size_bytes=42,
+                object_key="documents/dispatcher-int.txt",
+                ingestion_status="uploaded",
+            )
+            session.add(document)
+            session.flush()
+            acl_grant = AclGrant(
+                document_id=document.id,
+                owner_user_id=user_id,
+                tenant_id=tenant_id,
+                visibility="private",
+                sensitivity="internal",
+            )
+            session.add(acl_grant)
+            session.flush()
+            session.add(AclAllowedUser(acl_grant_id=acl_grant.id, user_id=user_id))
+
+            run = IngestionRun(
+                document_id=document.id,
+                tenant_id=tenant_id,
+                parser_backend="docling",
+                source_hash=document.source_hash,
+            )
+            session.add(run)
+            session.commit()
+            session.refresh(run)
+
+            document_id = document.id
+            run_id = run.id
+
+        try:
+            yield {
+                "run_id": run_id,
+                "document_id": document_id,
+                "tenant_id": tenant_id,
+                "user_id": user_id,
+            }
+        finally:
+            session_factory.configure(bind=None)
+            engine.dispose()
+
+
+def test_in_process_dispatcher_runs_all_stages(dispatcher_env) -> None:
+    """InProcessDispatcher._execute_pipeline runs parse → persist → quality and marks run completed."""
+    run_id = dispatcher_env["run_id"]
+    document_id = dispatcher_env["document_id"]
+
+    test_artifact = _make_test_artifact(document_id)
+    parser = DoclingDocumentParser(converter=lambda _req: test_artifact)
+    dispatcher = InProcessDispatcher(parser=parser)
+
+    dispatcher._execute_pipeline(run_id)
+
+    # Verify run status
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+    assert run is not None
+    assert run.status == "completed"
+
+    # Verify all 3 stages are completed
+    stages = get_stages_for_run(run_id=run_id)
+    assert len(stages) == 3
+    for stage in stages:
+        assert stage.status == "completed", f"Stage {stage.stage_name} is {stage.status}, expected completed"
+
+
+def test_in_process_dispatcher_marks_run_failed_on_stage_error(dispatcher_env) -> None:
+    """InProcessDispatcher marks the run as failed when a stage raises an exception."""
+    run_id = dispatcher_env["run_id"]
+
+    parser = DoclingDocumentParser(converter=lambda _req: (_ for _ in ()).throw(RuntimeError("Parser exploded")))
+    dispatcher = InProcessDispatcher(parser=parser)
+
+    dispatcher._execute_pipeline(run_id)
+
+    # Verify run status
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+    assert run is not None
+    assert run.status == "failed"
+
+    # Verify the parse stage is failed with error details
+    stages = get_stages_for_run(run_id=run_id)
+    parse_stage = next(s for s in stages if s.stage_name == "parse")
+    assert parse_stage.status == "failed"
+    assert "error" in parse_stage.details
+    assert "Parser exploded" in parse_stage.details["error"]
 
 
 def test_stage_skips_if_already_completed(seeded_env) -> None:
