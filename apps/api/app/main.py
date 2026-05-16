@@ -52,6 +52,7 @@ async def lifespan(app: FastAPI):
             parser=parser,
             parser_backend=parser_backend,
             parser_profile=parser_profile,
+            storage=storage,
         )
 
     yield

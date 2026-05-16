@@ -10,16 +10,8 @@ from app.services.parsers.docling_backend import DoclingDocumentParser
 def build_document_parser(settings: Settings) -> tuple[DocumentParser, str, str]:
     backend = settings.parser_backend.strip().lower()
     storage_root = Path(settings.local_storage_dir) if settings.local_storage_dir else None
-    storage_backend = settings.storage_backend.strip().lower()
 
     if backend in {"docling", "docling-local"}:
-        if storage_backend == "seaweedfs":
-            raise RuntimeError(
-                "SeaweedFS object storage is not yet compatible with the local Docling parser runtime: "
-                "the current parser expects files readable from local disk; use local storage for now, "
-                "or implement remote object-read parsing first."
-            )
-
         return DoclingDocumentParser(storage_root=storage_root), "docling-local", "local-cpu"
 
     if backend == "remote":

@@ -62,20 +62,18 @@ def test_build_document_parser_maps_docling_local_to_local_docling_runtime(tmp_p
     assert profile == "local-cpu"
 
 
-def test_build_document_parser_rejects_docling_with_seaweedfs_storage(tmp_path: Path) -> None:
-    with pytest.raises(RuntimeError) as exc_info:
-        build_document_parser(
-            Settings(
-                parser_backend="docling",
-                storage_backend="seaweedfs",
-                local_storage_dir=str(tmp_path),
-            )
+def test_build_document_parser_allows_docling_with_seaweedfs_storage(tmp_path: Path) -> None:
+    parser, backend, profile = build_document_parser(
+        Settings(
+            parser_backend="docling",
+            storage_backend="seaweedfs",
+            local_storage_dir=str(tmp_path),
         )
+    )
 
-    message = str(exc_info.value)
-    assert "SeaweedFS object storage is not yet compatible with the local Docling parser runtime" in message
-    assert "current parser expects files readable from local disk" in message
-    assert "use local storage for now, or implement remote object-read parsing first" in message
+    assert isinstance(parser, DoclingDocumentParser)
+    assert backend == "docling-local"
+    assert profile == "local-cpu"
 
 
 def test_build_document_parser_rejects_remote_backend_until_supported() -> None:

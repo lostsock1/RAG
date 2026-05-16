@@ -278,26 +278,25 @@ def test_app_startup_builds_dispatcher_from_parser_factory(monkeypatch) -> None:
             session_factory.configure(bind=None)
 
 
-def test_app_startup_fails_fast_for_seaweedfs_with_local_docling_runtime(monkeypatch) -> None:
+def test_app_startup_succeeds_for_seaweedfs_with_local_docling_runtime_via_env(monkeypatch) -> None:
     with TemporaryDirectory() as tmp_dir:
-        database_url = f"sqlite:///{Path(tmp_dir) / 'runtime-startup-seaweedfs-docling.db'}"
+        database_url = f"sqlite:///{Path(tmp_dir) / 'runtime-startup-seaweedfs-env.db'}"
         storage_dir = Path(tmp_dir) / "storage"
 
         monkeypatch.setenv("AUTH_MODE", "dev")
         monkeypatch.setenv("DATABASE_URL", database_url)
         monkeypatch.setenv("LOCAL_STORAGE_DIR", str(storage_dir))
         monkeypatch.setenv("STORAGE_BACKEND", "seaweedfs")
+        monkeypatch.setenv("S3_ENDPOINT_URL", "http://seaweedfs:8333")
+        monkeypatch.setenv("S3_ACCESS_KEY", "test-access")
+        monkeypatch.setenv("S3_SECRET_KEY", "test-secret")
         monkeypatch.setenv("PARSER_BACKEND", "docling")
         reloaded_main = _reload_app_module()
 
         try:
             with TestClient(reloaded_main.app, client=("127.0.0.1", 50003)):
-                raise AssertionError("startup should fail before serving requests")
-        except RuntimeError as exc:
-            message = str(exc)
-            assert "SeaweedFS object storage is not yet compatible with the local Docling parser runtime" in message
-            assert "current parser expects files readable from local disk" in message
-            assert "use local storage for now, or implement remote object-read parsing first" in message
+                assert hasattr(reloaded_main.app.state, "dispatcher")
+                assert reloaded_main.app.state.dispatcher._storage is not None
         finally:
             session_factory.configure(bind=None)
 
