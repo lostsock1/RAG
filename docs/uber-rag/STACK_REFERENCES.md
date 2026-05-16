@@ -60,11 +60,16 @@ Implementation impact:
 
 - MinIO docs: https://min.io/docs/minio/linux/index.html
 - MinIO S3 compatibility: https://docs.min.io/aistor/developers/s3-api-compatibility/
+- SeaweedFS repo: https://github.com/seaweedfs/seaweedfs
 
 Implementation impact:
 - Store originals and parsed artifacts in object storage.
-- Never expose MinIO directly to frontend users.
+- Never expose the object store directly to frontend users.
 - Source fetch must pass through backend ACL checks.
+
+Phase 2 entry review note:
+- MinIO remains documented here because it was the original candidate, but Phase 2 research now treats its licensing/maintenance posture as less attractive than before.
+- SeaweedFS is the **accepted default** for Phase 2 object/artifact storage per ADR-0009.
 
 ## Vector retrieval
 
@@ -100,11 +105,13 @@ Implementation impact:
 - Docling supported formats: https://docling-project.github.io/docling/usage/supported_formats/
 - Tesseract OCR: https://tesseract-ocr.github.io/
 - PaddleOCR: https://github.com/PaddlePaddle/PaddleOCR
+- PaddleOCR docs: https://www.paddleocr.ai/latest/en/index.html
 
 Implementation impact:
 - Use Docling as primary parser adapter.
 - Keep parser version, artifact hash, page anchors, layout, table, and OCR quality metadata.
 - Book ingestion requires hierarchy extraction.
+- Phase 2 entry review reframed this row from “OCR engine choice” to “structured document-understanding architecture across local CPU, local GPU, and remote API deployments”; see ADR-0011.
 
 ## Workflow orchestration
 
@@ -123,6 +130,9 @@ Implementation impact:
 - Stage functions must accept `run_id` and `stage_id` as inputs; never rely on Celery task IDs for identity.
 - This discipline earns the right to migrate to Temporal later without rewriting stage logic.
 
+Phase 2 entry review note:
+- Temporal is now the **accepted default** for the approved high-volume / high-resumability Phase 2 profile per ADR-0010.
+
 ## Embeddings and reranking
 
 - BGE-M3 model card: https://huggingface.co/BAAI/bge-m3
@@ -138,22 +148,23 @@ Implementation impact:
 
 ## LLM serving
 
-**LLM model selection in progress (ADR-0003, Proposed 2026-05-14).** Llama 3.3 70B has been reclassified from default to candidate. Final model choice closes via ADR-0004 after the benchmark plan runs on 2×3090 hardware.
+**Decision: ppq.ai (OpenAI-compatible aggregator) with Llama 3.3 70B Instruct as default (ADR-0004, Accepted 2026-05-14; provider renamed from OpenRouter to ppq.ai 2026-05-15 — same concept, OpenAI-compat).** Hermes 4 70B as instruction-heavy fallback. Local serving (vLLM, llama.cpp) deferred until GPU hardware available.
 
-Serving runtime: vLLM is the working default per ADR-0003's benchmark plan. llama.cpp remains a candidate for lower-memory scenarios. Both stay behind an OpenAI-compatible internal adapter.
+- ppq.ai landing: https://ppq.ai (verify exact docs URL on first use)
+- ppq.ai OpenAI-compatible endpoint: `https://api.ppq.ai/v1` (verify exact path on first use)
+- OpenRouter (pricing reference for ADR-0004 cost analysis only): https://openrouter.ai/docs
+- Default model: `meta-llama/llama-3.3-70b-instruct` — https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct
+- Fallback model: `nousresearch/hermes-4-70b` — https://huggingface.co/NousResearch/Hermes-4
 
+### LLM adapter
+
+All LLM calls go through an internal OpenAI-compatible adapter (`LlmBackend` interface). Provider swap is a config change: `LLM_ADAPTER` env var (`ppq` | `vllm` | `llamacpp`).
+
+Serving runtime: vLLM is the working default per ADR-0003's benchmark plan once GPU hardware lands. llama.cpp remains a candidate for lower-memory scenarios. Both stay behind an OpenAI-compatible internal adapter.
+
+Deferred until GPU hardware available:
 - vLLM OpenAI-compatible server: https://docs.vllm.ai/en/latest/serving/openai_compatible_server/
 - llama.cpp server: https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md
-
-Candidate models (to be benchmarked, see ADR-0003):
-- Llama 3.3 70B Instruct: https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct — strong English, heavy on 2×3090.
-- Qwen2.5 32B Instruct: https://huggingface.co/Qwen/Qwen2.5-32B-Instruct — strong multilingual, fits 2×3090 at FP8/INT8.
-- Mistral Small 3.x (~24B): https://huggingface.co/mistralai — recent; researcher to confirm exact current 3.x version at benchmark time.
-
-Implementation impact:
-- Do not pick the LLM by reputation. Pick by the project's own RAG eval (faithfulness, citation accuracy, negative-answer compliance, multilingual quality).
-- Hide LLM runtime behind an internal OpenAI-compatible adapter so model and runtime are independently swappable.
-- Benchmark vLLM vs llama.cpp for latency, throughput, memory, and concurrency on the winning model.
 
 ## Evaluation and quality
 

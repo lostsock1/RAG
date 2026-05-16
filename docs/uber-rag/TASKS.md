@@ -55,7 +55,10 @@
 
 ## Phase 2: Ingestion foundation
 
-- [ ] Upload original files to local filesystem or MinIO once the object-storage adapter is implemented.
+- [x] Close ADR-0009 (object storage direction).
+- [x] Close ADR-0010 (ingestion orchestration direction).
+- [x] Close ADR-0011 (structured parsing / document-understanding architecture).
+- [ ] Upload original files to SeaweedFS once the object-storage adapter is implemented.
 - [ ] Hash and deduplicate files.
 - [ ] Add ingestion job table.
 - [ ] Add Docling parser adapter.

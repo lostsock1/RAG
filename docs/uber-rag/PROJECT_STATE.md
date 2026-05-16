@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-16
 Owner: Uber-RAG primary builder
-Status: Phase 1 — **All four gates (A, B, C, D) are complete.** VPS-backed full-stack verification passed (12-point check, 2026-05-16). Backend tests green (39/39). Frontend toolchain builds successfully. Phase 1 exit criteria met.
+Status: Phase 1 complete. **Phase 2 entry review completed and the Phase 2 stack direction is now closed in ADR-0009, ADR-0010, and ADR-0011.** VPS-backed full-stack verification passed (12-point check, 2026-05-16). Backend tests green (39/39). Frontend toolchain builds successfully.
 
 ## Product goal
 
@@ -29,7 +29,7 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 ## Current implementation state
 
 - Repository scaffold: project memory consolidated, AGENTS.md + agent config in place
-- ADRs: 5 Accepted (0001, 0002, 0004, 0005, 0006), 1 Superseded (0003), 1 Deferred (0007)
+- ADRs: 8 Accepted (0001, 0002, 0004, 0005, 0006, 0009, 0010, 0011), 1 Superseded (0003), 1 Deferred (0007)
 - API contract: OpenAPI 3.1 YAML skeleton complete (`docs/uber-rag/api/openapi.yaml`) — 10 tag groups, 40+ endpoints, 25 schemas
 - Domain model: Postgres schema + entity relationships complete (`docs/uber-rag/DOMAIN_MODEL.md`) — 15 tables with columns, types, FKs, indexes
 - Eval harness: Design doc complete (`docs/uber-rag/EVALUATION_HARNESS.md`) — repo structure, Q/A format, scoring stubs, runner pseudocode, CI integration, thresholds
@@ -73,7 +73,8 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 ## Active assumptions
 
 - Target deployment may be air-gapped. Testing uses API-based LLM (ppq.ai) until local hardware arrives.
-- Default stack: Next.js, FastAPI, Keycloak, PostgreSQL, MinIO, Qdrant, OpenSearch, BGE-M3, BGE reranker, Celery + Redis (Temporal-ready), Docling + Tesseract OCR.
+- Default accepted stack remains: Next.js, FastAPI, Keycloak, PostgreSQL, Qdrant, OpenSearch, BGE-M3, BGE reranker, Celery + Redis (Temporal-ready), Docling + Tesseract OCR.
+- Phase 2 accepted direction: SeaweedFS as object storage default, Temporal as orchestration default for the approved Phase 2 profile, and a structured document-understanding architecture with deployment-configured local CPU / local GPU / remote API backends.
 - Default testing LLM: Llama 3.3 70B Instruct via ppq.ai. Fallback: Hermes 4 70B. Local models via vLLM/llama.cpp when GPU hardware available.
 - Performance architecture: fast hot path for user-visible responses, async quality path for sentence-level verification and deeper quality checks (ADR-0008).
 - Graph RAG is optional after the hybrid retrieval core is proven.
@@ -83,6 +84,7 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 | Date | Change | Files | Notes |
 |---|---|---|---|
+| 2026-05-16 | Phase 2 entry review closed: ADR-0009/0010/0011 accepted | `research/2026-05-16-phase-2-entry.md`, `adr/0009-object-storage-direction.md`, `adr/0010-ingestion-orchestration-direction.md`, `adr/0011-structured-document-understanding-architecture.md`, `ARCHITECTURE_DECISIONS.md`, `PROJECT_STATE.md`, `TASKS.md`, `STACK_REFERENCES.md` | Deep comparative review confirmed Docling remains a strong parser shell, accepted SeaweedFS and Temporal as Phase 2 defaults, and closed the structured document-understanding architecture across local and remote deployments. |
 | 2026-05-16 | Gate C closed: full VPS stack verification (12-point check) | `README.md`, `PHASE1_GATE_CHECKLIST.md`, `PROJECT_STATE.md` | All 4 Phase 1 gates now complete. VPS run flow documented. Phase 1 exit criteria met. |
 | 2026-05-16 | VPS live Keycloak/API verification + OIDC group-name fix | `infra/docker/keycloak/uber-rag-realm.json`, `infra/migrations/versions/20260515_0001_phase1_foundation.py`, `infra/migrations/env.py`, `apps/api/app/repositories/documents.py`, `apps/api/app/tests/integration/test_oidc_auth_flow.py`, `PROJECT_STATE.md`, `PHASE1_GATE_CHECKLIST.md` | Fixed Keycloak realm import JSON, fixed Postgres boolean migration default, taught document listing to resolve OIDC group-name claims to tenant group UUIDs, added regression coverage, and verified on the VPS that Alice can list her uploaded document while Bob sees an empty list. |
 | 2026-05-16 | Build configuration + bug fixes + frontend toolchain scaffold | `pyproject.toml`, `apps/api/app/core/security.py`, `apps/web/package.json`, `apps/web/tsconfig.json`, `apps/web/next.config.js`, `apps/web/app/layout.tsx`, `packages/clients/typescript/package.json`, `packages/clients/typescript/tsconfig.json` | Added `pyproject.toml` with all backend deps. Fixed dead-code bug in `_is_loopback_client_host`. Fixed scope-inference bug: OIDC tokens with explicit empty scope no longer get inferred scopes from roles. Added Next.js toolchain (package.json, tsconfig, next.config, root layout). Added TS client package.json with vitest. All 38 backend tests pass. |
@@ -116,12 +118,19 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 ## Next recommended actions
 
-Phase 1 is **complete**. The next step is Phase 2 ingestion foundations:
+Phase 1 is **complete**. Phase 2 is **clear to start from a stack-decision perspective**. The next planning step is to convert the accepted Phase 2 direction into an execution plan.
 
-1. Wire MinIO as the active storage adapter (replacing local filesystem).
+Near-term planning actions:
+
+1. Convert the approved Phase 2 design into an execution plan.
+2. Reconcile implementation-facing docs against ADR-0009, ADR-0010, and ADR-0011.
+
+Once those are closed, the first implementation steps remain:
+
+1. Wire the active object-storage adapter (replacing local filesystem); accepted default: SeaweedFS.
 2. Add ingestion job table and migration.
 3. Add Docling parser adapter.
-4. Add OCR adapter interface (Tesseract / PaddleOCR per ADR-0006).
+4. Add structured document-understanding backend interface for local CPU / local GPU / remote API profiles, preserving ADR-0006 as the OCR baseline reference where compatible with ADR-0011.
 5. Implement file hash + deduplication.
 6. Store parsed artifacts and provenance.
 

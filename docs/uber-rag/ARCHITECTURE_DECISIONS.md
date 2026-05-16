@@ -46,12 +46,18 @@ Full ADRs live in `adr/`. Index:
 
 - [ADR-0001 — Lexical Search Engine: OpenSearch over Tantivy](adr/0001-lexical-search-engine.md) — Accepted 2026-05-14
 - [ADR-0002 — Ingestion Orchestration: Celery now, Temporal-ready design](adr/0002-ingestion-orchestration.md) — Accepted 2026-05-14
-- [ADR-0003 — LLM Selection: Benchmark plan](adr/0003-llm-selection-benchmark.md) — Proposed 2026-05-14 (auto-closes via ADR-0004)
+- [ADR-0003 — LLM Selection: Benchmark plan](adr/0003-llm-selection-benchmark.md) — Superseded 2026-05-14 (superseded by ADR-0004)
+- [ADR-0004 — LLM Adapter Contract and Default API Provider](adr/0004-llm-adapter-and-provider.md) — Accepted 2026-05-14
 - [ADR-0005 — n8n Excluded from Research and Production Substrate](adr/0005-n8n-excluded-from-research.md) — Accepted 2026-05-14
+- [ADR-0008 — Fast Hot Path, Async Quality Path](adr/0008-fast-hot-path-async-quality.md) — Accepted 2026-05-15
+- [ADR-0006 — OCR Stack: Docling Built-in as Default, PaddleOCR as Upgrade Path](adr/0006-ocr-stack.md) — Accepted 2026-05-14
+- [ADR-0009 — Object Storage Direction for Phase 2 — SeaweedFS as Lead Candidate](adr/0009-object-storage-direction.md) — Accepted 2026-05-16
+- [ADR-0010 — Ingestion Orchestration Direction for Phase 2 — Temporal as Lead Candidate](adr/0010-ingestion-orchestration-direction.md) — Accepted 2026-05-16
+- [ADR-0011 — Structured Document-Understanding Architecture for Phase 2](adr/0011-structured-document-understanding-architecture.md) — Accepted 2026-05-16
 
-## Proposed decisions
+## Proposed / Deferred decisions
 
-- ADR-0004 — LLM model winner — closes ADR-0003 after benchmark.
-- ADR-0006 — OCR stack (Tesseract vs PaddleOCR vs hybrid vs alternatives).
-- ADR-0007 — Frontend configuration (Next.js App Router routing, auth wrapper, layout patterns).
-- Future ADR: llama.cpp vs vLLM serving runtime (ADR-0003 uses vLLM as the working default; confirm via benchmark).
+- ADR-0007 — Frontend configuration (Next.js App Router routing, auth wrapper, layout patterns). **Deferred** — not blocking. Will be drafted before Phase 1 frontend code starts. Current rationale: frontend is a client of the API; API backbone comes first.
+- ADR-0002 — Ingestion orchestration: Celery now, Temporal-ready design. **Accepted but constrained to earlier MVP assumptions** — supersession pressure now exists from ADR-0010 for the approved Phase 2 profile.
+- Future ADR: llama.cpp vs vLLM serving runtime — deferred until local GPU hardware becomes available (see ADR-0004 revisit triggers).
+- Future ADR: Local model production benchmark — deferred until local GPU hardware becomes available.
