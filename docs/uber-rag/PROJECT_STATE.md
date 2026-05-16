@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-16
 Owner: Uber-RAG primary builder
-Status: Phase 1 complete. **Phase 2 entry review completed and the Phase 2 stack direction is now closed in ADR-0009, ADR-0010, and ADR-0011.** VPS-backed full-stack verification passed (12-point check, 2026-05-16). Backend tests green (39/39). Frontend toolchain builds successfully.
+Status: Phase 1 complete. **Phase 2 entry review completed and the Phase 2 stack direction is now closed in ADR-0009, ADR-0010, and ADR-0011.** A Phase 2 ingestion foundation slice is now implemented and locally verified. VPS-backed full-stack verification passed (12-point check, 2026-05-16). Backend ingestion foundation suite green (30/30 targeted tests). Frontend toolchain builds successfully.
 
 ## Product goal
 
@@ -37,10 +37,10 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 - LLM adapter: Designed (ADR-0004), default = ppq.ai + Llama 3.3 70B, fallback = Hermes 4 70B
 - Frontend: toolchain scaffolded and verified — `next build` succeeds, all 3 pages + middleware generate. Pages (login, upload, documents), components, middleware, and API client exist. Browser-level end-to-end verification against a running API still needs verification.
 - TS client: `vitest` test passes (1/1).
-- Backend API: health, upload, document list, and document ACL endpoints implemented. All 39 tests pass.
+- Backend API: health, upload, document list, document ACL, ingestion jobs list/detail scaffold, parser/runtime seams, and parsed-artifact persistence foundation implemented. Phase 2 foundation suite passes 30 targeted tests.
 - Build config: `pyproject.toml` added with all backend deps (FastAPI, SQLAlchemy, Alembic, PyJWT, python-multipart, psycopg, pytest, httpx).
 - Auth/ACL: JWKS-backed Keycloak/OIDC runtime auth verifier landed, loopback-only dev fallback retained for local use, scope enforcement active, ACL filtering/updates live, leakage tests implemented, and live VPS verification now proves: Keycloak issues bearer tokens accepted by the API; Alice can list her uploaded document; Bob sees `[]`.
-- Ingestion: not started
+- Ingestion: foundation slice implemented — config-driven storage seam (local + SeaweedFS-ready S3-compatible adapter), ingestion run/stage/artifact/report schema, upload-time ingestion run creation, serial dedup-by-hash reuse, ingestion jobs list/detail scaffold with ACL/audit coverage, parser/runtime seams, quality report helper, and per-run parsed-artifact/report persistence with DB uniqueness constraints. **Ingestion dispatch now wired** — upload triggers a three-stage in-process pipeline (parse → persist artifact → quality report) via `InProcessDispatcher`. Stages are idempotent and checkpointed to `IngestionStage` records. Startup recovery sweep resets orphaned `running` runs to `queued`. `WorkflowDispatcher` protocol enables future swap to Temporal or Redis-queue worker.
 - Retrieval: not started
 - Evaluation: harness designed, heldout set drafted; implementation not started
 - Deployment: VPS fully verified (`ssh rag` → vm-1485.lnvps.cloud). Docker, Postgres, MinIO, and Keycloak running; 12-point end-to-end verification passed on 2026-05-16 (health, OIDC discovery, JWKS, token issuance, upload, ACL-filtered list, ACL separation, unauthenticated rejection, ACL read, file storage, MinIO health, Postgres connectivity). VPS run flow documented in README.md.
@@ -84,6 +84,8 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 | Date | Change | Files | Notes |
 |---|---|---|---|
+| 2026-05-16 | Ingestion dispatch wired: in-process async dispatcher with three-stage pipeline | `apps/api/app/workflows/dispatcher.py`, `apps/api/app/workflows/stages.py`, `apps/api/app/repositories/ingestion.py`, `apps/api/app/api/routes/documents.py`, `apps/api/app/main.py`, `apps/api/app/tests/unit/test_dispatcher.py`, `apps/api/app/tests/integration/test_ingestion_dispatch.py` | Upload now triggers parse → persist artifact → quality report pipeline via `InProcessDispatcher`. Stages are idempotent and checkpointed. Startup recovery sweep resets orphaned `running` runs. `WorkflowDispatcher` protocol enables future swap to Temporal or Redis-queue worker. 71/71 tests pass. |
+| 2026-05-16 | Phase 2 ingestion foundation slice implemented and locally verified | `apps/api/app/**`, `infra/migrations/versions/20260516_0002_phase2_ingestion_foundation.py`, `infra/migrations/versions/20260516_0003_phase2_ingestion_uniqueness.py`, `infra/migrations/versions/20260516_0004_phase2_ingestion_workflow_backend_truthfulness.py`, `docs/uber-rag/API_CONTRACT.md`, `docs/uber-rag/api/openapi.yaml`, `PROJECT_STATE.md`, `TASKS.md` | Landed SeaweedFS-ready storage seam, ingestion run/stage/artifact/report schema, upload-created ingestion jobs, ACL/audited ingestion jobs list/detail endpoints, parser/runtime scaffolds, parsed-artifact/report persistence with per-run uniqueness, and contract truthfulness updates. Local verification passed: 30/30 targeted tests. |
 | 2026-05-16 | Phase 2 entry review closed: ADR-0009/0010/0011 accepted | `research/2026-05-16-phase-2-entry.md`, `adr/0009-object-storage-direction.md`, `adr/0010-ingestion-orchestration-direction.md`, `adr/0011-structured-document-understanding-architecture.md`, `ARCHITECTURE_DECISIONS.md`, `PROJECT_STATE.md`, `TASKS.md`, `STACK_REFERENCES.md` | Deep comparative review confirmed Docling remains a strong parser shell, accepted SeaweedFS and Temporal as Phase 2 defaults, and closed the structured document-understanding architecture across local and remote deployments. |
 | 2026-05-16 | Gate C closed: full VPS stack verification (12-point check) | `README.md`, `PHASE1_GATE_CHECKLIST.md`, `PROJECT_STATE.md` | All 4 Phase 1 gates now complete. VPS run flow documented. Phase 1 exit criteria met. |
 | 2026-05-16 | VPS live Keycloak/API verification + OIDC group-name fix | `infra/docker/keycloak/uber-rag-realm.json`, `infra/migrations/versions/20260515_0001_phase1_foundation.py`, `infra/migrations/env.py`, `apps/api/app/repositories/documents.py`, `apps/api/app/tests/integration/test_oidc_auth_flow.py`, `PROJECT_STATE.md`, `PHASE1_GATE_CHECKLIST.md` | Fixed Keycloak realm import JSON, fixed Postgres boolean migration default, taught document listing to resolve OIDC group-name claims to tenant group UUIDs, added regression coverage, and verified on the VPS that Alice can list her uploaded document while Bob sees an empty list. |
@@ -115,24 +117,21 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 - ppq.ai is a proxy intermediary — direct provider fallback (Together, Groq) needed if ppq.ai has availability issues.
 - Browser-level frontend verification against the running VPS API is still unverified.
 - The VPS `.env` uses `OIDC_SCOPES_CLAIM=permissions`; local tests rely on the default `scope` claim path. Test isolation should be tightened so environment-specific claim mapping does not skew remote test expectations.
+- Upload dedup is serially correct but not yet concurrency-hardened; same-hash uploads racing in parallel still need DB-level dedup identity design and conflict handling.
+- Ingestion dispatch is now wired (in-process, three-stage pipeline). Stage progression is populated. Remaining gaps: real Docling conversion, SeaweedFS runtime coverage, concurrent dedup hardening, richer quality reports.
 
 ## Next recommended actions
 
-Phase 1 is **complete**. Phase 2 is **clear to start from a stack-decision perspective**. The next planning step is to convert the accepted Phase 2 direction into an execution plan.
+Phase 1 is **complete**. Phase 2 ingestion dispatch is now wired with a three-stage in-process pipeline. The next work is to make the pipeline production-realistic.
 
-Near-term planning actions:
+Near-term implementation actions:
 
-1. Convert the approved Phase 2 design into an execution plan.
-2. Reconcile implementation-facing docs against ADR-0009, ADR-0010, and ADR-0011.
-
-Once those are closed, the first implementation steps remain:
-
-1. Wire the active object-storage adapter (replacing local filesystem); accepted default: SeaweedFS.
-2. Add ingestion job table and migration.
-3. Add Docling parser adapter.
-4. Add structured document-understanding backend interface for local CPU / local GPU / remote API profiles, preserving ADR-0006 as the OCR baseline reference where compatible with ADR-0011.
-5. Implement file hash + deduplication.
-6. Store parsed artifacts and provenance.
+1. Replace parser stubs with real Docling-backed conversion and deployment-profile-aware remote/local backends.
+2. Exercise the SeaweedFS path in runtime/integration tests rather than only the S3-compatible seam.
+3. Add OCR adapter execution path compatible with ADR-0011.
+4. Harden dedup for concurrent uploads with DB-backed conflict handling.
+5. Expand quality report content from foundation summary fields to the richer contract-level report.
+6. Add a re-dispatch endpoint or periodic sweeper so that `failed` or `queued` runs can be retried without a new upload.
 
 Pre-Phase-2 cleanup (optional but recommended):
 - Tighten OIDC test isolation so remote `.env` claim mapping (`permissions`) cannot affect tests that assume the default `scope` claim.

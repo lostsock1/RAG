@@ -58,13 +58,21 @@
 - [x] Close ADR-0009 (object storage direction).
 - [x] Close ADR-0010 (ingestion orchestration direction).
 - [x] Close ADR-0011 (structured parsing / document-understanding architecture).
-- [ ] Upload original files to SeaweedFS once the object-storage adapter is implemented.
-- [ ] Hash and deduplicate files.
-- [ ] Add ingestion job table.
-- [ ] Add Docling parser adapter.
-- [ ] Add OCR adapter interface.
-- [ ] Generate quality report.
-- [ ] Store parsed artifacts and provenance.
+- [x] Add a SeaweedFS-ready S3-compatible storage adapter seam.
+- [x] Hash uploads and reuse existing documents for serial same-user same-tenant duplicates.
+- [x] Add ingestion run/stage/artifact/report tables and migrations.
+- [x] Add ingestion jobs list/detail API scaffold with ACL and audit coverage.
+- [x] Add parser adapter interfaces and foundation stubs for Docling/local/remote parsing.
+- [x] Generate a foundation quality report summary.
+- [x] Store parsed artifacts and provenance foundation records.
+- [x] Enforce one canonical parsed artifact and quality report per run.
+- [x] Wire active uploads to the real accepted workflow dispatcher.
+- [x] Populate and expose ingestion stage progression.
+- [ ] Exercise the live SeaweedFS backend in runtime/integration coverage.
+- [ ] Replace parser stubs with real Docling-backed conversion.
+- [ ] Add OCR adapter execution path compatible with ADR-0011.
+- [ ] Harden dedup for concurrent uploads with DB-backed conflict handling.
+- [ ] Expand quality report fields to the richer contract-level report.
 
 ## Phase 3: Indexing and retrieval
 
