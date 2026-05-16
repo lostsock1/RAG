@@ -100,11 +100,16 @@ class S3CompatibleStorageAdapter(StorageAdapter):
         with NamedTemporaryFile(delete=False) as tmp_file:
             temp_path = Path(tmp_file.name)
 
-        self._get_client().download_file(
-            Bucket=self.bucket,
-            Key=object_key,
-            Filename=str(temp_path),
-        )
+        try:
+            self._get_client().download_file(
+                Bucket=self.bucket,
+                Key=object_key,
+                Filename=str(temp_path),
+            )
+        except Exception:
+            if temp_path.exists():
+                temp_path.unlink()
+            raise
 
         def _cleanup() -> None:
             if temp_path.exists():

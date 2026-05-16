@@ -114,3 +114,21 @@ def test_s3_compatible_storage_adapter_materialize_for_read_downloads_temp_file(
     assert materialized.cleanup is not None
     materialized.cleanup()
     assert not materialized.local_path.exists()
+
+
+def test_s3_compatible_storage_adapter_materialize_for_read_cleans_up_temp_file_on_download_failure() -> None:
+    class FailingClient:
+        def download_file(self, Bucket: str, Key: str, Filename: str) -> None:
+            raise RuntimeError("network timeout")
+
+    adapter = S3CompatibleStorageAdapter(
+        endpoint_url="http://seaweedfs:8333",
+        access_key="test-access",
+        secret_key="test-secret",
+        bucket="uber-rag-documents",
+        region="us-east-1",
+        client=FailingClient(),
+    )
+
+    with pytest.raises(RuntimeError, match="network timeout"):
+        adapter.materialize_for_read(object_key="documents/tenant-1/missing.pdf")
