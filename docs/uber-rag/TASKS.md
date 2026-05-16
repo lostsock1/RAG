@@ -68,7 +68,7 @@
 - [x] Enforce one canonical parsed artifact and quality report per run.
 - [x] Wire active uploads to the real accepted workflow dispatcher.
 - [x] Populate and expose ingestion stage progression.
-- [ ] Exercise the live SeaweedFS backend in runtime/integration coverage.
+- [x] Exercise the live SeaweedFS backend in runtime/integration coverage.
 - [x] Replace parser stubs with real Docling-backed conversion.
 - [ ] Add OCR adapter execution path compatible with ADR-0011.
 - [ ] Harden dedup for concurrent uploads with DB-backed conflict handling.
