@@ -9,7 +9,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, func, select
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
@@ -23,6 +23,7 @@ from app.db.models.ingestion import IngestionRun
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.main import app
+from app.services.storage import S3CompatibleStorageAdapter
 
 
 class StorageStub:
@@ -33,6 +34,27 @@ class StorageStub:
     def put_object(self, *, object_key: str, content: bytes, content_type: str) -> None:
         self.last_put_object_key = object_key
         self.objects[object_key] = content
+
+
+class FakeS3Client:
+    def __init__(self) -> None:
+        self.put_object_calls: list[dict[str, object]] = []
+
+    def put_object(self, **kwargs: object) -> None:
+        self.put_object_calls.append(kwargs)
+
+
+class FakeS3StorageAdapter(S3CompatibleStorageAdapter):
+    def __init__(self, *, fake_client: FakeS3Client) -> None:
+        super().__init__(
+            endpoint_url="http://seaweedfs:8333",
+            access_key="test-access",
+            secret_key="test-secret",
+            bucket="uber-rag-documents",
+            region="us-east-1",
+            client=fake_client,
+        )
+        self.fake_client = fake_client
 
 
 @pytest.fixture()
@@ -54,6 +76,12 @@ def auth_headers() -> dict[str, str]:
 @pytest.fixture()
 def storage_stub() -> StorageStub:
     return StorageStub()
+
+
+@pytest.fixture()
+def s3_storage_adapter() -> FakeS3StorageAdapter:
+    fake_client = FakeS3Client()
+    return FakeS3StorageAdapter(fake_client=fake_client)
 
 
 @pytest.fixture()
@@ -210,3 +238,62 @@ def test_upload_reuses_existing_document_hash_and_creates_new_ingestion_run(
 
         assert latest_audit is not None
         assert latest_audit.details["object_key"] == first_payload["object_key"]
+
+
+def test_upload_works_with_s3_compatible_storage_adapter_and_reuses_object_key(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    s3_storage_adapter: FakeS3StorageAdapter,
+) -> None:
+    app.state.document_storage = s3_storage_adapter
+
+    first = client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers,
+        files={"file": ("sample.txt", b"hello world", "text/plain")},
+        data={"title": "Sample", "source_type": "loose_document"},
+    )
+    second = client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers,
+        files={"file": ("sample-copy.txt", b"hello world", "text/plain")},
+        data={"title": "Sample copy", "source_type": "loose_document"},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+
+    first_payload = first.json()
+    second_payload = second.json()
+    fake_client = s3_storage_adapter.fake_client
+
+    assert len(fake_client.put_object_calls) == 1
+    assert fake_client.put_object_calls[0]["Bucket"] == "uber-rag-documents"
+    assert fake_client.put_object_calls[0]["Key"] == first_payload["object_key"]
+    assert fake_client.put_object_calls[0]["Body"] == b"hello world"
+    assert fake_client.put_object_calls[0]["ContentType"] == "text/plain"
+    assert second_payload["id"] == first_payload["id"]
+    assert second_payload["source_hash"] == first_payload["source_hash"]
+    assert second_payload["object_key"] == first_payload["object_key"]
+    assert second_payload["ingestion_run_id"] != first_payload["ingestion_run_id"]
+
+    with session_factory() as session:
+        document = session.scalar(select(Document).where(Document.id == UUID(first_payload["id"])))
+        assert document is not None
+        assert document.object_key == first_payload["object_key"]
+        assert document.source_hash == first_payload["source_hash"]
+        assert document.title == first_payload["title"]
+
+        latest_run = session.scalar(
+            select(IngestionRun)
+            .where(IngestionRun.id == UUID(second_payload["ingestion_run_id"]))
+        )
+        assert latest_run is not None
+        assert latest_run.document_id == document.id
+
+        run_count = session.scalar(
+            select(func.count())
+            .select_from(IngestionRun)
+            .where(IngestionRun.document_id == document.id)
+        )
+        assert run_count == 2
