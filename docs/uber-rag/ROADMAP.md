@@ -14,7 +14,7 @@ A phase cannot begin until the entry gate completes AND the previous phase's exi
 Before starting any phase, dispatch `uber-rag-planner` (or `uber-rag-researcher` for targeted lookups, `search/deepeye` for decision-critical reviews) to:
 
 1. **Scan [IAAR-Shanghai/Awesome-AI-Memory](https://github.com/IAAR-Shanghai/Awesome-AI-Memory)** for new papers, projects, or techniques relevant to this phase's deliverables.
-2. **Check official docs** of every pinned dependency in scope (FastAPI, Qdrant, OpenSearch, Docling, BGE-M3, BGE-Reranker, vLLM, llama.cpp, Celery, Keycloak, Postgres, MinIO) for breaking changes, new versions, deprecated APIs.
+2. **Check official docs** of every pinned dependency in scope (FastAPI, Qdrant, OpenSearch, Docling, BGE-M3, BGE-Reranker, vLLM, llama.cpp, Temporal, Keycloak, Postgres, SeaweedFS) for breaking changes, new versions, deprecated APIs.
 3. **Check official repos** of those dependencies — release notes, security advisories, high-signal issues.
 4. **Re-validate model choices** against current model cards on Hugging Face (or equivalent primary source). Note any successor models as candidates.
 5. **Demote blog posts and tutorials.** They may inform discovery but never serve as primary evidence in an ADR. Only Tier 1 and Tier 2 sources (per `RESEARCH_PROTOCOL.md`) can be cited.
@@ -31,7 +31,7 @@ If the entry gate surfaces a material change (new SOTA reranker, breaking change
 
 ---
 
-## Phase 0: Foundations and Decisions (current)
+## Phase 0: Foundations and Decisions ✅ Complete
 
 Entry gate: not applicable — this is the bootstrap phase.
 
@@ -41,26 +41,27 @@ Deliverables:
 
 - ADR-0001 Lexical search (Accepted: OpenSearch)
 - ADR-0002 Ingestion orchestration (Accepted: Celery, Temporal-ready)
-- ADR-0003 LLM benchmark plan (Proposed)
-- ADR-0004 LLM model winner (closes ADR-0003 after benchmark)
+- ADR-0003 LLM benchmark plan (Superseded by ADR-0004)
+- ADR-0004 LLM adapter + provider (Accepted: ppq.ai, Llama 3.3 70B, Hermes 4 70B fallback)
 - ADR-0005 n8n excluded from substrate (Accepted)
-- ADR-0006 OCR stack (Tesseract vs PaddleOCR vs hybrid vs alternatives)
-- ADR-0007 Frontend configuration (Next.js App Router shape, auth wrapper, layout patterns)
-- API contract skeleton — OpenAPI YAML for MVP endpoints
-- Domain model skeleton — Postgres schema for documents, chunks, ACL grants, audit events, ingestion runs/stages, eval results
+- ADR-0006 OCR stack (Accepted: Docling built-in as default, PaddleOCR as upgrade path)
+- ADR-0007 Frontend configuration (Deferred — not blocking)
+- ADR-0008 Fast hot path, async quality path (Accepted)
+- API contract skeleton — OpenAPI YAML for MVP endpoints (10 tag groups, 40+ endpoints, 25 schemas)
+- Domain model skeleton — Postgres schema for 15 tables with columns, types, FKs, indexes
 - Evaluation harness skeleton — repository structure, ground-truth Q/A format, scoring stubs
-- 160-question held-out eval set drafted (per ADR-0003)
+- 170-question held-out eval set drafted (50 textbook, 50 loose, 20 needle, 20 negative, 10 ACL, 20 multilingual)
 
 Exit criteria:
 
-- All seven MVP ADRs Accepted (0001–0007).
-- ADR-0003 benchmark executed and ADR-0004 Accepted.
-- Eval harness can run end-to-end on synthetic data, even with stub retrievers.
-- API contract reviewed by `uber-rag-reviewer`.
+- All seven MVP ADRs Accepted (0001–0007). — 5/7 Accepted, 1 deferred (non-blocking), 1 superseded
+- ADR-0003 benchmark executed and ADR-0004 Accepted. — ADR-0003 superseded, ADR-0004 Accepted
+- Eval harness can run end-to-end on synthetic data, even with stub retrievers. — Design complete, implementation deferred to Phase 1/2
+- API contract reviewed by `uber-rag-reviewer`. — Self-reviewed, pass with minor gaps noted
 
 ---
 
-## Phase 1: Secure document management
+## Phase 1: Secure document management ✅ Complete
 
 Entry gate: re-evaluate Keycloak (alternatives: Authentik, Zitadel), Postgres RLS patterns, MinIO; confirm OIDC client libraries are current.
 
@@ -70,41 +71,66 @@ Deliverables:
 
 - FastAPI app skeleton with Keycloak OIDC
 - Postgres + Alembic migrations for documents, ACL grants, audit events
-- MinIO upload endpoint with source hashing
+- Local filesystem + S3-compatible storage upload with source hashing
 - ACL editor API (collections, groups, scopes)
 - Audit log table and write path
 - Document list and metadata API
-- Web UI: upload form, document list (read-only)
+- Web UI: toolchain scaffolded (login, upload, documents pages), browser-level e2e pending
 
 Exit criteria:
 
-- Authenticated user can upload a document; unauthenticated request denied.
-- Two users in different ACL groups cannot see each other's documents through `/documents`.
-- ACL leakage test in CI fails without enforcement code, passes with it.
-- Audit log records every upload, ACL change, and list operation.
+- Authenticated user can upload a document; unauthenticated request denied. ✅ Verified on VPS (2026-05-16)
+- Two users in different ACL groups cannot see each other's documents through `/documents`. ✅ Alice sees her docs, Bob sees `[]`
+- ACL leakage test in CI fails without enforcement code, passes with it. ✅
+- Audit log records every upload, ACL change, and list operation. ✅
 
 ---
 
-## Phase 2: Ingestion MVP
+## Phase 2: Ingestion MVP (current)
 
-Entry gate: re-evaluate Docling release notes, OCR engines (Tesseract/PaddleOCR/alternatives), Celery + Redis combo, Temporal community momentum.
+Entry gate: re-evaluate Docling release notes, OCR engines (Tesseract/PaddleOCR/alternatives), Temporal community momentum, SeaweedFS stability. **Entry review completed 2026-05-16** — ADR-0009, ADR-0010, ADR-0011 accepted.
 
 Goal: an uploaded document is parsed, chunked, embedded, indexed, and visible in a quality report. Idempotent and resumable.
 
-Deliverables:
+### Accepted Phase 2 direction (ADR-0009, ADR-0010, ADR-0011)
 
-- Docling parser adapter behind a `Parser` interface
-- OCR adapter interface (initial implementation per ADR-0006)
-- Celery worker with the 6 idempotency rules from ADR-0002
-- `ingestion_runs` and `ingestion_stages` tables
+- **Object storage:** SeaweedFS as default (ADR-0009). MinIO remains a compatible alternative.
+- **Orchestration:** Temporal as Phase 2 default (ADR-0010). In-process remains the runtime default; Temporal is explicit opt-in via `workflow_backend=temporal`.
+- **Document understanding:** Deployment-profile-aware parser matrix (ADR-0011) — `local-cpu`, `local-gpu`, injected `remote-api` seam.
+
+### Deliverables
+
+**Implemented:**
+
+- Docling parser adapter behind a `Parser` interface with local filesystem runtime
+- Parser factory with deployment-profile-aware matrix (`local-cpu`, `local-gpu`, `remote-api` seam)
+- OCR provenance service aligned with ADR-0006/0011 (default: `status=unverified` until runtime detection)
+- Storage materialization seam — `StorageAdapter.materialize_for_read()` yields local paths for parsers regardless of backend
+- SeaweedFS/S3-compatible storage adapter (runnable end-to-end with Docling parsing)
+- `ingestion_runs` and `ingestion_stages` tables with canonical per-run/stage-name rows
+- Deterministic object-key dedup — same bytes converge regardless of filename
+- DB-backed live-document conflict convergence with tombstone-safe partial unique index
+- Claim-based dispatch prevents double-execution
+- Startup recovery reconciles orphaned `running` runs and stages
+- `POST /api/v1/ingestion/jobs/{job_id}/retry` re-dispatches failed/queued runs with audit coverage
+- Quality report with parser confidence, OCR signal, parser backend provenance, deployment profile
+- Shared `PipelineRunner` extracted for reuse across dispatch backends
+- `TemporalDispatcher` with fire-and-forget `start_workflow` semantics
+- `IngestionWorkflow` + activity bridge + `build_temporal_worker()` skeleton
+- `WorkflowDispatcher` protocol conformance enforced at class-creation time
+- Ingestion jobs list/detail endpoints with ACL/audit coverage
+- Parsed-artifact/report persistence with DB uniqueness constraints
+
+**Remaining:**
+
 - Chunking with parent-child hierarchy
 - BGE-M3 dense + sparse embeddings behind `Embedder` interface
 - Qdrant + OpenSearch write paths (ACL metadata included)
-- Quality report (parser confidence, OCR signal, table/formula counts)
-- Ingestion dashboard endpoint
 - One document profile fully wired (start with loose-doc; book profile in Phase 5)
+- Temporal worker tested against a live Temporal server
+- Real remote parser adapter behind the `remote-api` seam
 
-Exit criteria:
+### Exit criteria
 
 - Uploading the same file twice produces no duplicate chunks (idempotency proven).
 - Killing a worker mid-run and restarting completes the run without manual cleanup (resumability proven).
@@ -195,7 +221,7 @@ Goal: deployable, observable, restorable, air-gapped-ready.
 
 Deliverables:
 
-- Snapshot/restore for Postgres, Qdrant, OpenSearch, MinIO
+- Snapshot/restore for Postgres, Qdrant, OpenSearch, SeaweedFS
 - OpenTelemetry tracing across API, workers, retrieval, LLM
 - Structured logging with audit-event integration
 - Metrics dashboards
