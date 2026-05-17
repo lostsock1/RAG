@@ -21,6 +21,21 @@ dev = [
     "pytest>=8.3,<9",
     "httpx>=0.28,<1",
 ]
+ml = [
+    "sentence-transformers>=3.3,<4",
+    "FlagEmbedding>=1.2,<2",
+]
+vector-db = [
+    "qdrant-client>=1.12,<2",
+]
+search = [
+    "opensearch-py>=2.7,<3",
+]
+ingestion = [
+    "uber-rag[ml]",
+    "uber-rag[vector-db]",
+    "uber-rag[search]",
+]
 
 [build-system]
 requires = ["setuptools>=75"]
