@@ -9,6 +9,7 @@ from alembic import command
 from alembic.config import Config
 import pytest
 from sqlalchemy import create_engine, select
+from sqlalchemy import insert
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
@@ -20,15 +21,21 @@ from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.repositories.ingestion import (
     create_ingestion_stages,
+    ensure_ingestion_stages,
     get_stages_for_run,
     store_parsed_artifact,
+    update_run_status,
     update_stage_status,
 )
-from app.schemas.parsed_artifacts import ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
+from app.schemas.parsed_artifacts import OcrProvenance, ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
+from app.services.ocr import OcrResult, StubOcrService
 from app.services.parsers.docling_backend import DoclingDocumentParser
-from app.services.storage import MaterializedObject
+from app.services.parsers.remote_backend import RemoteDocumentParser
+from app.services.storage import MaterializedObject, StorageAdapter
 from app.workflows.dispatcher import InProcessDispatcher
+from app.workflows.pipeline_runner import PipelineRunner
 from app.workflows.stages import (
+    _resolve_parser,
     run_parse_stage,
     run_persist_artifact_stage,
     run_quality_report_stage,
@@ -92,7 +99,7 @@ def seeded_env():
             run = IngestionRun(
                 document_id=document.id,
                 tenant_id=tenant_id,
-                parser_backend="docling",
+                parser_backend="docling-local",
                 source_hash=document.source_hash,
             )
             session.add(run)
@@ -131,7 +138,7 @@ def _make_test_artifact(document_id) -> ParsedArtifact:
             ParsedPage(page_number=2, text="Hello world from page 2", blocks=[]),
         ],
         tables=[ParsedTable(page_number=1, bbox=[0, 0, 100, 50], markdown="|a|b|")],
-        provenance=ParserProvenance(parser_backend="docling", parser_version="2.x", profile="gpu-local"),
+        provenance=ParserProvenance(parser_backend="docling-local", parser_version="2.x", profile="local-gpu"),
     )
 
 
@@ -143,6 +150,16 @@ def test_run_parse_stage_calls_parser_and_checkpoints(seeded_env) -> None:
     test_artifact = _make_test_artifact(document_id)
 
     parser = DoclingDocumentParser(converter=lambda _req: test_artifact)
+    ocr_service = StubOcrService(
+        result=OcrResult(
+            applied=True,
+            engine="tesseract",
+            provider="docling-local",
+            status="applied",
+            page_numbers=[2],
+            notes=["ocr used on scanned page"],
+        )
+    )
 
     result = run_parse_stage(
         run_id=run_id,
@@ -150,9 +167,10 @@ def test_run_parse_stage_calls_parser_and_checkpoints(seeded_env) -> None:
         document_id=document_id,
         object_key="documents/dispatcher.txt",
         content_type="text/plain",
-        profile="gpu-local",
-        parser_backend="docling",
+        profile="local-gpu",
+        parser_backend="docling-local",
         parser=parser,
+        ocr_service=ocr_service,
     )
 
     assert result is not None
@@ -164,7 +182,15 @@ def test_run_parse_stage_calls_parser_and_checkpoints(seeded_env) -> None:
     assert parse.status == "completed"
     assert parse.details["page_count"] == 2
     assert parse.details["table_count"] == 1
-    assert parse.details["parser_backend"] == "docling"
+    assert parse.details["parser_backend"] == "docling-local"
+    assert parse.details["parser_profile"] == "local-gpu"
+    assert result.provenance.parser_backend == "docling-local"
+    assert parse.details["ocr"]["applied"] is True
+    assert parse.details["ocr"]["status"] == "applied"
+    assert parse.details["ocr"]["provider"] == "docling-local"
+    assert parse.details["ocr"]["page_count"] == 1
+    assert result.provenance.ocr is not None
+    assert result.provenance.ocr.page_numbers == [2]
 
 
 def test_run_persist_artifact_stage_stores_artifact(seeded_env) -> None:
@@ -206,6 +232,133 @@ def test_run_quality_report_stage_checkpoints_report(seeded_env) -> None:
     assert quality.status == "completed"
     assert "quality_score" in quality.details
     assert quality.details["quality_score"] == 1.0  # both pages have non-empty text
+    assert quality.details["parser_profile"] == "local-gpu"
+    assert quality.details["counts"]["table_count"] == 1
+
+
+def test_run_parse_stage_marks_default_ocr_provenance_unverified(seeded_env) -> None:
+    run_id = seeded_env["run_id"]
+    document_id = seeded_env["document_id"]
+    parse_stage_id = seeded_env["stage_ids"]["parse"]
+
+    parser = DoclingDocumentParser(converter=lambda _req: _make_test_artifact(document_id))
+
+    result = run_parse_stage(
+        run_id=run_id,
+        stage_id=parse_stage_id,
+        document_id=document_id,
+        object_key="documents/dispatcher.txt",
+        content_type="text/plain",
+        profile="local-cpu",
+        parser_backend="docling-local",
+        parser=parser,
+    )
+
+    assert result is not None
+    assert result.provenance.ocr is not None
+    assert result.provenance.ocr.status == "unverified"
+    assert result.provenance.ocr.applied is None
+    assert result.provenance.ocr.provider == "docling-local"
+
+    parse = next(s for s in get_stages_for_run(run_id=run_id) if s.stage_name == "parse")
+    assert parse.details["ocr"]["status"] == "unverified"
+    assert parse.details["ocr"]["applied"] is None
+
+
+def test_run_parse_stage_uses_remote_truthful_default_ocr_provenance(seeded_env) -> None:
+    run_id = seeded_env["run_id"]
+    document_id = seeded_env["document_id"]
+    parse_stage_id = seeded_env["stage_ids"]["parse"]
+
+    remote_artifact = ParsedArtifact(
+        document_id=document_id,
+        pages=[ParsedPage(page_number=1, text="remote page", blocks=[])],
+        tables=[],
+        provenance=ParserProvenance(
+            parser_backend="remote-api",
+            parser_version="1.0",
+            profile="remote-api",
+        ),
+    )
+    parser = RemoteDocumentParser(invoke_remote_parser=lambda _req: remote_artifact)
+
+    result = run_parse_stage(
+        run_id=run_id,
+        stage_id=parse_stage_id,
+        document_id=document_id,
+        object_key="documents/remote.txt",
+        content_type="text/plain",
+        profile="remote-api",
+        parser_backend="remote-api",
+        parser=parser,
+    )
+
+    assert result is not None
+    assert result.provenance.ocr is not None
+    assert result.provenance.ocr.status == "unverified"
+    assert result.provenance.ocr.provider == "remote-api"
+    assert result.provenance.ocr.engine == "remote-service"
+
+    parse = next(s for s in get_stages_for_run(run_id=run_id) if s.stage_name == "parse")
+    assert parse.details["ocr"]["provider"] == "remote-api"
+    assert parse.details["ocr"]["engine"] == "remote-service"
+
+
+def test_run_parse_stage_preserves_parser_supplied_ocr_provenance(seeded_env) -> None:
+    run_id = seeded_env["run_id"]
+    document_id = seeded_env["document_id"]
+    parse_stage_id = seeded_env["stage_ids"]["parse"]
+
+    parser_artifact = ParsedArtifact(
+        document_id=document_id,
+        pages=[ParsedPage(page_number=1, text="page", blocks=[])],
+        tables=[],
+        provenance=ParserProvenance(
+            parser_backend="docling-local",
+            parser_version="2.x",
+            profile="local-cpu",
+            ocr=OcrProvenance(
+                status="applied",
+                applied=True,
+                engine="tesseract",
+                provider="docling-local",
+                page_numbers=[1],
+                notes=["parser detected OCR"],
+            ),
+        ),
+    )
+    parser = DoclingDocumentParser(converter=lambda _req: parser_artifact)
+    ocr_service = StubOcrService(
+        result=OcrResult(
+            status="unverified",
+            applied=None,
+            engine="remote-service",
+            provider="remote-api",
+            notes=["fallback should not replace parser provenance"],
+        )
+    )
+
+    result = run_parse_stage(
+        run_id=run_id,
+        stage_id=parse_stage_id,
+        document_id=document_id,
+        object_key="documents/dispatcher.txt",
+        content_type="text/plain",
+        profile="local-cpu",
+        parser_backend="docling-local",
+        parser=parser,
+        ocr_service=ocr_service,
+    )
+
+    assert result is not None
+    assert result.provenance.ocr is not None
+    assert result.provenance.ocr.status == "applied"
+    assert result.provenance.ocr.provider == "docling-local"
+    assert result.provenance.ocr.notes == ["parser detected OCR"]
+
+    parse = next(s for s in get_stages_for_run(run_id=run_id) if s.stage_name == "parse")
+    assert parse.details["ocr"]["status"] == "applied"
+    assert parse.details["ocr"]["provider"] == "docling-local"
 
 
 @pytest.fixture()
@@ -269,7 +422,7 @@ def dispatcher_env():
             run = IngestionRun(
                 document_id=document.id,
                 tenant_id=tenant_id,
-                parser_backend="docling",
+                parser_backend="docling-local",
                 source_hash=document.source_hash,
             )
             session.add(run)
@@ -302,6 +455,16 @@ def test_in_process_dispatcher_runs_all_stages(dispatcher_env) -> None:
         parser=parser,
         parser_backend="docling-local",
         parser_profile="local-cpu",
+        ocr_service=StubOcrService(
+            result=OcrResult(
+                applied=True,
+                engine="tesseract",
+                provider="docling-local",
+                status="applied",
+                page_numbers=[1],
+                notes=["ocr used for first page"],
+            )
+        ),
     )
 
     dispatcher._execute_pipeline(run_id)
@@ -320,12 +483,14 @@ def test_in_process_dispatcher_runs_all_stages(dispatcher_env) -> None:
 
     parse_stage = next(stage for stage in stages if stage.stage_name == "parse")
     assert parse_stage.details["parser_backend"] == "docling-local"
+    assert parse_stage.details["ocr"]["engine"] == "tesseract"
 
     with session_factory() as session:
         artifact_record = session.scalar(select(ParsedArtifactRecord).where(ParsedArtifactRecord.run_id == run_id))
 
     assert artifact_record is not None
     assert artifact_record.artifact_json["provenance"]["profile"] == "local-cpu"
+    assert artifact_record.artifact_json["provenance"]["ocr"]["page_numbers"] == [1]
 
 
 def test_in_process_dispatcher_marks_run_failed_on_stage_error(dispatcher_env) -> None:
@@ -355,6 +520,140 @@ def test_in_process_dispatcher_marks_run_failed_on_stage_error(dispatcher_env) -
     assert "Parser exploded" in parse_stage.details["error"]
 
 
+def test_resolve_parser_accepts_docling_local_and_rejects_legacy_docling_name() -> None:
+    assert isinstance(_resolve_parser("docling-local"), DoclingDocumentParser)
+
+    with pytest.raises(ValueError) as exc_info:
+        _resolve_parser("docling")
+
+    assert "docling-local" in str(exc_info.value)
+
+
+def test_in_process_dispatcher_skips_when_run_cannot_be_claimed(dispatcher_env) -> None:
+    run_id = dispatcher_env["run_id"]
+
+    update_run_status(run_id=run_id, status="running")
+
+    parser = DoclingDocumentParser(converter=lambda _req: (_ for _ in ()).throw(AssertionError("parser should not run")))
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+    )
+
+    dispatcher._execute_pipeline(run_id)
+
+    assert get_stages_for_run(run_id=run_id) == []
+
+
+def test_in_process_dispatcher_reruns_parse_when_checkpoint_missing(dispatcher_env) -> None:
+    run_id = dispatcher_env["run_id"]
+    document_id = dispatcher_env["document_id"]
+    tenant_id = dispatcher_env["tenant_id"]
+
+    stages = ensure_ingestion_stages(
+        run_id=run_id,
+        tenant_id=tenant_id,
+        stage_names=["parse", "persist_artifact", "quality_report"],
+    )
+    update_stage_status(stage_id=stages[0].id, status="completed", details={"page_count": 1})
+    update_stage_status(stage_id=stages[1].id, status="failed", details={"error": "persist missing"})
+    update_stage_status(stage_id=stages[2].id, status="queued")
+    update_run_status(run_id=run_id, status="queued")
+
+    test_artifact = _make_test_artifact(document_id)
+    parser = DoclingDocumentParser(converter=lambda _req: test_artifact)
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+    )
+
+    dispatcher._execute_pipeline(run_id)
+
+    with session_factory() as session:
+        artifact_record = session.scalar(select(ParsedArtifactRecord).where(ParsedArtifactRecord.run_id == run_id))
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+
+    assert artifact_record is not None
+    assert run is not None
+    assert run.status == "completed"
+
+    refreshed_stages = get_stages_for_run(run_id=run_id)
+    parse_stage = next(stage for stage in refreshed_stages if stage.stage_name == "parse")
+    assert parse_stage.status == "completed"
+    assert parse_stage.details["retry_reset_reason"] == "artifact_missing_for_completed_parse"
+
+
+def test_in_process_dispatcher_reloads_legacy_artifact_payload_when_parse_is_skipped(dispatcher_env) -> None:
+    run_id = dispatcher_env["run_id"]
+    document_id = dispatcher_env["document_id"]
+    tenant_id = dispatcher_env["tenant_id"]
+
+    stages = ensure_ingestion_stages(
+        run_id=run_id,
+        tenant_id=tenant_id,
+        stage_names=["parse", "persist_artifact", "quality_report"],
+    )
+    update_stage_status(stage_id=stages[0].id, status="completed", details={"page_count": 1, "parser_backend": "docling-local"})
+    update_stage_status(stage_id=stages[1].id, status="queued")
+    update_stage_status(stage_id=stages[2].id, status="queued")
+    update_run_status(run_id=run_id, status="queued")
+
+    legacy_payload = {
+        "document_id": str(document_id),
+        "pages": [{"page_number": 1, "text": "legacy page", "blocks": []}],
+        "tables": [],
+        "provenance": {
+            "parser_backend": "docling",
+            "parser_version": "2.x",
+            "profile": "gpu-local",
+            "ocr": {
+                "status": "applied",
+                "applied": True,
+                "engine": "tesseract",
+                "provider": "docling-local",
+                "page_numbers": [1],
+                "notes": ["legacy artifact"],
+            },
+        },
+    }
+
+    with session_factory() as session:
+        session.execute(
+            insert(ParsedArtifactRecord).values(
+                run_id=run_id,
+                tenant_id=tenant_id,
+                artifact_type="structured",
+                artifact_json=legacy_payload,
+                artifact_hash="legacy-hash",
+            )
+        )
+        session.commit()
+
+    parser = DoclingDocumentParser(converter=lambda _req: (_ for _ in ()).throw(AssertionError("parse should stay skipped")))
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+    )
+
+    dispatcher._execute_pipeline(run_id)
+
+    with session_factory() as session:
+        artifact_record = session.scalar(select(ParsedArtifactRecord).where(ParsedArtifactRecord.run_id == run_id))
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+
+    assert artifact_record is not None
+    assert artifact_record.artifact_json["pages"][0]["text"] == "legacy page"
+    assert run is not None
+    assert run.status == "completed"
+
+    refreshed_stages = get_stages_for_run(run_id=run_id)
+    assert next(stage for stage in refreshed_stages if stage.stage_name == "persist_artifact").status == "completed"
+    assert next(stage for stage in refreshed_stages if stage.stage_name == "quality_report").status == "completed"
+
+
 def test_stage_skips_if_already_completed(seeded_env) -> None:
     run_id = seeded_env["run_id"]
     document_id = seeded_env["document_id"]
@@ -364,7 +663,8 @@ def test_stage_skips_if_already_completed(seeded_env) -> None:
     update_stage_status(
         stage_id=parse_stage_id,
         status="completed",
-        details={"page_count": 99, "table_count": 7, "parser_backend": "docling"},
+        details={"page_count": 99, "table_count": 7, "parser_backend": "docling-local"},
+        
     )
 
     test_artifact = _make_test_artifact(document_id)
@@ -376,8 +676,8 @@ def test_stage_skips_if_already_completed(seeded_env) -> None:
         document_id=document_id,
         object_key="documents/dispatcher.txt",
         content_type="text/plain",
-        profile="gpu-local",
-        parser_backend="docling",
+        profile="local-gpu",
+        parser_backend="docling-local",
         parser=parser,
     )
 
@@ -396,7 +696,7 @@ def test_in_process_dispatcher_materializes_object_and_cleans_up(dispatcher_env,
     materialized_file.write_text("hello")
     cleanup_called = {"value": False}
 
-    class FakeStorage:
+    class FakeStorage(StorageAdapter):
         def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
             def _cleanup() -> None:
                 cleanup_called["value"] = True
@@ -429,7 +729,7 @@ def test_in_process_dispatcher_cleans_up_on_parse_failure(dispatcher_env, tmp_pa
     materialized_file.write_text("broken")
     cleanup_called = {"value": False}
 
-    class FakeStorage:
+    class FakeStorage(StorageAdapter):
         def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
             def _cleanup() -> None:
                 cleanup_called["value"] = True
@@ -453,3 +753,114 @@ def test_in_process_dispatcher_cleans_up_on_parse_failure(dispatcher_env, tmp_pa
         run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
     assert run is not None
     assert run.status == "failed"
+
+
+def test_pipeline_runner_executes_all_stages_end_to_end(dispatcher_env) -> None:
+    """PipelineRunner.run executes parse -> persist -> quality and marks run completed."""
+    run_id = dispatcher_env["run_id"]
+    document_id = dispatcher_env["document_id"]
+
+    test_artifact = _make_test_artifact(document_id)
+    parser = DoclingDocumentParser(converter=lambda _req: test_artifact)
+    runner = PipelineRunner(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        ocr_service=StubOcrService(
+            result=OcrResult(
+                applied=True,
+                engine="tesseract",
+                provider="docling-local",
+                status="applied",
+                page_numbers=[1],
+                notes=["ocr used for first page"],
+            )
+        ),
+    )
+
+    runner.run(run_id)
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+    assert run is not None
+    assert run.status == "completed"
+
+    stages = get_stages_for_run(run_id=run_id)
+    assert len(stages) == 3
+    for stage in stages:
+        assert stage.status == "completed", f"Stage {stage.stage_name} is {stage.status}, expected completed"
+
+
+def test_pipeline_runner_marks_run_failed_on_error(dispatcher_env) -> None:
+    """PipelineRunner.run marks the run as failed when a stage raises."""
+    run_id = dispatcher_env["run_id"]
+
+    parser = DoclingDocumentParser(converter=lambda _req: (_ for _ in ()).throw(RuntimeError("Runner boom")))
+    runner = PipelineRunner(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+    )
+
+    runner.run(run_id)
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+    assert run is not None
+    assert run.status == "failed"
+
+
+def test_in_process_dispatcher_delegates_to_pipeline_runner(dispatcher_env) -> None:
+    """InProcessDispatcher._execute_pipeline delegates to PipelineRunner.run."""
+    run_id = dispatcher_env["run_id"]
+    calls: list = []
+
+    class RunnerSpy:
+        def run(self, run_id_arg) -> None:
+            calls.append(run_id_arg)
+
+    dispatcher = InProcessDispatcher(
+        parser=DoclingDocumentParser(converter=lambda _req: _make_test_artifact(dispatcher_env["document_id"])),
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        runner=RunnerSpy(),
+    )
+
+    dispatcher._execute_pipeline(run_id)
+
+    assert len(calls) == 1
+    assert calls[0] == run_id
+
+
+def test_pipeline_runner_materializes_and_cleans_up(dispatcher_env, tmp_path: Path) -> None:
+    """PipelineRunner.run materializes storage and cleans up after completion."""
+    materialized_file = tmp_path / "runner-materialized.txt"
+    materialized_file.write_text("hello")
+    cleanup_called = {"value": False}
+
+    class FakeStorage(StorageAdapter):
+        def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
+            def _cleanup() -> None:
+                cleanup_called["value"] = True
+            return MaterializedObject(local_path=materialized_file, cleanup=_cleanup)
+
+    run_id = dispatcher_env["run_id"]
+    document_id = dispatcher_env["document_id"]
+
+    test_artifact = _make_test_artifact(document_id)
+    parser = DoclingDocumentParser(converter=lambda _req: test_artifact)
+    runner = PipelineRunner(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        storage=FakeStorage(),
+    )
+
+    runner.run(run_id)
+
+    assert cleanup_called["value"] is True
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+    assert run is not None
+    assert run.status == "completed"

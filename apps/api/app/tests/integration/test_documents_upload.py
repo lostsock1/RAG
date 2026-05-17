@@ -240,6 +240,34 @@ def test_upload_reuses_existing_document_hash_and_creates_new_ingestion_run(
         assert latest_audit.details["object_key"] == first_payload["object_key"]
 
 
+def test_upload_uses_deterministic_object_key_for_same_hash(
+    client: TestClient,
+    auth_context: RequestContext,
+    auth_headers: dict[str, str],
+) -> None:
+    first = client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers,
+        files={"file": ("sample.txt", b"hello world", "text/plain")},
+        data={"title": "Sample", "source_type": "loose_document"},
+    )
+    second = client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers,
+        files={"file": ("sample-copy.md", b"hello world", "text/markdown")},
+        data={"title": "Sample Copy", "source_type": "loose_document"},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+
+    source_hash = first.json()["source_hash"]
+    expected_key = f"documents/{auth_context.tenant_id}/{source_hash}"
+
+    assert first.json()["object_key"] == expected_key
+    assert second.json()["object_key"] == expected_key
+
+
 def test_upload_works_with_s3_compatible_storage_adapter_and_reuses_object_key(
     client: TestClient,
     auth_headers: dict[str, str],

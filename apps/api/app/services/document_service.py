@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
-from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from app.core.request_context import RequestContext
 from app.db.models.document import Document
@@ -31,9 +30,8 @@ class UploadResult:
     ingestion_run_id: UUID
 
 
-def build_object_key(*, tenant_id: str, file_name: str) -> str:
-    suffix = Path(file_name).suffix
-    return f"documents/{tenant_id}/{uuid4()}{suffix}"
+def build_object_key(*, tenant_id: str, source_hash: str) -> str:
+    return f"documents/{tenant_id}/{source_hash}"
 
 
 def upload_document(
@@ -46,6 +44,10 @@ def upload_document(
     source_hash = sha256(payload.content).hexdigest()
     tenant_id = UUID(context.tenant_id)
     user_id = UUID(context.user_id)
+    object_key = build_object_key(
+        tenant_id=context.tenant_id,
+        source_hash=source_hash,
+    )
     existing_document = get_live_document_by_source_hash(
         tenant_id=tenant_id,
         owner_user_id=user_id,
@@ -54,10 +56,8 @@ def upload_document(
 
     if existing_document is not None:
         document = existing_document
-        object_key = document.object_key or build_object_key(tenant_id=context.tenant_id, file_name=payload.file_name)
+        object_key = document.object_key or object_key
     else:
-        object_key = build_object_key(tenant_id=context.tenant_id, file_name=payload.file_name)
-
         storage.put_object(
             object_key=object_key,
             content=payload.content,
@@ -76,6 +76,7 @@ def upload_document(
             file_size_bytes=len(payload.content),
             object_key=object_key,
         )
+        object_key = document.object_key or object_key
 
     run = create_ingestion_run(
         document_id=document.id,

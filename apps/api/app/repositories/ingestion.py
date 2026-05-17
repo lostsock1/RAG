@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from hashlib import sha256
 import json
+from typing import cast
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
+from sqlalchemy import delete, select, update as sa_update
+from sqlalchemy.exc import IntegrityError
 
 from app.db.base import session_factory
 from app.db.models.acl import AclGrant
@@ -132,6 +135,83 @@ def write_ingestion_job_get_denied_audit_event(*, tenant_id: str, user_id: str, 
         session.commit()
 
 
+def write_ingestion_job_retry_denied_audit_event(*, tenant_id: str, user_id: str, job_id: UUID) -> None:
+    with session_factory() as session:
+        if session.bind is None:
+            raise RuntimeError(
+                "Audit persistence is not configured: session_factory has no database bind."
+            )
+
+        session.add(
+            AuditEvent(
+                tenant_id=UUID(tenant_id),
+                user_id=UUID(user_id),
+                action="ingestion.job.retry.denied",
+                resource_type="ingestion_run",
+                resource_id=None,
+                details={
+                    "job_id": str(job_id),
+                    "reason": "not_found_or_denied",
+                },
+            )
+        )
+        session.commit()
+
+
+def write_ingestion_job_retry_conflict_audit_event(
+    *, tenant_id: str, user_id: str, run: IngestionRun, current_status: str
+) -> None:
+    with session_factory() as session:
+        if session.bind is None:
+            raise RuntimeError(
+                "Audit persistence is not configured: session_factory has no database bind."
+            )
+
+        session.add(
+            AuditEvent(
+                tenant_id=UUID(tenant_id),
+                user_id=UUID(user_id),
+                action="ingestion.job.retry.conflict",
+                resource_type="ingestion_run",
+                resource_id=run.id,
+                details={
+                    "job_id": str(run.id),
+                    "document_id": str(run.document_id),
+                    "current_status": current_status,
+                    "reason": "non_retryable_status",
+                },
+            )
+        )
+        session.commit()
+
+
+def write_ingestion_job_retry_audit_event(
+    *, tenant_id: str, user_id: str, run: IngestionRun, previous_status: str
+) -> None:
+    with session_factory() as session:
+        if session.bind is None:
+            raise RuntimeError(
+                "Audit persistence is not configured: session_factory has no database bind."
+            )
+
+        session.add(
+            AuditEvent(
+                tenant_id=UUID(tenant_id),
+                user_id=UUID(user_id),
+                action="ingestion.job.retry",
+                resource_type="ingestion_run",
+                resource_id=run.id,
+                details={
+                    "job_id": str(run.id),
+                    "document_id": str(run.document_id),
+                    "previous_status": previous_status,
+                    "resulting_status": run.status,
+                },
+            )
+        )
+        session.commit()
+
+
 def store_parsed_artifact(*, run_id: UUID, artifact: ParsedArtifact) -> ParsedArtifactRecord:
     artifact_payload = artifact.model_dump(mode="json")
     artifact_hash = sha256(json.dumps(artifact_payload, sort_keys=True).encode("utf-8")).hexdigest()
@@ -183,14 +263,14 @@ def store_parsed_artifact(*, run_id: UUID, artifact: ParsedArtifact) -> ParsedAr
                     quality_score=f"{report.quality_score:.2f}",
                     summary=report.summary,
                     warnings=report.warnings,
-                    raw_report_text=None,
+                    raw_report_text=report.raw_payload,
                 )
             )
         else:
             existing_report.quality_score = f"{report.quality_score:.2f}"
             existing_report.summary = report.summary
             existing_report.warnings = report.warnings
-            existing_report.raw_report_text = None
+            existing_report.raw_report_text = report.raw_payload
             session.execute(
                 delete(QualityReport).where(
                     QualityReport.run_id == run.id,
@@ -252,16 +332,11 @@ def write_ingestion_run_list_audit_event(*, tenant_id: str, user_id: str, run_id
 
 
 def create_ingestion_stages(*, run_id: UUID, tenant_id: UUID, stage_names: list[str]) -> list[IngestionStage]:
-    """Create IngestionStage records with status ``"queued"`` for each stage name."""
-    stages = [
-        IngestionStage(
-            run_id=run_id,
-            tenant_id=tenant_id,
-            stage_name=name,
-            status="queued",
-        )
-        for name in stage_names
-    ]
+    return ensure_ingestion_stages(run_id=run_id, tenant_id=tenant_id, stage_names=stage_names)
+
+
+def ensure_ingestion_stages(*, run_id: UUID, tenant_id: UUID, stage_names: list[str]) -> list[IngestionStage]:
+    """Return one canonical IngestionStage row per stage name, in input order."""
 
     with session_factory() as session:
         if session.bind is None:
@@ -269,11 +344,46 @@ def create_ingestion_stages(*, run_id: UUID, tenant_id: UUID, stage_names: list[
                 "Ingestion persistence is not configured: session_factory has no database bind."
             )
 
-        session.add_all(stages)
-        session.commit()
-        for s in stages:
-            session.refresh(s)
-        return stages
+        existing_stages = {
+            stage.stage_name: stage
+            for stage in session.scalars(
+                select(IngestionStage).where(
+                    IngestionStage.run_id == run_id,
+                    IngestionStage.stage_name.in_(stage_names),
+                )
+            ).all()
+        }
+
+        missing_stage_names = [name for name in stage_names if name not in existing_stages]
+        if missing_stage_names:
+            session.add_all(
+                [
+                    IngestionStage(
+                        run_id=run_id,
+                        tenant_id=tenant_id,
+                        stage_name=name,
+                        status="queued",
+                    )
+                    for name in missing_stage_names
+                ]
+            )
+            try:
+                session.commit()
+            except IntegrityError:
+                session.rollback()
+            existing_stages = {
+                stage.stage_name: stage
+                for stage in session.scalars(
+                    select(IngestionStage)
+                    .where(
+                        IngestionStage.run_id == run_id,
+                        IngestionStage.stage_name.in_(stage_names),
+                    )
+                    .order_by(IngestionStage.created_at.asc())
+                ).all()
+            }
+
+        return [existing_stages[name] for name in stage_names]
 
 
 def get_stages_for_run(*, run_id: UUID) -> list[IngestionStage]:
@@ -327,23 +437,78 @@ def update_run_status(*, run_id: UUID, status: str) -> None:
         session.commit()
 
 
-def recover_orphaned_runs() -> int:
-    """Reset all IngestionRun records with status ``"running"`` back to ``"queued"``.
-
-    Returns the count of reset rows.
-    """
-    from sqlalchemy import update as sa_update
-
+def try_claim_ingestion_run(*, run_id: UUID) -> IngestionRun | None:
     with session_factory() as session:
         if session.bind is None:
             raise RuntimeError(
                 "Ingestion persistence is not configured: session_factory has no database bind."
             )
 
-        result = session.execute(
+        result = cast(CursorResult, session.execute(
             sa_update(IngestionRun)
-            .where(IngestionRun.status == "running")
-            .values(status="queued")
-        )
+            .where(
+                IngestionRun.id == run_id,
+                IngestionRun.status == "queued",
+            )
+            .values(status="running")
+        ))
+        if result.rowcount == 0:
+            session.rollback()
+            return None
+
         session.commit()
-        return result.rowcount
+        return session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+
+
+def prepare_ingestion_run_for_retry(*, run_id: UUID) -> IngestionRun:
+    with session_factory() as session:
+        if session.bind is None:
+            raise RuntimeError(
+                "Ingestion persistence is not configured: session_factory has no database bind."
+            )
+
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+        if run is None:
+            raise RuntimeError(f"IngestionRun {run_id} not found.")
+        if run.status not in {"failed", "queued"}:
+            raise ValueError(f"Ingestion job cannot be retried from status {run.status}")
+
+        run.status = "queued"
+        stages = session.scalars(
+            select(IngestionStage)
+            .where(IngestionStage.run_id == run_id)
+            .order_by(IngestionStage.created_at.asc())
+        ).all()
+        for stage in stages:
+            if stage.status in {"failed", "running"}:
+                stage.status = "queued"
+                stage.details = {**(stage.details or {}), "retry_reset_reason": "manual_retry"}
+
+        session.commit()
+        session.refresh(run)
+        return run
+
+
+def recover_orphaned_runs() -> int:
+    """Reset all IngestionRun records with status ``"running"`` back to ``"queued"``.
+
+    Returns the count of reset rows.
+    """
+    with session_factory() as session:
+        if session.bind is None:
+            raise RuntimeError(
+                "Ingestion persistence is not configured: session_factory has no database bind."
+            )
+
+        runs = session.scalars(select(IngestionRun).where(IngestionRun.status == "running")).all()
+        running_stages = session.scalars(select(IngestionStage).where(IngestionStage.status == "running")).all()
+
+        for run in runs:
+            run.status = "queued"
+
+        for stage in running_stages:
+            stage.status = "queued"
+            stage.details = {**(stage.details or {}), "recovery_reset_reason": "startup_recovery"}
+
+        session.commit()
+        return len(runs)

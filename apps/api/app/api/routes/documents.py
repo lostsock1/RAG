@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 
+from app.core.config import get_settings
 from app.core.request_context import RequestContext
 from app.core.security import require_scopes
 from app.repositories.documents import list_documents_for_context, write_document_list_audit_event
@@ -41,7 +42,8 @@ async def upload_document_route(
     context: RequestContext = Depends(require_scopes(["documents:write"])),
 ) -> DocumentUploadResponse:
     content = await file.read()
-    parser_backend = request.app.state.settings.parser_backend
+    settings = getattr(request.app.state, "settings", None) or get_settings()
+    parser_backend = settings.parser_backend
     result = upload_document(
         context=context,
         payload=UploadPayload(

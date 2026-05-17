@@ -5,6 +5,7 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 
 from app.db.base import session_factory
 from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
@@ -143,18 +144,28 @@ def get_or_create_document_by_source_hash(
         if existing_document is not None:
             return existing_document
 
-    return create_document_with_owner_acl(
-        tenant_id=tenant_id,
-        owner_user_id=owner_user_id,
-        title=title,
-        source_type=source_type,
-        document_type=document_type,
-        language=language,
-        source_hash=source_hash,
-        file_name=file_name,
-        file_size_bytes=file_size_bytes,
-        object_key=object_key,
-    )
+    try:
+        return create_document_with_owner_acl(
+            tenant_id=tenant_id,
+            owner_user_id=owner_user_id,
+            title=title,
+            source_type=source_type,
+            document_type=document_type,
+            language=language,
+            source_hash=source_hash,
+            file_name=file_name,
+            file_size_bytes=file_size_bytes,
+            object_key=object_key,
+        )
+    except IntegrityError:
+        existing_document = get_live_document_by_source_hash(
+            tenant_id=tenant_id,
+            owner_user_id=owner_user_id,
+            source_hash=source_hash,
+        )
+        if existing_document is None:
+            raise
+        return existing_document
 
 
 def get_live_document_by_source_hash(*, tenant_id: UUID, owner_user_id: UUID, source_hash: str) -> Document | None:

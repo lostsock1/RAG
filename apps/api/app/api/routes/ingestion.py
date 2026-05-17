@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.core.request_context import RequestContext
 from app.core.security import require_scopes
@@ -10,6 +10,9 @@ from app.repositories.ingestion import (
     list_ingestion_runs_for_context,
     write_ingestion_job_get_denied_audit_event,
     write_ingestion_job_get_audit_event,
+    write_ingestion_job_retry_denied_audit_event,
+    write_ingestion_job_retry_conflict_audit_event,
+    write_ingestion_job_retry_audit_event,
     write_ingestion_run_list_audit_event,
 )
 from app.schemas.ingestion import (
@@ -18,7 +21,7 @@ from app.schemas.ingestion import (
     IngestionRunListResponse,
     IngestionRunResponse,
 )
-from app.services.ingestion_service import get_ingestion_job
+from app.services.ingestion_service import get_ingestion_job, retry_ingestion_job
 
 router = APIRouter()
 
@@ -75,6 +78,64 @@ def get_ingestion_job_route(
         tenant_id=context.tenant_id,
         user_id=context.user_id,
         run=run,
+    )
+
+    return IngestionJobResponse.model_validate(run)
+
+
+@router.post("/jobs/{job_id}/retry", response_model=IngestionJobResponse)
+async def retry_ingestion_job_route(
+    job_id: UUID,
+    request: Request,
+    context: RequestContext = Depends(require_scopes(["documents:write"])),
+) -> IngestionJobResponse:
+    existing_run = get_ingestion_job(
+        job_id=job_id,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        group_ids=context.group_ids,
+    )
+    if existing_run is None:
+        write_ingestion_job_retry_denied_audit_event(
+            tenant_id=context.tenant_id,
+            user_id=context.user_id,
+            job_id=job_id,
+        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingestion job not found")
+
+    previous_status = existing_run.status
+
+    try:
+        run = await retry_ingestion_job(
+            request=request,
+            job_id=job_id,
+            tenant_id=context.tenant_id,
+            user_id=context.user_id,
+            group_ids=context.group_ids,
+        )
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_409_CONFLICT:
+            write_ingestion_job_retry_conflict_audit_event(
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                run=existing_run,
+                current_status=previous_status,
+            )
+        raise
+
+    if run is None:
+        write_ingestion_job_retry_denied_audit_event(
+            tenant_id=context.tenant_id,
+            user_id=context.user_id,
+            job_id=job_id,
+        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ingestion job not found")
+
+    write_ingestion_job_retry_audit_event(
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        run=run,
+        previous_status=previous_status,
     )
 
     return IngestionJobResponse.model_validate(run)

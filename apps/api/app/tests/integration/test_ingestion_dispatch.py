@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
+from typing import cast
 from uuid import UUID, uuid4
 
 from alembic import command
@@ -41,7 +42,7 @@ class FakeS3ClientWithDownload:
         self.objects: dict[str, bytes] = {}
 
     def put_object(self, **kwargs: object) -> None:
-        key = kwargs["Key"]
+        key = cast(str, kwargs["Key"])
         body = kwargs["Body"]
         self.objects[key] = body if isinstance(body, bytes) else b""
 
@@ -97,7 +98,7 @@ def client(auth_context: RequestContext):
             pages=[ParsedPage(page_number=1, text="test content", blocks=[])],
             tables=[],
             provenance=ParserProvenance(
-                parser_backend="docling", parser_version="1.0.0", profile="local-cpu"
+                parser_backend="docling-local", parser_version="1.0.0", profile="local-cpu"
             ),
         )
         parser = DoclingDocumentParser(converter=lambda req: expected_artifact)
@@ -183,7 +184,7 @@ def test_upload_and_parse_through_s3_compatible_storage(client):
         pages=[ParsedPage(page_number=1, text="s3 materialized content", blocks=[])],
         tables=[],
         provenance=ParserProvenance(
-            parser_backend="docling", parser_version="1.0.0", profile="local-cpu"
+            parser_backend="docling-local", parser_version="1.0.0", profile="local-cpu"
         ),
     )
     parser = DoclingDocumentParser(converter=lambda req: expected_artifact)
