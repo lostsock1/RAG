@@ -60,17 +60,22 @@ POST   /api/v1/documents/{document_id}/index
 POST   /api/v1/documents/{document_id}/reindex
 GET    /api/v1/ingestion/jobs/{job_id}
 GET    /api/v1/ingestion/jobs
+POST   /api/v1/ingestion/jobs/{job_id}/retry
 POST   /api/v1/ingestion/jobs/{job_id}/cancel
 ```
 
-Phase 2 foundation note:
+Phase 2 ingestion note:
 - `GET /api/v1/ingestion/jobs` is the canonical list route.
 - `GET /api/v1/ingestion/runs` remains a compatibility alias during the foundation slice, but it is not the published contract route.
 - Current foundation payload returns persisted ingestion-run metadata only: `id`, `document_id`, `tenant_id`, `status`, `workflow_backend`, `parser_backend`, `source_hash`, `created_at`, `updated_at`.
-- In this slice, ingestion jobs are **persistence/status scaffolding**, not active workflow execution. `workflow_backend="scaffold"` means the run has been recorded but no Temporal dispatch is happening yet.
+- Internal persistence note only: parsed artifacts now store deployment-truthful parser provenance (`parser_backend`, `parser_version`, `parser_profile`) plus normalized OCR provenance (`status`, `applied`, `engine`, `provider`, `page_numbers`) in the DB artifact contract.
+- Internal persistence note only: quality reports now store richer structured counts (`page_count`, `table_count`, `non_empty_text_pages`, `empty_text_pages`, `block_count`, `table_page_count`, `ocr_page_count`), warnings, parser provenance, OCR summary, and a raw JSON payload in `quality_reports.raw_report_text` without requiring a schema migration. This does **not** yet change the public `/documents/{document_id}/quality-report` OpenAPI schema.
+- `POST /api/v1/ingestion/jobs/{job_id}/retry` requires `documents:write`, reuses the existing stored object, returns `404` for not-found/denied runs plus `409` for non-retryable states (`running`, `completed`), and emits retry audit events for success (`ingestion.job.retry`), denied/not-found (`ingestion.job.retry.denied`), and conflict (`ingestion.job.retry.conflict`) outcomes.
+- Runs are dispatched through the workflow-backend-neutral dispatcher seam. `workflow_backend="scaffold"` still means the run record is orchestration-agnostic rather than Temporal-specific.
+- **Workflow backend selection:** In-process remains the default workflow backend (`WORKFLOW_BACKEND=in_process`). Temporal dispatch is explicit opt-in via `WORKFLOW_BACKEND=temporal` plus `TEMPORAL_HOST_PORT`. When `temporal` is selected without required config, startup fails clearly — no silent fallback to in-process. The Temporal worker skeleton reuses the shared pipeline runner (`PipelineRunner`) and does not redefine stage business logic.
 
 Upload foundation note:
-- `POST /api/v1/documents/upload` currently returns document metadata plus `ingestion_run_id` so API clients can poll the persistence/status scaffold endpoints.
+- `POST /api/v1/documents/upload` currently returns document metadata plus `ingestion_run_id` so API clients can poll the persistence/status scaffolding endpoints.
 
 ### ACL
 

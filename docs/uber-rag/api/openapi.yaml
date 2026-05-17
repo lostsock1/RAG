@@ -459,11 +459,49 @@ paths:
       tags: [Ingestion]
       responses:
         "200":
-          description: Foundation-slice ingestion job list for persistence/status scaffolding
+          description: Foundation-slice ingestion job list for the workflow-backend-neutral dispatcher seam
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/IngestionJobList"
+
+  /ingestion/jobs/{job_id}/retry:
+    post:
+      summary: Retry a failed or queued ingestion job
+      operationId: retryIngestionJob
+      tags: [Ingestion]
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Existing ingestion job re-queued through the workflow-backend-neutral dispatcher seam
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestionJob"
+        "404":
+          description: Ingestion job not found or denied to the caller
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [detail]
+                properties:
+                  detail:
+                    type: string
+        "409":
+          description: Ingestion job is not retryable in its current state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [detail]
+                properties:
+                  detail:
+                    type: string
 
   /ingestion/jobs/{job_id}/cancel:
     post:
@@ -879,7 +917,7 @@ components:
     IngestionJob:
       type: object
       required: [id, document_id, tenant_id, status, workflow_backend, parser_backend, source_hash, created_at, updated_at]
-      description: Persisted ingestion-run metadata only. In the Phase 2 foundation slice, `workflow_backend` is `scaffold` until real workflow dispatch is implemented.
+      description: Persisted ingestion-run metadata only. In the Phase 2 foundation slice, `workflow_backend` is `scaffold` when the run is executed through the accepted workflow-backend-neutral dispatcher seam.
       properties:
         id: { type: string, format: uuid }
         document_id: { type: string, format: uuid }

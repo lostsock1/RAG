@@ -70,9 +70,11 @@
 - [x] Populate and expose ingestion stage progression.
 - [x] Exercise the live SeaweedFS backend in runtime/integration coverage.
 - [x] Replace parser stubs with real Docling-backed conversion.
-- [ ] Add OCR adapter execution path compatible with ADR-0011.
-- [ ] Harden dedup for concurrent uploads with DB-backed conflict handling.
-- [ ] Expand quality report fields to the richer contract-level report.
+- [x] Add OCR adapter execution path compatible with ADR-0011.
+- [x] Harden dedup for concurrent uploads with DB-backed conflict handling.
+- [x] Add retry/re-dispatch support for existing queued or failed ingestion runs.
+- [x] Expand quality report fields to the richer contract-level report.
+- [x] Add Temporal dispatch adapter and worker skeleton (explicit opt-in, in-process default preserved).
 
 ## Phase 3: Indexing and retrieval
 
