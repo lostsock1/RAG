@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Literal
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -9,18 +11,22 @@ import pytest
 import app.services.parsers.docling_backend as docling_backend
 from app.core.config import Settings
 from app.schemas.parsed_artifacts import ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
+from app.services.ocr import build_ocr_service
 from app.services.parsers.base import ParseRequest
 from app.services.parsers.docling_backend import DoclingDocumentParser
 from app.services.parsers.factory import build_document_parser
 from app.services.parsers.remote_backend import RemoteDocumentParser
 
 
-def _build_artifact(*, profile: str = "source-profile") -> ParsedArtifact:
+CanonicalProfile = Literal["local-cpu", "local-gpu", "remote-api"]
+
+
+def _build_artifact(*, profile: CanonicalProfile = "local-cpu") -> ParsedArtifact:
     return ParsedArtifact(
         document_id=UUID("11111111-1111-1111-1111-111111111111"),
         pages=[ParsedPage(page_number=1, text="Example", blocks=[])],
         tables=[ParsedTable(page_number=1, bbox=[0, 0, 1, 1], markdown="|a|b|")],
-        provenance=ParserProvenance(parser_backend="stub", parser_version="1.0", profile=profile),
+        provenance=ParserProvenance(parser_backend="docling-local", parser_version="1.0", profile=profile),
     )
 
 
@@ -32,12 +38,32 @@ def test_remote_document_parser_overrides_profile_from_request() -> None:
             document_id="11111111-1111-1111-1111-111111111111",
             object_key="documents/sample.txt",
             content_type="text/plain",
-            profile="gpu-local",
+            profile="remote-api",
+            parser_backend="remote-api",
         )
     )
 
-    assert artifact.provenance.parser_backend == "remote"
-    assert artifact.provenance.profile == "gpu-local"
+    assert artifact.provenance.parser_backend == "remote-api"
+    assert artifact.provenance.profile == "remote-api"
+
+
+def test_docling_document_parser_uses_request_backend_for_injected_converter() -> None:
+    parser = DoclingDocumentParser(
+        converter=lambda request: _build_artifact(profile=cast(CanonicalProfile, request.profile))
+    )
+
+    artifact = parser.parse(
+        ParseRequest(
+            document_id="11111111-1111-1111-1111-111111111111",
+            object_key="documents/sample.pdf",
+            content_type="application/pdf",
+            profile="local-gpu",
+            parser_backend="docling-local",
+        )
+    )
+
+    assert artifact.provenance.parser_backend == "docling-local"
+    assert artifact.provenance.profile == "local-gpu"
 
 
 def test_build_document_parser_maps_docling_to_local_docling_runtime(tmp_path: Path) -> None:
@@ -62,6 +88,21 @@ def test_build_document_parser_maps_docling_local_to_local_docling_runtime(tmp_p
     assert profile == "local-cpu"
 
 
+def test_build_document_parser_supports_local_gpu_profile_with_local_docling_runtime(tmp_path: Path) -> None:
+    parser, backend, profile = build_document_parser(
+        Settings(
+            parser_backend="docling",
+            parser_profile="local-gpu",
+            local_storage_dir=str(tmp_path),
+        )
+    )
+
+    assert isinstance(parser, DoclingDocumentParser)
+    assert parser._storage_root == tmp_path
+    assert backend == "docling-local"
+    assert profile == "local-gpu"
+
+
 def test_build_document_parser_allows_docling_with_seaweedfs_storage(tmp_path: Path) -> None:
     parser, backend, profile = build_document_parser(
         Settings(
@@ -76,12 +117,54 @@ def test_build_document_parser_allows_docling_with_seaweedfs_storage(tmp_path: P
     assert profile == "local-cpu"
 
 
-def test_build_document_parser_rejects_remote_backend_until_supported() -> None:
-    with pytest.raises(RuntimeError) as exc_info:
-        build_document_parser(Settings(parser_backend="remote"))
+def test_build_document_parser_supports_remote_api_profile_with_injected_adapter() -> None:
+    remote_parser = RemoteDocumentParser(invoke_remote_parser=lambda request: _build_artifact())
 
-    assert "not yet supported" in str(exc_info.value)
-    assert "remote" in str(exc_info.value)
+    parser, backend, profile = build_document_parser(
+        Settings(parser_backend="remote", parser_profile="remote-api"),
+        remote_parser=remote_parser,
+    )
+
+    assert parser is remote_parser
+    assert backend == "remote-api"
+    assert profile == "remote-api"
+
+
+def test_build_ocr_service_uses_remote_truthful_defaults_for_remote_api_profile() -> None:
+    service = build_ocr_service(Settings(parser_backend="remote", parser_profile="remote-api"))
+
+    assert service.inspect(
+        request=ParseRequest(
+            document_id="11111111-1111-1111-1111-111111111111",
+            object_key="documents/sample.txt",
+            content_type="text/plain",
+            profile="remote-api",
+            parser_backend="remote-api",
+        ),
+        artifact=_build_artifact(profile="remote-api"),
+    ).provider == "remote-api"
+
+
+def test_build_document_parser_rejects_remote_backend_without_injected_adapter() -> None:
+    with pytest.raises(RuntimeError) as exc_info:
+        build_document_parser(Settings(parser_backend="remote", parser_profile="remote-api"))
+
+    assert "remote parser adapter" in str(exc_info.value).lower()
+    assert "remote-api" in str(exc_info.value)
+
+
+def test_build_document_parser_rejects_unknown_profile(tmp_path: Path) -> None:
+    with pytest.raises(RuntimeError) as exc_info:
+        build_document_parser(
+            Settings(
+                parser_backend="docling",
+                parser_profile="moon-cluster",
+                local_storage_dir=str(tmp_path),
+            )
+        )
+
+    assert "Unknown parser profile" in str(exc_info.value)
+    assert "moon-cluster" in str(exc_info.value)
 
 
 def test_build_document_parser_rejects_unknown_backend() -> None:
@@ -101,7 +184,8 @@ def test_docling_document_parser_requires_configured_converter() -> None:
                 document_id="11111111-1111-1111-1111-111111111111",
                 object_key="documents/sample.pdf",
                 content_type="application/pdf",
-                profile="cpu-local",
+                profile="local-cpu",
+                parser_backend="docling-local",
             )
         )
 
@@ -117,7 +201,8 @@ def test_docling_document_parser_raises_when_local_storage_root_is_missing_file(
                 document_id="11111111-1111-1111-1111-111111111111",
                 object_key="documents/missing.pdf",
                 content_type="application/pdf",
-                profile="cpu-local",
+                profile="local-cpu",
+                parser_backend="docling-local",
             )
         )
 
@@ -145,7 +230,8 @@ def test_docling_document_parser_raises_clear_error_when_docling_package_is_miss
                 document_id="11111111-1111-1111-1111-111111111111",
                 object_key="documents/sample.pdf",
                 content_type="application/pdf",
-                profile="cpu-local",
+                profile="local-cpu",
+                parser_backend="docling-local",
             )
         )
 
@@ -198,7 +284,8 @@ def test_docling_document_parser_normalizes_pages_and_tables_from_local_file(
             document_id="11111111-1111-1111-1111-111111111111",
             object_key="documents/sample.pdf",
             content_type="application/pdf",
-            profile="cpu-local",
+            profile="local-cpu",
+            parser_backend="docling-local",
         )
     )
 
@@ -206,8 +293,8 @@ def test_docling_document_parser_normalizes_pages_and_tables_from_local_file(
     assert artifact.pages[0].text == "Page one"
     assert [table.page_number for table in artifact.tables] == [1]
     assert artifact.tables[0].bbox == [0.0, 0.0, 10.0, 20.0]
-    assert artifact.provenance.parser_backend == "docling"
-    assert artifact.provenance.profile == "cpu-local"
+    assert artifact.provenance.parser_backend == "docling-local"
+    assert artifact.provenance.profile == "local-cpu"
 
 
 def test_docling_document_parser_surfaces_underlying_conversion_reason(
@@ -235,7 +322,8 @@ def test_docling_document_parser_surfaces_underlying_conversion_reason(
                 document_id="11111111-1111-1111-1111-111111111111",
                 object_key="documents/broken.pdf",
                 content_type="application/pdf",
-                profile="cpu-local",
+                profile="local-cpu",
+                parser_backend="docling-local",
             )
         )
 
@@ -281,12 +369,13 @@ def test_docling_document_parser_uses_local_source_path_when_provided(
             object_key="ignored/by/materialized/path.pdf",
             content_type="application/pdf",
             profile="local-cpu",
+            parser_backend="docling-local",
             local_source_path=str(local_file),
         )
     )
 
     assert artifact.pages[0].text == "Materialized page"
-    assert artifact.provenance.parser_backend == "docling"
+    assert artifact.provenance.parser_backend == "docling-local"
     assert artifact.provenance.profile == "local-cpu"
 
 
@@ -328,7 +417,9 @@ def test_docling_document_parser_falls_back_to_storage_root_when_no_local_source
             object_key="documents/fallback.pdf",
             content_type="application/pdf",
             profile="local-cpu",
+            parser_backend="docling-local",
         )
     )
 
     assert artifact.pages[0].text == "Fallback page"
+    assert artifact.provenance.parser_backend == "docling-local"

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from app.schemas.parsed_artifacts import ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
+import pytest
+
+from app.schemas.parsed_artifacts import OcrProvenance, ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
 
 
 def test_parsed_artifact_requires_pages_tables_and_provenance() -> None:
@@ -10,7 +12,7 @@ def test_parsed_artifact_requires_pages_tables_and_provenance() -> None:
         document_id=UUID("11111111-1111-1111-1111-111111111111"),
         pages=[ParsedPage(page_number=1, text="Example", blocks=[])],
         tables=[ParsedTable(page_number=1, bbox=[0, 0, 100, 100], markdown="|a|b|")],
-        provenance=ParserProvenance(parser_backend="docling", parser_version="2.x", profile="gpu-local"),
+        provenance=ParserProvenance(parser_backend="docling-local", parser_version="2.x", profile="local-gpu"),
     )
 
     assert artifact.tables[0].markdown.startswith("|a|")
@@ -21,7 +23,23 @@ def test_parsed_artifact_uses_four_point_bounding_boxes() -> None:
         document_id=UUID("11111111-1111-1111-1111-111111111111"),
         pages=[ParsedPage(page_number=1, text="Example", blocks=[])],
         tables=[ParsedTable(page_number=1, bbox=[0, 0, 100, 100], markdown="|a|b|")],
-        provenance=ParserProvenance(parser_backend="docling", parser_version="2.x", profile="gpu-local"),
+        provenance=ParserProvenance(parser_backend="docling-local", parser_version="2.x", profile="local-gpu"),
     )
 
     assert artifact.tables[0].bbox == [0.0, 0.0, 100.0, 100.0]
+
+
+def test_parser_provenance_rejects_legacy_backend_and_profile_labels() -> None:
+    with pytest.raises(Exception):
+        ParserProvenance(parser_backend="docling", parser_version="2.x", profile="gpu-local")
+
+
+def test_ocr_provenance_rejects_legacy_provider_label() -> None:
+    with pytest.raises(Exception):
+        OcrProvenance(
+            status="applied",
+            applied=True,
+            engine="tesseract",
+            provider="docling",
+            page_numbers=[1],
+        )

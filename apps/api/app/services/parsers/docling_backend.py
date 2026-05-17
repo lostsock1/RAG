@@ -14,7 +14,7 @@ from app.services.parsers.base import DocumentParser, ParseRequest
 
 
 class DoclingDocumentParser(DocumentParser):
-    backend_name = "docling"
+    backend_name = "docling-local"
 
     def __init__(
         self,
@@ -25,9 +25,11 @@ class DoclingDocumentParser(DocumentParser):
         self._storage_root = storage_root
 
     def parse(self, request: ParseRequest) -> ParsedArtifact:
+        parser_backend = request.parser_backend or self.backend_name
+
         if self._converter is not None:
             artifact = self._converter(request)
-            artifact.provenance.parser_backend = self.backend_name
+            artifact.provenance.parser_backend = parser_backend
             artifact.provenance.profile = request.profile
             return artifact
 
@@ -60,7 +62,7 @@ class DoclingDocumentParser(DocumentParser):
             return _normalize_docling_result(
                 request=request,
                 conversion_result=conversion_result,
-                parser_backend=self.backend_name,
+                parser_backend=parser_backend,
                 parser_version=_resolve_docling_version(),
             )
         except Exception as exc:

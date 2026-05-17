@@ -10,6 +10,7 @@ from uuid import uuid4
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy import create_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
@@ -21,7 +22,10 @@ from app.db.models.acl import AclAllowedUser, AclGrant
 from app.db.models.document import Document
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
+from app.schemas.parsed_artifacts import ParsedArtifact, ParsedPage, ParserProvenance
+from app.services.parsers.base import ParseRequest
 from app.services.parsers.docling_backend import DoclingDocumentParser
+from app.services.parsers.remote_backend import RemoteDocumentParser
 import app.main as main_module
 
 
@@ -278,6 +282,62 @@ def test_app_startup_builds_dispatcher_from_parser_factory(monkeypatch) -> None:
             session_factory.configure(bind=None)
 
 
+def test_app_startup_uses_remote_api_ocr_defaults_for_remote_profile(monkeypatch) -> None:
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'runtime-startup-remote-factory.db'}"
+        storage_dir = Path(tmp_dir) / "storage"
+        factory_result = (
+            RemoteDocumentParser(
+                invoke_remote_parser=lambda request: ParsedArtifact(
+                    document_id=uuid4(),
+                    pages=[ParsedPage(page_number=1, text="remote", blocks=[])],
+                    tables=[],
+                    provenance=ParserProvenance(
+                        parser_backend="remote-api",
+                        parser_version="1.0",
+                        profile="remote-api",
+                    ),
+                )
+            ),
+            "remote-api",
+            "remote-api",
+        )
+
+        monkeypatch.setenv("AUTH_MODE", "dev")
+        monkeypatch.setenv("DATABASE_URL", database_url)
+        monkeypatch.setenv("LOCAL_STORAGE_DIR", str(storage_dir))
+        monkeypatch.setenv("PARSER_PROFILE", "remote-api")
+        reloaded_main = _reload_app_module()
+        monkeypatch.setattr(reloaded_main, "build_document_parser", lambda settings: factory_result)
+
+        try:
+            with TestClient(reloaded_main.app, client=("127.0.0.1", 50004)):
+                ocr_result = reloaded_main.app.state.dispatcher._ocr_service.inspect(
+                    request=ParseRequest(
+                        document_id=str(uuid4()),
+                        object_key="documents/remote.txt",
+                        content_type="text/plain",
+                        profile="remote-api",
+                        parser_backend="remote-api",
+                    ),
+                    artifact=ParsedArtifact(
+                        document_id=uuid4(),
+                        pages=[ParsedPage(page_number=1, text="", blocks=[])],
+                        tables=[],
+                        provenance=ParserProvenance(
+                            parser_backend="remote-api",
+                            parser_version="1.0",
+                            profile="remote-api",
+                        ),
+                    ),
+                )
+                assert ocr_result.provider == "remote-api"
+                assert ocr_result.engine == "remote-service"
+                assert ocr_result.status == "unverified"
+        finally:
+            session_factory.configure(bind=None)
+
+
 def test_app_startup_succeeds_for_seaweedfs_with_local_docling_runtime_via_env(monkeypatch) -> None:
     with TemporaryDirectory() as tmp_dir:
         database_url = f"sqlite:///{Path(tmp_dir) / 'runtime-startup-seaweedfs-env.db'}"
@@ -297,6 +357,44 @@ def test_app_startup_succeeds_for_seaweedfs_with_local_docling_runtime_via_env(m
             with TestClient(reloaded_main.app, client=("127.0.0.1", 50003)):
                 assert hasattr(reloaded_main.app.state, "dispatcher")
                 assert reloaded_main.app.state.dispatcher._storage is not None
+        finally:
+            session_factory.configure(bind=None)
+
+
+def test_startup_uses_in_process_dispatcher_by_default(monkeypatch) -> None:
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'default-backend.db'}"
+        storage_dir = Path(tmp_dir) / "storage"
+
+        monkeypatch.setenv("AUTH_MODE", "dev")
+        monkeypatch.setenv("DATABASE_URL", database_url)
+        monkeypatch.setenv("LOCAL_STORAGE_DIR", str(storage_dir))
+        reloaded_main = _reload_app_module()
+
+        try:
+            with TestClient(reloaded_main.app, client=("127.0.0.1", 50010)):
+                assert reloaded_main.app.state.dispatcher.__class__.__name__ == "InProcessDispatcher"
+        finally:
+            session_factory.configure(bind=None)
+
+
+def test_startup_fails_when_temporal_backend_selected_without_host_port(monkeypatch) -> None:
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'temporal-no-config.db'}"
+        storage_dir = Path(tmp_dir) / "storage"
+
+        monkeypatch.setenv("AUTH_MODE", "dev")
+        monkeypatch.setenv("DATABASE_URL", database_url)
+        monkeypatch.setenv("LOCAL_STORAGE_DIR", str(storage_dir))
+        monkeypatch.setenv("WORKFLOW_BACKEND", "temporal")
+        # Ensure no temporal_host_port is set
+        monkeypatch.delenv("TEMPORAL_HOST_PORT", raising=False)
+        reloaded_main = _reload_app_module()
+
+        try:
+            with pytest.raises(RuntimeError, match="temporal_host_port"):
+                with TestClient(reloaded_main.app, client=("127.0.0.1", 50011)):
+                    pass
         finally:
             session_factory.configure(bind=None)
 
