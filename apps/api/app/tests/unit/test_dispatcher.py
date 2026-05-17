@@ -475,9 +475,9 @@ def test_in_process_dispatcher_runs_all_stages(dispatcher_env) -> None:
     assert run is not None
     assert run.status == "completed"
 
-    # Verify all 3 stages are completed
+    # Verify all 4 stages are completed
     stages = get_stages_for_run(run_id=run_id)
-    assert len(stages) == 3
+    assert len(stages) == 4
     for stage in stages:
         assert stage.status == "completed", f"Stage {stage.stage_name} is {stage.status}, expected completed"
 
@@ -786,7 +786,7 @@ def test_pipeline_runner_executes_all_stages_end_to_end(dispatcher_env) -> None:
     assert run.status == "completed"
 
     stages = get_stages_for_run(run_id=run_id)
-    assert len(stages) == 3
+    assert len(stages) == 4
     for stage in stages:
         assert stage.status == "completed", f"Stage {stage.stage_name} is {stage.status}, expected completed"
 
@@ -864,3 +864,66 @@ def test_pipeline_runner_materializes_and_cleans_up(dispatcher_env, tmp_path: Pa
         run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
     assert run is not None
     assert run.status == "completed"
+
+
+# --- Chunk stage tests ---
+
+
+def test_pipeline_runner_includes_chunk_stage():
+    """PipelineRunner STAGE_NAMES must include 'chunk'."""
+    from app.workflows.pipeline_runner import STAGE_NAMES
+    assert "chunk" in STAGE_NAMES
+
+
+def test_run_chunk_stage_produces_chunks(seeded_env):
+    """run_chunk_stage should produce chunks from a parsed artifact."""
+    from app.workflows.stages import run_chunk_stage
+
+    run_id = seeded_env["run_id"]
+    document_id = seeded_env["document_id"]
+
+    # First parse to get an artifact
+    parse_stage_id = seeded_env["stage_ids"]["parse"]
+    test_artifact = _make_test_artifact(document_id)
+    parser = DoclingDocumentParser(converter=lambda _req: test_artifact)
+    ocr_service = StubOcrService(
+        result=OcrResult(
+            applied=False,
+            engine="none",
+            provider="docling-local",
+            status="not-applied",
+            page_numbers=[],
+            notes=[],
+        )
+    )
+    run_parse_stage(
+        run_id=run_id,
+        stage_id=parse_stage_id,
+        document_id=document_id,
+        object_key="documents/dispatcher.txt",
+        content_type="text/plain",
+        profile="local-cpu",
+        parser_backend="docling-local",
+        parser=parser,
+        ocr_service=ocr_service,
+    )
+
+    # Now create a chunk stage and run it
+    stages = ensure_ingestion_stages(
+        run_id=run_id,
+        tenant_id=seeded_env["tenant_id"],
+        stage_names=["chunk"],
+    )
+    chunk_stage_id = stages[0].id
+
+    chunks = run_chunk_stage(
+        run_id=run_id,
+        stage_id=chunk_stage_id,
+        document_id=document_id,
+        artifact=test_artifact,
+        source_type="loose_document",
+    )
+
+    assert chunks is not None
+    assert len(chunks) > 0
+    assert all(c.document_id == document_id for c in chunks)

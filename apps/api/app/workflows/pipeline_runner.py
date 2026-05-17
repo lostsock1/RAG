@@ -20,11 +20,12 @@ from app.schemas.parsed_artifacts import normalize_parsed_artifact_payload
 from app.services.ocr import OcrService
 from app.services.parsers.base import DocumentParser
 from app.services.storage import StorageAdapter
-from app.workflows.stages import run_parse_stage, run_persist_artifact_stage, run_quality_report_stage
+from app.workflows.stages import run_parse_stage, run_persist_artifact_stage, run_chunk_stage, run_quality_report_stage
+from app.repositories.chunks import persist_chunks
 
 logger = logging.getLogger(__name__)
 
-STAGE_NAMES = ["parse", "persist_artifact", "quality_report"]
+STAGE_NAMES = ["parse", "persist_artifact", "chunk", "quality_report"]
 
 
 class PipelineRunner:
@@ -72,6 +73,7 @@ class PipelineRunner:
             doc = session.scalar(select(Document).where(Document.id == document_id))
             object_key = doc.object_key if doc else ""
             content_type = "application/octet-stream"
+            source_type = doc.source_type if doc else "loose_document"
 
         stages = ensure_ingestion_stages(run_id=run_id, tenant_id=tenant_id, stage_names=STAGE_NAMES)
         stage_map = {s.stage_name: s for s in stages}
@@ -135,7 +137,23 @@ class PipelineRunner:
                     artifact=artifact,
                 )
 
-            # Stage 3: Quality report
+            # Stage 3: Chunk
+            if artifact is not None:
+                chunks = run_chunk_stage(
+                    run_id=run_id,
+                    stage_id=stage_map["chunk"].id,
+                    document_id=document_id,
+                    artifact=artifact,
+                    source_type=source_type,
+                )
+                if chunks is not None:
+                    persist_chunks(
+                        run_id=run_id,
+                        document_id=document_id,
+                        chunks=chunks,
+                    )
+
+            # Stage 4: Quality report
             if artifact is not None:
                 run_quality_report_stage(
                     run_id=run_id,

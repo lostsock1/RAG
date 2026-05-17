@@ -10,11 +10,13 @@ from app.repositories.ingestion import (
 )
 from app.schemas.parsed_artifacts import ParsedArtifact
 from app.schemas.parsed_artifacts import OcrProvenance
+from app.schemas.chunks import Chunk, DocumentProfile
 from app.services.ocr import DoclingOcrService, OcrService
 from app.services.parsers.base import DocumentParser, ParseRequest
 from app.services.parsers.docling_backend import DoclingDocumentParser
 from app.services.parsers.remote_backend import RemoteDocumentParser
 from app.services.quality_report import build_quality_report
+from app.services.chunkers.loose import LooseDocumentChunker
 
 logger = logging.getLogger(__name__)
 
@@ -149,3 +151,36 @@ def run_quality_report_stage(
             "ocr": report.ocr,
         },
     )
+
+
+def run_chunk_stage(
+    *,
+    run_id: UUID,
+    stage_id: UUID,
+    document_id: UUID,
+    artifact: ParsedArtifact,
+    source_type: str,
+) -> list[Chunk] | None:
+    """Run the chunk stage. Returns None if stage was already completed (skipped)."""
+    if _is_stage_completed(run_id=run_id, stage_name="chunk"):
+        logger.info("Stage chunk already completed for run %s, skipping.", run_id)
+        return None
+
+    update_stage_status(stage_id=stage_id, status="running")
+
+    profile = DocumentProfile.LOOSE if source_type == "loose_document" else DocumentProfile.BOOK
+    chunker = LooseDocumentChunker()
+    chunks = chunker.chunk(artifact, profile=profile)
+
+    update_stage_status(
+        stage_id=stage_id,
+        status="completed",
+        details={
+            "chunk_count": len(chunks),
+            "leaf_count": sum(1 for c in chunks if c.parent_id is not None),
+            "parent_count": sum(1 for c in chunks if c.parent_id is None),
+            "profile": profile.value,
+        },
+    )
+
+    return chunks
