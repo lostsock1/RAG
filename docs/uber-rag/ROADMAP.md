@@ -120,12 +120,19 @@ Goal: an uploaded document is parsed, chunked, embedded, indexed, and visible in
 - `WorkflowDispatcher` protocol conformance enforced at class-creation time
 - Ingestion jobs list/detail endpoints with ACL/audit coverage
 - Parsed-artifact/report persistence with DB uniqueness constraints
+- Chunking with parent-child hierarchy (ADR-0012: structure-aware, 2-level, leaf 128–512 tok, parent 1024–2048 tok)
+- `Embedder` protocol + `StubEmbedder` (SHA-256 deterministic vectors)
+- `VectorIndexer` + `LexicalIndexer` protocols with stub implementations
+- Full 7-stage pipeline wired: parse → persist_artifact → chunk → embed → index_qdrant → index_opensearch → quality_report
+- `ChunkModel.to_schema()` for DB→Pydantic conversion
+- Deterministic chunk UUIDs via `uuid5(document_id, chunk_index)`
 
 **Remaining:**
 
-- Chunking with parent-child hierarchy
-- BGE-M3 dense + sparse embeddings behind `Embedder` interface
-- Qdrant + OpenSearch write paths (ACL metadata included)
+- BGE-M3 dense + sparse embeddings — real adapter behind `Embedder` interface (stub wired)
+- Qdrant write path — real adapter behind `VectorIndexer` protocol (stub wired)
+- OpenSearch write path — real adapter behind `LexicalIndexer` protocol (stub wired)
+- ACL metadata plumbing — replace hardcoded `tenant_id` + empty `group_ids` with real resolution
 - One document profile fully wired (start with loose-doc; book profile in Phase 5)
 - Temporal worker tested against a live Temporal server
 - Real remote parser adapter behind the `remote-api` seam

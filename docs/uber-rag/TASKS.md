@@ -81,8 +81,12 @@
 - [x] Create chunking interfaces.
 - [ ] Implement book profile chunking.
 - [x] Implement loose document profile chunking.
-- [ ] Implement OpenSearch indexing.
-- [ ] Implement Qdrant indexing.
+- [x] Create Embedder protocol + StubEmbedder.
+- [x] Create VectorIndexer + LexicalIndexer protocols with stubs.
+- [x] Wire embed + index stages into PipelineRunner (7-stage pipeline).
+- [ ] Implement BGE-M3 real embedder adapter.
+- [ ] Implement Qdrant real vector indexer adapter.
+- [ ] Implement OpenSearch real lexical indexer adapter.
 - [ ] Implement query router.
 - [ ] Implement hybrid retrieval and fusion.
 - [ ] Implement reranker adapter.
