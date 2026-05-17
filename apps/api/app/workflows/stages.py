@@ -172,6 +172,13 @@ def run_chunk_stage(
     chunker = LooseDocumentChunker()
     chunks = chunker.chunk(artifact, profile=profile)
 
+    # Ensure all chunks reference the actual document ID, not the artifact's
+    # potentially-stale document_id (the parser may have used a placeholder).
+    chunks = [
+        chunk.model_copy(update={"document_id": document_id})
+        for chunk in chunks
+    ]
+
     update_stage_status(
         stage_id=stage_id,
         status="completed",

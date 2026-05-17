@@ -18,6 +18,7 @@ from app.core.request_context import RequestContext
 from app.core.security import get_request_context
 from app.db.base import session_factory
 from app.db.models.ingestion import IngestionRun, IngestionStage
+from app.db.models.chunk import Chunk as ChunkModel
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.main import app
@@ -156,12 +157,13 @@ def test_upload_triggers_ingestion_dispatch_to_completed(client):
                 .order_by(IngestionStage.created_at.asc())
             ).all()
         )
-        assert len(stages) == 3
+        assert len(stages) == 4
         assert all(s.status == "completed" for s in stages)
         assert stages[0].stage_name == "parse"
         assert stages[0].details["parser_backend"] == "docling-local"
         assert stages[1].stage_name == "persist_artifact"
-        assert stages[2].stage_name == "quality_report"
+        assert stages[2].stage_name == "chunk"
+        assert stages[3].stage_name == "quality_report"
 
 
 def test_upload_and_parse_through_s3_compatible_storage(client):
@@ -224,7 +226,85 @@ def test_upload_and_parse_through_s3_compatible_storage(client):
                 .order_by(IngestionStage.created_at.asc())
             ).all()
         )
-        assert len(stages) == 3
+        assert len(stages) == 4
         assert all(s.status == "completed" for s in stages)
         assert stages[0].stage_name == "parse"
         assert stages[0].details["parser_backend"] == "docling-local"
+
+
+def test_full_pipeline_produces_chunks_in_db(client):
+    """Upload -> parse -> chunk -> verify chunks are persisted with parent-child relationships."""
+    # Override the dispatcher with a parser that returns a multi-paragraph artifact
+    rich_artifact = ParsedArtifact(
+        document_id=uuid4(),
+        pages=[
+            ParsedPage(page_number=1, text="First paragraph with enough text to exceed the minimum threshold.\n\nSecond paragraph also with sufficient length to be included as a chunk.", blocks=[]),
+            ParsedPage(page_number=2, text="Third paragraph on page two with adequate length for chunking.", blocks=[]),
+        ],
+        tables=[],
+        provenance=ParserProvenance(
+            parser_backend="docling-local", parser_version="1.0.0", profile="local-cpu"
+        ),
+    )
+    parser = DoclingDocumentParser(converter=lambda req: rich_artifact)
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+    )
+    app.state._test_dispatcher = dispatcher
+
+    response = client.post(
+        "/api/v1/documents/upload",
+        headers={"Authorization": "Bearer test-token"},
+        files={"file": ("chunked-doc.txt", b"paragraph one\n\nparagraph two", "text/plain")},
+        data={"title": "Chunked Doc", "source_type": "loose_document"},
+    )
+
+    assert response.status_code == 201
+    run_id = UUID(response.json()["ingestion_run_id"])
+
+    # Run the pipeline synchronously
+    dispatcher._execute_pipeline(run_id)
+
+    with session_factory() as session:
+        # Verify run completed
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+        assert run is not None
+        assert run.status == "completed"
+
+        # Verify chunk stage completed
+        chunk_stage = session.scalar(
+            select(IngestionStage).where(
+                IngestionStage.run_id == run_id,
+                IngestionStage.stage_name == "chunk",
+            )
+        )
+        assert chunk_stage is not None
+        assert chunk_stage.status == "completed"
+        assert chunk_stage.details["chunk_count"] > 0
+
+        # Verify chunks exist in DB
+        document_id = run.document_id
+        chunks = list(
+            session.scalars(
+                select(ChunkModel)
+                .where(ChunkModel.document_id == document_id)
+                .order_by(ChunkModel.chunk_index.asc())
+            ).all()
+        )
+        assert len(chunks) > 0
+
+        # Verify parent-child structure
+        parents = [c for c in chunks if c.parent_id is None]
+        leaves = [c for c in chunks if c.parent_id is not None]
+        assert len(parents) >= 1, "Expected at least one parent chunk"
+        assert len(leaves) >= 1, "Expected at least one leaf chunk"
+
+        # Verify parent is a 'document' unit type
+        assert parents[0].unit_type == "document"
+
+        # Verify leaf chunks reference a valid parent
+        parent_ids = {c.id for c in parents}
+        for leaf in leaves:
+            assert leaf.parent_id in parent_ids
