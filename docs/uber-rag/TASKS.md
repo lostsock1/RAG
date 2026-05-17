@@ -78,9 +78,9 @@
 
 ## Phase 3: Indexing and retrieval
 
-- [ ] Create chunking interfaces.
+- [x] Create chunking interfaces.
 - [ ] Implement book profile chunking.
-- [ ] Implement loose document profile chunking.
+- [x] Implement loose document profile chunking.
 - [ ] Implement OpenSearch indexing.
 - [ ] Implement Qdrant indexing.
 - [ ] Implement query router.

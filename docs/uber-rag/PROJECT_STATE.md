@@ -29,7 +29,7 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 ## Current implementation state
 
 - Repository scaffold: project memory consolidated, AGENTS.md + agent config in place
-- ADRs: 8 Accepted (0001, 0002, 0004, 0005, 0006, 0009, 0010, 0011), 1 Superseded (0003), 1 Deferred (0007)
+- ADRs: 9 Accepted (0001, 0002, 0004, 0005, 0006, 0009, 0010, 0011, 0012), 1 Superseded (0003), 1 Deferred (0007)
 - API contract: OpenAPI 3.1 YAML skeleton complete (`docs/uber-rag/api/openapi.yaml`) — 10 tag groups, 40+ endpoints, 25 schemas
 - Domain model: Postgres schema + entity relationships complete (`docs/uber-rag/DOMAIN_MODEL.md`) — 15 tables with columns, types, FKs, indexes
 - Eval harness: Design doc complete (`docs/uber-rag/EVALUATION_HARNESS.md`) — repo structure, Q/A format, scoring stubs, runner pseudocode, CI integration, thresholds
@@ -42,6 +42,7 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 - Auth/ACL: JWKS-backed Keycloak/OIDC runtime auth verifier landed, loopback-only dev fallback retained for local use, scope enforcement active, ACL filtering/updates live, leakage tests implemented, and live VPS verification now proves: Keycloak issues bearer tokens accepted by the API; Alice can list her uploaded document; Bob sees `[]`.
   - Ingestion: foundation slice implemented — config-driven storage seam (local + SeaweedFS-ready S3-compatible adapter), ingestion run/stage/artifact/report schema, upload-time ingestion run creation, serial dedup-by-hash reuse, ingestion jobs list/detail scaffold with ACL/audit coverage, parser/runtime seams, quality report helper, and per-run parsed-artifact/report persistence with DB uniqueness constraints. **Reliability hardening is now in place** — same-hash uploads use deterministic object keys, live-document dedup is protected by DB uniqueness plus conflict reload, run dispatch is claim-based, stage rows are canonical per run/stage name, `POST /api/v1/ingestion/jobs/{job_id}/retry` re-dispatches existing failed/queued runs, and startup recovery now reconciles both `running` runs and `running` stages. `WorkflowDispatcher` protocol remains workflow-backend-neutral. Storage materialization seam added — `StorageAdapter.materialize_for_read()` yields a local file path for parsers regardless of storage backend (local filesystem or S3-compatible). SeaweedFS-backed parsing is now runnable end-to-end. **Temporal orchestration hardening landed and reviewer-audited** — shared `PipelineRunner` extracted from `InProcessDispatcher` so both in-process and Temporal paths reuse the same business logic; `TemporalDispatcher` submits ingestion workflows to Temporal via `start_workflow` (fire-and-forget, matching in-process semantics) with stable `ingestion-run:{run_id}` identity; `IngestionWorkflow` + activity bridge + `build_temporal_worker()` skeleton register workflow and activity entrypoints; `workflow_backend` config (`in_process` default, `temporal` explicit opt-in) with clear startup failure when Temporal is selected without `temporal_host_port`; no silent fallback from temporal to in-process. Stale `ingestion_workflow.py` and redundant `temporal_runtime.py` removed; `WorkflowDispatcher` protocol conformance enforced at class-creation time; async-safe import shim for `temporalio`; `PipelineRunner` marks runs as failed on missing DB bind instead of silent return.
 - Retrieval: not started
+- Chunking: `LooseDocumentChunker` implemented (ADR-0012). Structure-aware paragraph splitting, atomic tables, two-level parent-child hierarchy. `Chunk` schema + DB model + migration (20260517_0006) + repository. `run_chunk_stage` wired into `PipelineRunner`. 150/150 tests green.
 - Evaluation: harness designed, heldout set drafted; implementation not started
 - Deployment: VPS fully verified (`ssh rag` → vm-1485.lnvps.cloud). Docker, Postgres, MinIO, and Keycloak running; 12-point end-to-end verification passed on 2026-05-16 (health, OIDC discovery, JWKS, token issuance, upload, ACL-filtered list, ACL separation, unauthenticated rejection, ACL read, file storage, MinIO health, Postgres connectivity). VPS run flow documented in README.md.
 
@@ -84,6 +85,7 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 | Date | Change | Files | Notes |
 |---|---|---|---|
+| 2026-05-17 | Chunking stage implemented (ADR-0012) | `apps/api/app/schemas/chunks.py`, `apps/api/app/services/chunkers/`, `apps/api/app/db/models/chunk.py`, `apps/api/app/repositories/chunks.py`, `infra/migrations/versions/20260517_0006_chunks_table.py`, `apps/api/app/workflows/stages.py`, `apps/api/app/workflows/pipeline_runner.py`, `apps/api/app/tests/unit/test_chunker.py`, `apps/api/app/tests/unit/test_chunks_repository.py`, `apps/api/app/tests/integration/test_ingestion_dispatch.py` | `LooseDocumentChunker` with structure-aware paragraph splitting, atomic tables, two-level parent-child hierarchy. `Chunk` Pydantic schema + SQLAlchemy model + Alembic migration. `persist_chunks`/`get_chunks_for_document` repository with idempotent delete-and-replace. `run_chunk_stage` wired into `PipelineRunner` between `persist_artifact` and `quality_report`. Document ID override ensures chunks reference the actual document. ADR-0012 promoted to Accepted. 150/150 tests green. |
 | 2026-05-17 | Working tree reconciliation + ROADMAP update | `docs/uber-rag/ROADMAP.md`, `docs/uber-rag/PROJECT_STATE.md` | Committed 50-file uncommitted working tree in 4 logical groups (ingestion reliability, document understanding, Temporal orchestration, docs). Updated ROADMAP.md to reflect Phase 0 ✅, Phase 1 ✅, Phase 2 (current) with ADR-0009/0010/0011 deliverables, SeaweedFS/Temporal direction, and actual implemented vs remaining work. Updated entry gate dependency list and Phase 6 storage references. 133/133 tests green. |
 | 2026-05-17 | Phase 2 Temporal orchestration hardening slice landed | `apps/api/app/core/config.py`, `apps/api/app/main.py`, `apps/api/app/workflows/pipeline_runner.py`, `apps/api/app/workflows/dispatcher.py`, `apps/api/app/workflows/temporal_dispatcher.py`, `apps/api/app/workflows/temporal_workflow.py`, `apps/api/app/workflows/temporal_worker.py`, `apps/api/app/tests/unit/test_dispatcher.py`, `apps/api/app/tests/unit/test_temporal_dispatcher.py`, `apps/api/app/tests/unit/test_temporal_worker.py`, `apps/api/app/tests/integration/test_runtime_auth_startup.py`, `docs/uber-rag/API_CONTRACT.md`, `docs/uber-rag/PROJECT_STATE.md`, `docs/uber-rag/TASKS.md` | Extracted shared `PipelineRunner` from `InProcessDispatcher`, added `TemporalDispatcher` with client injection for testing, added `IngestionWorkflow` + activity bridge + `build_temporal_worker()` skeleton, formalized `workflow_backend` config with clear startup failure when Temporal is selected without `temporal_host_port`. In-process remains default. No silent fallback. |
 | 2026-05-17 | Reviewer follow-up: stale file cleanup, fire-and-forget fix, protocol enforcement | Deleted `workflows/ingestion_workflow.py`, `services/temporal_runtime.py`, `tests/unit/test_temporal_runtime.py`. Updated `workflows/__init__.py` to re-export from `temporal_workflow.py`. Changed `TemporalDispatcher.dispatch()` from `execute_workflow` (blocking) to `start_workflow` (fire-and-forget). Added `WorkflowDispatcher` protocol conformance check. Made import shim async-safe. Fixed silent return on missing DB bind. Updated `_stack_refs.md` Temporal status. 133/133 tests green. Reviewer verdict: PASS. |
@@ -136,13 +138,15 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 ## Next recommended actions
 
-Phase 1 is **complete**. Phase 2 ingestion dispatch now has deterministic dedup, claim-based execution, retry/recovery semantics, and a reviewer-audited Temporal orchestration hardening slice. The next work is to deepen document understanding.
+Phase 1 is **complete**. Phase 2 chunking stage is now implemented. The next work is to deepen the indexing path.
 
 Near-term implementation actions:
 
-1. Test the Temporal worker skeleton against a live Temporal server (deferred from this slice).
-2. Implement a real remote parser adapter behind the new `remote-api` seam.
-3. Validate OCR quality on the target corpus and decide whether PaddleOCR is needed.
+1. **BGE-M3 dense + sparse embeddings** behind an `Embedder` interface — the next critical-path stage after chunking.
+2. **Qdrant + OpenSearch write paths** — persist embedded chunks with ACL metadata.
+3. **One document profile fully wired** (loose-doc end-to-end: upload → parse → chunk → embed → index).
+4. Test the Temporal worker skeleton against a live Temporal server (deferred from earlier slice).
+5. Implement a real remote parser adapter behind the `remote-api` seam.
 
 Pre-Phase-2 cleanup (optional but recommended):
 - Tighten OIDC test isolation so remote `.env` claim mapping (`permissions`) cannot affect tests that assume the default `scope` claim.

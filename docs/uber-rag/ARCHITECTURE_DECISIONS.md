@@ -54,6 +54,7 @@ Full ADRs live in `adr/`. Index:
 - [ADR-0009 — Object Storage Direction for Phase 2 — SeaweedFS as Lead Candidate](adr/0009-object-storage-direction.md) — Accepted 2026-05-16
 - [ADR-0010 — Ingestion Orchestration Direction for Phase 2 — Temporal as Lead Candidate](adr/0010-ingestion-orchestration-direction.md) — Accepted 2026-05-16
 - [ADR-0011 — Structured Document-Understanding Architecture for Phase 2](adr/0011-structured-document-understanding-architecture.md) — Accepted 2026-05-16
+- [ADR-0012 — Chunking Strategy: Structure-Aware Parent-Child with Profile Routing](adr/0012-chunking-strategy.md) — Accepted 2026-05-17
 
 ## Proposed / Deferred decisions
 
