@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from app.repositories.ingestion import (
     get_stages_for_run,
@@ -11,12 +11,15 @@ from app.repositories.ingestion import (
 from app.schemas.parsed_artifacts import ParsedArtifact
 from app.schemas.parsed_artifacts import OcrProvenance
 from app.schemas.chunks import Chunk, DocumentProfile
+from app.schemas.embeddings import EmbeddingResult
 from app.services.ocr import DoclingOcrService, OcrService
 from app.services.parsers.base import DocumentParser, ParseRequest
 from app.services.parsers.docling_backend import DoclingDocumentParser
 from app.services.parsers.remote_backend import RemoteDocumentParser
 from app.services.quality_report import build_quality_report
 from app.services.chunkers.loose import LooseDocumentChunker
+from app.services.embedders.base import Embedder
+from app.services.indexers.base import VectorIndexer, LexicalIndexer
 
 logger = logging.getLogger(__name__)
 
@@ -191,3 +194,95 @@ def run_chunk_stage(
     )
 
     return chunks
+
+
+def run_embed_stage(
+    *,
+    run_id: UUID,
+    stage_id: UUID,
+    chunks: list[Chunk],
+    embedder: Embedder,
+) -> list[EmbeddingResult] | None:
+    """Run the embed stage. Returns None if already completed."""
+    if _is_stage_completed(run_id=run_id, stage_name="embed"):
+        logger.info("Stage embed already completed for run %s, skipping.", run_id)
+        return None
+
+    update_stage_status(stage_id=stage_id, status="running")
+
+    # Only embed leaf chunks (children) — parents are not independently embedded
+    leaf_chunks = [c for c in chunks if c.parent_id is not None]
+    if not leaf_chunks:
+        update_stage_status(stage_id=stage_id, status="completed", details={"embedding_count": 0})
+        return []
+
+    # Deterministic chunk UUID from (document_id, chunk_index) via UUID v5
+    _CHUNK_UUID_NS = UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # standard URL namespace
+    chunk_ids = [
+        uuid5(_CHUNK_UUID_NS, f"{c.document_id}:{c.chunk_index}")
+        for c in leaf_chunks
+    ]
+    texts = [c.text for c in leaf_chunks]
+    results = embedder.embed(chunk_ids=chunk_ids, texts=texts)
+
+    update_stage_status(
+        stage_id=stage_id,
+        status="completed",
+        details={
+            "embedding_count": len(results),
+            "leaf_count": len(leaf_chunks),
+        },
+    )
+
+    return results
+
+
+def run_index_qdrant_stage(
+    *,
+    run_id: UUID,
+    stage_id: UUID,
+    chunks: list[Chunk],
+    embeddings: list[EmbeddingResult],
+    vector_indexer: VectorIndexer,
+    acl_metadata: dict,
+) -> None:
+    """Run the Qdrant index stage. No-op if already completed."""
+    if _is_stage_completed(run_id=run_id, stage_name="index_qdrant"):
+        logger.info("Stage index_qdrant already completed for run %s, skipping.", run_id)
+        return
+
+    update_stage_status(stage_id=stage_id, status="running")
+
+    leaf_chunks = [c for c in chunks if c.parent_id is not None]
+    count = vector_indexer.upsert(chunks=leaf_chunks, embeddings=embeddings, acl_metadata=acl_metadata)
+
+    update_stage_status(
+        stage_id=stage_id,
+        status="completed",
+        details={"upserted_count": count},
+    )
+
+
+def run_index_opensearch_stage(
+    *,
+    run_id: UUID,
+    stage_id: UUID,
+    chunks: list[Chunk],
+    lexical_indexer: LexicalIndexer,
+    acl_metadata: dict,
+) -> None:
+    """Run the OpenSearch index stage. No-op if already completed."""
+    if _is_stage_completed(run_id=run_id, stage_name="index_opensearch"):
+        logger.info("Stage index_opensearch already completed for run %s, skipping.", run_id)
+        return
+
+    update_stage_status(stage_id=stage_id, status="running")
+
+    leaf_chunks = [c for c in chunks if c.parent_id is not None]
+    count = lexical_indexer.upsert(chunks=leaf_chunks, acl_metadata=acl_metadata)
+
+    update_stage_status(
+        stage_id=stage_id,
+        status="completed",
+        details={"upserted_count": count},
+    )

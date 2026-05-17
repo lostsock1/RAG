@@ -157,13 +157,16 @@ def test_upload_triggers_ingestion_dispatch_to_completed(client):
                 .order_by(IngestionStage.created_at.asc())
             ).all()
         )
-        assert len(stages) == 4
+        assert len(stages) == 7
         assert all(s.status == "completed" for s in stages)
         assert stages[0].stage_name == "parse"
         assert stages[0].details["parser_backend"] == "docling-local"
         assert stages[1].stage_name == "persist_artifact"
         assert stages[2].stage_name == "chunk"
-        assert stages[3].stage_name == "quality_report"
+        assert stages[3].stage_name == "embed"
+        assert stages[4].stage_name == "index_qdrant"
+        assert stages[5].stage_name == "index_opensearch"
+        assert stages[6].stage_name == "quality_report"
 
 
 def test_upload_and_parse_through_s3_compatible_storage(client):
@@ -226,7 +229,7 @@ def test_upload_and_parse_through_s3_compatible_storage(client):
                 .order_by(IngestionStage.created_at.asc())
             ).all()
         )
-        assert len(stages) == 4
+        assert len(stages) == 7
         assert all(s.status == "completed" for s in stages)
         assert stages[0].stage_name == "parse"
         assert stages[0].details["parser_backend"] == "docling-local"

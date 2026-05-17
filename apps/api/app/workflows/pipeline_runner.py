@@ -20,12 +20,32 @@ from app.schemas.parsed_artifacts import normalize_parsed_artifact_payload
 from app.services.ocr import OcrService
 from app.services.parsers.base import DocumentParser
 from app.services.storage import StorageAdapter
-from app.workflows.stages import run_parse_stage, run_persist_artifact_stage, run_chunk_stage, run_quality_report_stage
-from app.repositories.chunks import persist_chunks
+from app.workflows.stages import (
+    run_parse_stage,
+    run_persist_artifact_stage,
+    run_chunk_stage,
+    run_embed_stage,
+    run_index_qdrant_stage,
+    run_index_opensearch_stage,
+    run_quality_report_stage,
+)
+from app.repositories.chunks import persist_chunks, get_chunks_as_schemas
+from app.services.embedders.base import Embedder
+from app.services.embedders.stub import StubEmbedder
+from app.services.indexers.base import VectorIndexer, LexicalIndexer
+from app.services.indexers.stub import StubVectorIndexer, StubLexicalIndexer
 
 logger = logging.getLogger(__name__)
 
-STAGE_NAMES = ["parse", "persist_artifact", "chunk", "quality_report"]
+STAGE_NAMES = [
+    "parse",
+    "persist_artifact",
+    "chunk",
+    "embed",
+    "index_qdrant",
+    "index_opensearch",
+    "quality_report",
+]
 
 
 class PipelineRunner:
@@ -43,12 +63,18 @@ class PipelineRunner:
         parser_profile: str,
         ocr_service: OcrService | None = None,
         storage: StorageAdapter | None = None,
+        embedder: Embedder | None = None,
+        vector_indexer: VectorIndexer | None = None,
+        lexical_indexer: LexicalIndexer | None = None,
     ) -> None:
         self._parser = parser
         self._parser_backend = parser_backend
         self._parser_profile = parser_profile
         self._ocr_service = ocr_service
         self._storage = storage
+        self._embedder = embedder or StubEmbedder()
+        self._vector_indexer = vector_indexer or StubVectorIndexer()
+        self._lexical_indexer = lexical_indexer or StubLexicalIndexer()
 
     def run(self, run_id: UUID) -> None:
         """Execute the full ingestion pipeline for a single run.
@@ -153,7 +179,47 @@ class PipelineRunner:
                         chunks=chunks,
                     )
 
-            # Stage 4: Quality report
+            # Stage 4: Embed
+            embeddings = None
+            if artifact is not None:
+                db_chunks = get_chunks_as_schemas(document_id=document_id)
+                embeddings = run_embed_stage(
+                    run_id=run_id,
+                    stage_id=stage_map["embed"].id,
+                    chunks=db_chunks,
+                    embedder=self._embedder,
+                )
+
+            # Stage 5: Index Qdrant
+            if artifact is not None and embeddings is not None:
+                db_chunks = get_chunks_as_schemas(document_id=document_id)
+                run_index_qdrant_stage(
+                    run_id=run_id,
+                    stage_id=stage_map["index_qdrant"].id,
+                    chunks=db_chunks,
+                    embeddings=embeddings,
+                    vector_indexer=self._vector_indexer,
+                    acl_metadata={
+                        "tenant_id": str(tenant_id),
+                        "group_ids": [],
+                    },
+                )
+
+            # Stage 6: Index OpenSearch
+            if artifact is not None:
+                db_chunks = get_chunks_as_schemas(document_id=document_id)
+                run_index_opensearch_stage(
+                    run_id=run_id,
+                    stage_id=stage_map["index_opensearch"].id,
+                    chunks=db_chunks,
+                    lexical_indexer=self._lexical_indexer,
+                    acl_metadata={
+                        "tenant_id": str(tenant_id),
+                        "group_ids": [],
+                    },
+                )
+
+            # Stage 7: Quality report
             if artifact is not None:
                 run_quality_report_stage(
                     run_id=run_id,

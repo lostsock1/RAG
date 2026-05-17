@@ -38,3 +38,18 @@ class Chunk(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+    def to_schema(self) -> "ChunkSchema":
+        """Convert this ORM model to a Pydantic Chunk schema."""
+        from app.schemas.chunks import Chunk as ChunkSchema
+
+        return ChunkSchema(
+            document_id=self.document_id,
+            unit_type=self.unit_type,
+            heading_path=list(self.heading_path) if self.heading_path else [],
+            page_start=self.page_start,
+            page_end=self.page_end,
+            text=self.text,
+            parent_id=self.parent_id,
+            chunk_index=self.chunk_index,
+        )

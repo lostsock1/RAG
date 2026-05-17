@@ -106,3 +106,9 @@ def get_chunks_for_document(*, document_id: UUID) -> list[ChunkModel]:
             .order_by(ChunkModel.chunk_index.asc())
         ).all()
         return list(rows)
+
+
+def get_chunks_as_schemas(*, document_id: UUID) -> list[Chunk]:
+    """Return chunks for a document as Pydantic schemas (for pipeline stages)."""
+    rows = get_chunks_for_document(document_id=document_id)
+    return [row.to_schema() for row in rows]
