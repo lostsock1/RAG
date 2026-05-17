@@ -8,6 +8,8 @@ from uuid import UUID
 from app.services.ocr import OcrService
 from app.services.parsers.base import DocumentParser
 from app.services.storage import StorageAdapter
+from app.services.embedders.base import Embedder
+from app.services.indexers.base import VectorIndexer, LexicalIndexer
 from app.workflows.pipeline_runner import PipelineRunner
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,9 @@ class InProcessDispatcher:
         ocr_service: OcrService | None = None,
         storage: StorageAdapter | None = None,
         runner: PipelineRunner | None = None,
+        embedder: Embedder | None = None,
+        vector_indexer: VectorIndexer | None = None,
+        lexical_indexer: LexicalIndexer | None = None,
     ) -> None:
         self._runner = runner or PipelineRunner(
             parser=parser,
@@ -39,6 +44,9 @@ class InProcessDispatcher:
             parser_profile=parser_profile,
             ocr_service=ocr_service,
             storage=storage,
+            embedder=embedder,
+            vector_indexer=vector_indexer,
+            lexical_indexer=lexical_indexer,
         )
         # Retain direct attribute access for existing tests that inspect internals
         self._parser = parser

@@ -311,3 +311,86 @@ def test_full_pipeline_produces_chunks_in_db(client):
         parent_ids = {c.id for c in parents}
         for leaf in leaves:
             assert leaf.parent_id in parent_ids
+
+
+def test_full_pipeline_produces_embeddings_and_indexes(client):
+    """Upload -> parse -> chunk -> embed -> index (stubs) -> verify all 7 stages complete."""
+    from app.services.embedders.stub import StubEmbedder
+    from app.services.indexers.stub import StubVectorIndexer, StubLexicalIndexer
+
+    rich_artifact = ParsedArtifact(
+        document_id=uuid4(),
+        pages=[
+            ParsedPage(
+                page_number=1,
+                text="First paragraph with enough text to exceed the minimum threshold.\n\n"
+                     "Second paragraph also with sufficient length to be included as a chunk.",
+                blocks=[],
+            ),
+            ParsedPage(
+                page_number=2,
+                text="Third paragraph on page two with adequate length for chunking.",
+                blocks=[],
+            ),
+        ],
+        tables=[],
+        provenance=ParserProvenance(
+            parser_backend="docling-local", parser_version="1.0.0", profile="local-cpu"
+        ),
+    )
+    parser = DoclingDocumentParser(converter=lambda req: rich_artifact)
+    embedder = StubEmbedder()
+    vector_indexer = StubVectorIndexer()
+    lexical_indexer = StubLexicalIndexer()
+
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        embedder=embedder,
+        vector_indexer=vector_indexer,
+        lexical_indexer=lexical_indexer,
+    )
+    app.state._test_dispatcher = dispatcher
+
+    response = client.post(
+        "/api/v1/documents/upload",
+        headers={"Authorization": "Bearer test-token"},
+        files={"file": ("embed-doc.txt", b"paragraph one\n\nparagraph two", "text/plain")},
+        data={"title": "Embed Doc", "source_type": "loose_document"},
+    )
+
+    assert response.status_code == 201
+    run_id = UUID(response.json()["ingestion_run_id"])
+
+    dispatcher._execute_pipeline(run_id)
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+        assert run is not None
+        assert run.status == "completed"
+
+        stages = list(
+            session.scalars(
+                select(IngestionStage)
+                .where(IngestionStage.run_id == run_id)
+                .order_by(IngestionStage.created_at.asc())
+            ).all()
+        )
+        assert len(stages) == 7
+        assert all(s.status == "completed" for s in stages)
+
+        # Verify embed stage produced embeddings
+        embed_stage = next(s for s in stages if s.stage_name == "embed")
+        assert embed_stage.details["embedding_count"] > 0
+
+        # Verify index stages ran
+        qdrant_stage = next(s for s in stages if s.stage_name == "index_qdrant")
+        assert qdrant_stage.details["upserted_count"] > 0
+
+        opensearch_stage = next(s for s in stages if s.stage_name == "index_opensearch")
+        assert opensearch_stage.details["upserted_count"] > 0
+
+    # Verify stubs tracked the upserts
+    assert vector_indexer.upserted_count > 0
+    assert lexical_indexer.upserted_count > 0
