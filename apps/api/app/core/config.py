@@ -28,10 +28,13 @@ class Settings(BaseSettings):
     s3_secret_key: str | None = None
     s3_bucket: str = "uber-rag-documents"
     s3_region: str = "us-east-1"
+    workflow_backend: Literal["in_process", "temporal"] = "in_process"
     temporal_namespace: str = "default"
     temporal_task_queue: str = "uber-rag-ingestion"
     temporal_host_port: str | None = None
     parser_backend: str = "docling"
+    parser_profile: str = "local-cpu"
+    ocr_engine: str = "tesseract"
     postgres_user: str = "uber_rag"
     postgres_password: str = "uber_rag"
     postgres_db: str = "uber_rag"

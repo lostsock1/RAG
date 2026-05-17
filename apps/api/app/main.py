@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from app.api.router import api_router
 from app.core.config import Settings, get_settings
 from app.db.base import make_engine, session_factory
+from app.services.ocr import build_ocr_service
 from app.services.parsers.factory import build_document_parser
 from app.services.storage import build_storage_adapter
 
@@ -48,12 +49,28 @@ async def lifespan(app: FastAPI):
         from app.workflows.dispatcher import InProcessDispatcher
 
         parser, parser_backend, parser_profile = build_document_parser(settings)
-        app.state.dispatcher = InProcessDispatcher(
-            parser=parser,
-            parser_backend=parser_backend,
-            parser_profile=parser_profile,
-            storage=storage,
-        )
+
+        if settings.workflow_backend == "temporal":
+            if not settings.temporal_host_port:
+                raise RuntimeError(
+                    "workflow_backend=temporal requires temporal_host_port to be configured. "
+                    "Set TEMPORAL_HOST_PORT or switch WORKFLOW_BACKEND to in_process."
+                )
+            from app.workflows.temporal_dispatcher import TemporalDispatcher
+
+            app.state.dispatcher = TemporalDispatcher(
+                host_port=settings.temporal_host_port,
+                namespace=settings.temporal_namespace,
+                task_queue=settings.temporal_task_queue,
+            )
+        else:
+            app.state.dispatcher = InProcessDispatcher(
+                parser=parser,
+                parser_backend=parser_backend,
+                parser_profile=parser_profile,
+                ocr_service=build_ocr_service(settings),
+                storage=storage,
+            )
 
     yield
 
