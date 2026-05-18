@@ -1,6 +1,6 @@
 # Uber-RAG Project State
 
-Last updated: 2026-05-17
+Last updated: 2026-05-18
 Owner: Uber-RAG primary builder
 Status: Phase 1 complete. **Phase 2 entry review completed and the Phase 2 stack direction is now closed in ADR-0009, ADR-0010, and ADR-0011.** The approved immediate Phase 2 document-understanding slice is now implemented: the parser matrix is deployment-profile-aware, OCR provenance is wired through ingestion, and quality reports are richer without a schema migration. VPS-backed full-stack verification passed (12-point check, 2026-05-16). Frontend toolchain builds successfully. **Temporal orchestration hardening slice landed and reviewer-audited:** concrete Temporal dispatch adapter with fire-and-forget `start_workflow` semantics, shared `PipelineRunner` extraction, runnable worker skeleton, stale-file cleanup, protocol conformance enforcement, and async-safe import shim — in-process remains the default, Temporal is explicit opt-in. **Embedding and indexing pipeline wired end-to-end with stub adapters (2026-05-17):** `Embedder` protocol + `StubEmbedder`, `VectorIndexer` + `LexicalIndexer` protocols with stub implementations, `run_embed_stage` / `run_index_qdrant_stage` / `run_index_opensearch_stage` wired into `PipelineRunner`. Full 7-stage pipeline: parse → persist_artifact → chunk → embed → index_qdrant → index_opensearch → quality_report. 164/164 tests green. Real BGE-M3, Qdrant, and OpenSearch adapters remain to be implemented.
 
