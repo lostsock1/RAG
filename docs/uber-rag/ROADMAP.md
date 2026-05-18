@@ -126,12 +126,13 @@ Goal: an uploaded document is parsed, chunked, embedded, indexed, and visible in
 - Full 7-stage pipeline wired: parse → persist_artifact → chunk → embed → index_qdrant → index_opensearch → quality_report
 - `ChunkModel.to_schema()` for DB→Pydantic conversion
 - Deterministic chunk UUIDs via `uuid5(document_id, chunk_index)`
+- `BgeM3Embedder` — real BGE-M3 adapter with lazy loading, L2-normalized 1024-dim dense + sparse lexical weights
+- `QdrantVectorIndexer` — real Qdrant adapter with named dense + sparse vectors, auto-creates collection
+- `OpenSearchLexicalIndexer` — real OpenSearch adapter with bulk upsert, standard analyzer, auto-creates index
+- ADR-0013: Embedding model selection (BGE-M3 dense + sparse)
 
 **Remaining:**
 
-- BGE-M3 dense + sparse embeddings — real adapter behind `Embedder` interface (stub wired)
-- Qdrant write path — real adapter behind `VectorIndexer` protocol (stub wired)
-- OpenSearch write path — real adapter behind `LexicalIndexer` protocol (stub wired)
 - ACL metadata plumbing — replace hardcoded `tenant_id` + empty `group_ids` with real resolution
 - One document profile fully wired (start with loose-doc; book profile in Phase 5)
 - Temporal worker tested against a live Temporal server
