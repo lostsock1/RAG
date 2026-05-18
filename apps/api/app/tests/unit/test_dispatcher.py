@@ -477,7 +477,7 @@ def test_in_process_dispatcher_runs_all_stages(dispatcher_env) -> None:
 
     # Verify all 4 stages are completed
     stages = get_stages_for_run(run_id=run_id)
-    assert len(stages) == 4
+    assert len(stages) == 7
     for stage in stages:
         assert stage.status == "completed", f"Stage {stage.stage_name} is {stage.status}, expected completed"
 
@@ -786,7 +786,7 @@ def test_pipeline_runner_executes_all_stages_end_to_end(dispatcher_env) -> None:
     assert run.status == "completed"
 
     stages = get_stages_for_run(run_id=run_id)
-    assert len(stages) == 4
+    assert len(stages) == 7
     for stage in stages:
         assert stage.status == "completed", f"Stage {stage.stage_name} is {stage.status}, expected completed"
 
