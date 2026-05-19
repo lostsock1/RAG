@@ -51,18 +51,9 @@ async def lifespan(app: FastAPI):
         parser, parser_backend, parser_profile = build_document_parser(settings)
 
         if settings.workflow_backend == "temporal":
-            if not settings.temporal_host_port:
-                raise RuntimeError(
-                    "workflow_backend=temporal requires temporal_host_port to be configured. "
-                    "Set TEMPORAL_HOST_PORT or switch WORKFLOW_BACKEND to in_process."
-                )
-            from app.workflows.temporal_dispatcher import TemporalDispatcher
+            from app.workflows.temporal_dispatcher import build_temporal_dispatcher
 
-            app.state.dispatcher = TemporalDispatcher(
-                host_port=settings.temporal_host_port,
-                namespace=settings.temporal_namespace,
-                task_queue=settings.temporal_task_queue,
-            )
+            app.state.dispatcher = build_temporal_dispatcher(settings)
         else:
             app.state.dispatcher = InProcessDispatcher(
                 parser=parser,

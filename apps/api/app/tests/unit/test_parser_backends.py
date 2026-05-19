@@ -6,6 +6,7 @@ from typing import Literal
 from typing import cast
 from uuid import UUID
 
+import httpx
 import pytest
 
 import app.services.parsers.docling_backend as docling_backend
@@ -45,6 +46,94 @@ def test_remote_document_parser_overrides_profile_from_request() -> None:
 
     assert artifact.provenance.parser_backend == "remote-api"
     assert artifact.provenance.profile == "remote-api"
+
+
+def test_remote_document_parser_calls_http_transport_and_normalizes_provenance() -> None:
+    recorded: dict[str, object] = {}
+
+    class TransportStub:
+        def post(self, url: str, *, json: dict, headers: dict[str, str], timeout: float):
+            recorded["url"] = url
+            recorded["json"] = json
+            recorded["headers"] = headers
+            recorded["timeout"] = timeout
+            return httpx.Response(
+                200,
+                json={
+                    "document_id": "11111111-1111-1111-1111-111111111111",
+                    "pages": [{"page_number": 1, "text": "Remote page", "blocks": []}],
+                    "tables": [],
+                    "provenance": {
+                        "parser_backend": "docling-local",
+                        "parser_version": "2026.05",
+                        "profile": "local-cpu",
+                    },
+                },
+            )
+
+    parser = RemoteDocumentParser(
+        endpoint_url="https://parser.internal/parse",
+        transport=TransportStub(),
+        api_key="secret-token",
+        timeout_seconds=12.5,
+    )
+
+    artifact = parser.parse(
+        ParseRequest(
+            document_id="11111111-1111-1111-1111-111111111111",
+            object_key="documents/sample.pdf",
+            content_type="application/pdf",
+            profile="remote-api",
+            parser_backend="remote-api",
+            local_source_path="/tmp/materialized/sample.pdf",
+        )
+    )
+
+    assert recorded["url"] == "https://parser.internal/parse"
+    assert recorded["headers"] == {"Authorization": "Bearer secret-token"}
+    assert recorded["timeout"] == 12.5
+    assert recorded["json"] == {
+        "document_id": "11111111-1111-1111-1111-111111111111",
+        "object_key": "documents/sample.pdf",
+        "content_type": "application/pdf",
+        "profile": "remote-api",
+        "parser_backend": "remote-api",
+        "local_source_path": "/tmp/materialized/sample.pdf",
+    }
+    assert artifact.pages[0].text == "Remote page"
+    assert artifact.provenance.parser_backend == "remote-api"
+    assert artifact.provenance.profile == "remote-api"
+    assert artifact.provenance.parser_version == "2026.05"
+
+
+def test_remote_document_parser_raises_clear_error_when_remote_service_fails() -> None:
+    request = httpx.Request("POST", "https://parser.internal/parse")
+    response = httpx.Response(502, request=request, text="upstream parser unavailable")
+
+    class TransportStub:
+        def post(self, url: str, *, json: dict, headers: dict[str, str], timeout: float):
+            return response
+
+    parser = RemoteDocumentParser(
+        endpoint_url="https://parser.internal/parse",
+        transport=TransportStub(),
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        parser.parse(
+            ParseRequest(
+                document_id="11111111-1111-1111-1111-111111111111",
+                object_key="documents/sample.pdf",
+                content_type="application/pdf",
+                profile="remote-api",
+                parser_backend="remote-api",
+            )
+        )
+
+    message = str(exc_info.value)
+    assert "remote document parsing failed" in message.lower()
+    assert "502" in message
+    assert "upstream parser unavailable" in message
 
 
 def test_docling_document_parser_uses_request_backend_for_injected_converter() -> None:
@@ -130,6 +219,50 @@ def test_build_document_parser_supports_remote_api_profile_with_injected_adapter
     assert profile == "remote-api"
 
 
+def test_build_document_parser_builds_real_remote_parser_from_settings() -> None:
+    class TransportStub:
+        def post(self, url: str, *, json: dict, headers: dict[str, str], timeout: float):
+            return httpx.Response(
+                200,
+                json={
+                    "document_id": json["document_id"],
+                    "pages": [{"page_number": 1, "text": "built from settings", "blocks": []}],
+                    "tables": [],
+                    "provenance": {
+                        "parser_backend": "remote-api",
+                        "parser_version": "1.2.3",
+                        "profile": "remote-api",
+                    },
+                },
+            )
+
+    parser, backend, profile = build_document_parser(
+        Settings(
+            parser_backend="remote",
+            parser_profile="remote-api",
+            remote_parser_url="https://parser.internal/parse",
+            remote_parser_api_key="secret-token",
+            remote_parser_timeout_seconds=9.0,
+        ),
+        remote_transport=TransportStub(),
+    )
+
+    artifact = parser.parse(
+        ParseRequest(
+            document_id="11111111-1111-1111-1111-111111111111",
+            object_key="documents/sample.pdf",
+            content_type="application/pdf",
+            profile="remote-api",
+            parser_backend="remote-api",
+        )
+    )
+
+    assert isinstance(parser, RemoteDocumentParser)
+    assert backend == "remote-api"
+    assert profile == "remote-api"
+    assert artifact.pages[0].text == "built from settings"
+
+
 def test_build_ocr_service_uses_remote_truthful_defaults_for_remote_api_profile() -> None:
     service = build_ocr_service(Settings(parser_backend="remote", parser_profile="remote-api"))
 
@@ -151,6 +284,21 @@ def test_build_document_parser_rejects_remote_backend_without_injected_adapter()
 
     assert "remote parser adapter" in str(exc_info.value).lower()
     assert "remote-api" in str(exc_info.value)
+
+
+def test_build_document_parser_rejects_remote_backend_without_remote_parser_url() -> None:
+    with pytest.raises(RuntimeError) as exc_info:
+        build_document_parser(
+            Settings(
+                parser_backend="remote",
+                parser_profile="remote-api",
+                remote_parser_url=None,
+            )
+        )
+
+    message = str(exc_info.value)
+    assert "remote_parser_url" in message
+    assert "remote-api" in message
 
 
 def test_build_document_parser_rejects_unknown_profile(tmp_path: Path) -> None:

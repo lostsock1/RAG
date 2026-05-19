@@ -3,15 +3,14 @@ from __future__ import annotations
 import logging
 from importlib import import_module
 
+from app.core.config import Settings
+from app.workflows.temporal_dispatcher import _validate_temporal_runtime_settings
+
 logger = logging.getLogger(__name__)
 
 
 class _WorkerSkeleton:
-    """Lightweight worker skeleton for testing and registration verification.
-
-    When temporalio is not installed, this provides a testable shape that
-    proves the architecture is real without requiring a live Temporal server.
-    """
+    """Lightweight worker skeleton for testing and registration verification."""
 
     def __init__(self, *, task_queue: str, workflows: list, activities: list) -> None:
         self._task_queue = task_queue
@@ -20,21 +19,12 @@ class _WorkerSkeleton:
 
 
 def build_temporal_worker(*, client, task_queue: str, runner) -> _WorkerSkeleton:
-    """Build a Temporal worker that registers the ingestion workflow and activity.
-
-    When temporalio is installed, this returns a real Temporal Worker.
-    When temporalio is not installed, this returns a skeleton that proves
-    the registration shape is correct.
-
-    Args:
-        client: A Temporal client instance (or test stub).
-        task_queue: The task queue name for the worker.
-        runner: A PipelineRunner instance used by the ingestion activity.
-
-    Returns:
-        A worker instance (real or skeleton).
-    """
     from app.workflows.temporal_workflow import IngestionWorkflow, build_ingestion_activity
+
+    if not task_queue.strip():
+        raise RuntimeError("Temporal worker requires a non-empty task_queue.")
+    if not hasattr(runner, "run"):
+        raise RuntimeError("Temporal worker requires a runner with a run(run_id) method.")
 
     activity_fn = build_ingestion_activity(runner)
 
@@ -54,3 +44,12 @@ def build_temporal_worker(*, client, task_queue: str, runner) -> _WorkerSkeleton
             workflows=[IngestionWorkflow],
             activities=[activity_fn],
         )
+
+
+def build_temporal_worker_from_settings(settings: Settings, *, client, runner):
+    _validate_temporal_runtime_settings(settings)
+    return build_temporal_worker(
+        client=client,
+        task_queue=settings.temporal_task_queue,
+        runner=runner,
+    )

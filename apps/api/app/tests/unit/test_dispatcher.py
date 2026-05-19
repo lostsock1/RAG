@@ -14,9 +14,10 @@ from sqlalchemy import insert
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedUser, AclGrant
+from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.document import Document
 from app.db.models.ingestion import IngestionRun, IngestionStage, ParsedArtifact as ParsedArtifactRecord
+from app.db.models.group import Group
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.repositories.ingestion import (
@@ -32,6 +33,7 @@ from app.services.ocr import OcrResult, StubOcrService
 from app.services.parsers.docling_backend import DoclingDocumentParser
 from app.services.parsers.remote_backend import RemoteDocumentParser
 from app.services.storage import MaterializedObject, StorageAdapter
+from app.repositories.documents import get_document_index_acl_metadata
 from app.workflows.dispatcher import InProcessDispatcher
 from app.workflows.pipeline_runner import PipelineRunner
 from app.workflows.stages import (
@@ -927,3 +929,93 @@ def test_run_chunk_stage_produces_chunks(seeded_env):
     assert chunks is not None
     assert len(chunks) > 0
     assert all(c.document_id == document_id for c in chunks)
+
+
+def test_get_document_index_acl_metadata_returns_real_group_ids(seeded_env) -> None:
+    document_id = seeded_env["document_id"]
+    tenant_id = seeded_env["tenant_id"]
+    owner_user_id = seeded_env["user_id"]
+    group_id = uuid4()
+
+    with session_factory() as session:
+        acl_grant = session.scalar(select(AclGrant).where(AclGrant.document_id == document_id))
+        assert acl_grant is not None
+        session.add(Group(id=group_id, tenant_id=tenant_id, name="indexed-group"))
+        session.add(AclAllowedGroup(acl_grant_id=acl_grant.id, group_id=group_id))
+        session.commit()
+
+    metadata = get_document_index_acl_metadata(document_id=document_id)
+
+    assert metadata["tenant_id"] == str(tenant_id)
+    assert metadata["group_ids"] == [str(group_id)]
+    assert metadata["allowed_user_ids"] == [str(owner_user_id)]
+    assert metadata["visibility"] == "private"
+
+
+def test_pipeline_runner_passes_real_acl_metadata_to_indexers(seeded_env) -> None:
+    run_id = seeded_env["run_id"]
+    document_id = seeded_env["document_id"]
+    tenant_id = seeded_env["tenant_id"]
+    group_id = uuid4()
+
+    with session_factory() as session:
+        acl_grant = session.scalar(select(AclGrant).where(AclGrant.document_id == document_id))
+        assert acl_grant is not None
+        session.add(Group(id=group_id, tenant_id=tenant_id, name="pipeline-group"))
+        session.add(AclAllowedGroup(acl_grant_id=acl_grant.id, group_id=group_id))
+        session.commit()
+
+    artifact = ParsedArtifact(
+        document_id=document_id,
+        pages=[
+            ParsedPage(
+                page_number=1,
+                text=(
+                    "First paragraph with enough text to exceed the minimum threshold.\n\n"
+                    "Second paragraph also with sufficient length to be included as a chunk."
+                ),
+                blocks=[],
+            )
+        ],
+        tables=[],
+        provenance=ParserProvenance(
+            parser_backend="docling-local",
+            parser_version="1.0",
+            profile="local-cpu",
+        ),
+    )
+
+    class VectorIndexerSpy:
+        def __init__(self) -> None:
+            self.acl_metadata: dict | None = None
+
+        def upsert(self, *, chunks, embeddings, acl_metadata: dict) -> int:
+            self.acl_metadata = acl_metadata
+            return len(chunks)
+
+    class LexicalIndexerSpy:
+        def __init__(self) -> None:
+            self.acl_metadata: dict | None = None
+
+        def upsert(self, *, chunks, acl_metadata: dict) -> int:
+            self.acl_metadata = acl_metadata
+            return len(chunks)
+
+    vector_indexer = VectorIndexerSpy()
+    lexical_indexer = LexicalIndexerSpy()
+    runner = PipelineRunner(
+        parser=DoclingDocumentParser(converter=lambda _req: artifact),
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        vector_indexer=vector_indexer,
+        lexical_indexer=lexical_indexer,
+    )
+
+    runner.run(run_id)
+
+    assert vector_indexer.acl_metadata is not None
+    assert lexical_indexer.acl_metadata is not None
+    assert vector_indexer.acl_metadata["group_ids"] == [str(group_id)]
+    assert lexical_indexer.acl_metadata["group_ids"] == [str(group_id)]
+    assert vector_indexer.acl_metadata["tenant_id"] == str(tenant_id)
+    assert lexical_indexer.acl_metadata["visibility"] == "private"

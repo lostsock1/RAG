@@ -30,6 +30,7 @@ from app.workflows.stages import (
     run_quality_report_stage,
 )
 from app.repositories.chunks import persist_chunks, get_chunks_as_schemas
+from app.repositories.documents import get_document_index_acl_metadata
 from app.services.embedders.base import Embedder
 from app.services.embedders.stub import StubEmbedder
 from app.services.indexers.base import VectorIndexer, LexicalIndexer
@@ -190,6 +191,8 @@ class PipelineRunner:
                     embedder=self._embedder,
                 )
 
+            acl_metadata = get_document_index_acl_metadata(document_id=document_id)
+
             # Stage 5: Index Qdrant
             if artifact is not None and embeddings is not None:
                 db_chunks = get_chunks_as_schemas(document_id=document_id)
@@ -199,10 +202,7 @@ class PipelineRunner:
                     chunks=db_chunks,
                     embeddings=embeddings,
                     vector_indexer=self._vector_indexer,
-                    acl_metadata={
-                        "tenant_id": str(tenant_id),
-                        "group_ids": [],
-                    },
+                    acl_metadata=acl_metadata,
                 )
 
             # Stage 6: Index OpenSearch
@@ -213,10 +213,7 @@ class PipelineRunner:
                     stage_id=stage_map["index_opensearch"].id,
                     chunks=db_chunks,
                     lexical_indexer=self._lexical_indexer,
-                    acl_metadata={
-                        "tenant_id": str(tenant_id),
-                        "group_ids": [],
-                    },
+                    acl_metadata=acl_metadata,
                 )
 
             # Stage 7: Quality report

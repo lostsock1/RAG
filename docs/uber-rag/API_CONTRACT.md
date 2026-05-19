@@ -121,24 +121,44 @@ POST   /api/v1/admin/rebuild-index
 POST   /api/v1/admin/snapshot
 ```
 
-## Search request sketch
+## Current thin /search slice
+
+The current `POST /api/v1/search` implementation is intentionally narrow while the real retrieval pipeline is still being built. It accepts only a free-text query plus `top_k`, applies ACL before and after the retriever seam, and returns ranked hits only.
+
+Current request shape:
 
 ```json
 {
   "query": "string",
-  "collections": ["uuid"],
-  "source_types": ["book", "loose_document"],
-  "document_types": ["textbook", "report"],
-  "filters": {
-    "language": ["de", "en", "pt"],
-    "date_from": "2026-01-01",
-    "date_to": "2026-12-31"
-  },
-  "retrieval_mode": "auto|exact|semantic|book|table|formula|hybrid",
-  "top_k": 20,
-  "include_sources": true
+  "top_k": 5
 }
 ```
+
+Current response shape:
+
+```json
+{
+  "items": [
+    {
+      "document_id": "uuid",
+      "document_title": "string",
+      "source_type": "book|loose_document",
+      "chunk_id": "string|null",
+      "score": 0.91,
+      "text": "string",
+      "page_start": 3,
+      "page_end": 3,
+      "heading_path": ["Section B"]
+    }
+  ],
+  "total": 1
+}
+```
+
+Truthful current semantics:
+- If no search retriever is configured, `/api/v1/search` returns `503 Service Unavailable` with: `Search retrieval is not configured yet. Configure a search retriever before using /search.` This avoids a false-success `200` empty result.
+- Search audit events store `query_sha256` plus non-sensitive metadata such as `query_length`, `top_k`, allowed document ids, and result document ids. Raw query text is not stored in plaintext.
+- Richer planned search filters (`collections`, `source_types`, `document_types`, `retrieval_mode`, `include_sources`, date/language filters) remain future contract work and are not part of the current public `/search` slice.
 
 ## Chat response sketch
 

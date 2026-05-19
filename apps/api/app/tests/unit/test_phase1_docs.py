@@ -43,3 +43,21 @@ def test_ingestion_openapi_documents_retry_route_and_dispatch_truthfully() -> No
     assert 'detail:' in retry_block
     assert 'not found or denied' in retry_block
     assert '$ref: "#/components/schemas/Error"' not in retry_block
+
+
+def test_search_openapi_and_contract_match_thin_search_slice() -> None:
+    api_contract = Path('docs/uber-rag/API_CONTRACT.md').read_text()
+    openapi_text = Path('docs/uber-rag/api/openapi.yaml').read_text()
+
+    assert 'Current thin /search slice' in api_contract
+    assert 'Search retrieval is not configured yet. Configure a search retriever before using /search.' in api_contract
+    assert 'top_k:' in openapi_text
+    assert 'document_title:' in openapi_text
+    assert 'items:' in openapi_text
+    assert 'total:' in openapi_text
+    assert '"503":' in openapi_text
+    assert 'collections:' not in openapi_text.split('    SearchRequest:')[1].split('    SearchResponse:')[0]
+    search_response_block = openapi_text.split('    SearchResponse:')[1].split('    # ── Chat')[0]
+    assert 'results:' not in search_response_block
+    assert 'total_hits:' not in search_response_block
+    assert 'retrieval_mode_used:' not in search_response_block

@@ -87,6 +87,7 @@
 - [x] Implement BGE-M3 real embedder adapter.
 - [x] Implement Qdrant real vector indexer adapter.
 - [x] Implement OpenSearch real lexical indexer adapter.
+- [x] Add thin ACL-safe `/search` kickoff route and retriever seam.
 - [ ] Implement query router.
 - [ ] Implement hybrid retrieval and fusion.
 - [ ] Implement reranker adapter.

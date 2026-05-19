@@ -4,7 +4,8 @@ from uuid import uuid4
 
 import pytest
 
-from app.workflows.temporal_dispatcher import TemporalDispatcher
+from app.core.config import Settings
+from app.workflows.temporal_dispatcher import TemporalDispatcher, build_temporal_dispatcher
 
 
 @pytest.mark.anyio
@@ -52,3 +53,35 @@ async def test_temporal_dispatcher_raises_when_no_client_and_no_temporalio() -> 
 
     with pytest.raises(RuntimeError, match="temporalio"):
         await dispatcher.dispatch(uuid4())
+
+
+def test_build_temporal_dispatcher_rejects_missing_host_port() -> None:
+    with pytest.raises(RuntimeError) as exc_info:
+        build_temporal_dispatcher(
+            Settings(
+                workflow_backend="temporal",
+                temporal_host_port=None,
+            )
+        )
+
+    assert "temporal_host_port" in str(exc_info.value)
+
+
+def test_build_temporal_dispatcher_uses_settings_and_injected_client() -> None:
+    client = object()
+
+    dispatcher = build_temporal_dispatcher(
+        Settings(
+            workflow_backend="temporal",
+            temporal_host_port="temporal.internal:7233",
+            temporal_namespace="rag-prod",
+            temporal_task_queue="rag-q",
+        ),
+        client=client,
+    )
+
+    assert isinstance(dispatcher, TemporalDispatcher)
+    assert dispatcher._host_port == "temporal.internal:7233"
+    assert dispatcher._namespace == "rag-prod"
+    assert dispatcher._task_queue == "rag-q"
+    assert dispatcher._client is client

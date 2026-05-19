@@ -26,6 +26,30 @@ class DocumentAclView:
     expires_at: datetime | None
 
 
+@dataclass(slots=True)
+class DocumentIndexAclMetadata:
+    document_id: UUID
+    tenant_id: UUID
+    owner_user_id: UUID
+    visibility: str
+    allowed_user_ids: list[UUID]
+    allowed_group_ids: list[UUID]
+    sensitivity: str
+    expires_at: datetime | None
+
+    def to_payload(self) -> dict[str, object]:
+        return {
+            "document_id": str(self.document_id),
+            "tenant_id": str(self.tenant_id),
+            "owner_user_id": str(self.owner_user_id),
+            "allowed_user_ids": [str(value) for value in self.allowed_user_ids],
+            "group_ids": [str(value) for value in self.allowed_group_ids],
+            "visibility": self.visibility,
+            "sensitivity": self.sensitivity,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+        }
+
+
 def _is_admin(roles: list[str]) -> bool:
     return "admin" in roles
 
@@ -59,6 +83,38 @@ def _load_document_acl(session, document_id: UUID) -> DocumentAclView | None:
         sensitivity=acl_grant.sensitivity,
         expires_at=acl_grant.expires_at,
     )
+
+
+
+def get_document_index_acl_metadata(*, document_id: UUID) -> dict[str, object]:
+    with session_factory() as session:
+        if session.bind is None:
+            raise RuntimeError(
+                "Document persistence is not configured: session_factory has no database bind."
+            )
+
+        document = session.scalar(select(Document).where(Document.id == document_id))
+        if document is None or document.is_tombstoned:
+            raise RuntimeError(
+                f"Index ACL metadata could not be loaded: document {document_id} was not found or is tombstoned."
+            )
+
+        acl_view = _load_document_acl(session, document_id)
+        if acl_view is None:
+            raise RuntimeError(
+                f"Index ACL metadata could not be loaded: document {document_id} has no ACL grant."
+            )
+
+        return DocumentIndexAclMetadata(
+            document_id=document.id,
+            tenant_id=document.tenant_id,
+            owner_user_id=acl_view.owner_user_id,
+            visibility=acl_view.visibility,
+            allowed_user_ids=acl_view.allowed_user_ids,
+            allowed_group_ids=acl_view.allowed_group_ids,
+            sensitivity=acl_view.sensitivity,
+            expires_at=acl_view.expires_at,
+        ).to_payload()
 
 
 def create_document_with_owner_acl(

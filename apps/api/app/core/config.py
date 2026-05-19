@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     temporal_host_port: str | None = None
     parser_backend: str = "docling"
     parser_profile: str = "local-cpu"
+    remote_parser_url: str | None = None
+    remote_parser_api_key: str | None = None
+    remote_parser_timeout_seconds: float = 30.0
     ocr_engine: str = "tesseract"
     postgres_user: str = "uber_rag"
     postgres_password: str = "uber_rag"

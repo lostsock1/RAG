@@ -11,6 +11,7 @@ from app.services.parsers.remote_backend import RemoteDocumentParser
 def build_document_parser(
     settings: Settings,
     remote_parser: RemoteDocumentParser | None = None,
+    remote_transport: object | None = None,
 ) -> tuple[DocumentParser, str, str]:
     backend = settings.parser_backend.strip().lower()
     profile = settings.parser_profile.strip().lower()
@@ -34,8 +35,16 @@ def build_document_parser(
                 f"Parser backend '{settings.parser_backend}' requires parser_profile 'remote-api', got '{settings.parser_profile}'."
             )
         if remote_parser is None:
-            raise RuntimeError(
-                "Parser backend 'remote' requires an injected remote parser adapter when parser_profile='remote-api'."
+            if not settings.remote_parser_url:
+                raise RuntimeError(
+                    "Parser backend 'remote' requires remote_parser_url when parser_profile='remote-api'. "
+                    "Set REMOTE_PARSER_URL or inject a remote parser adapter explicitly."
+                )
+            remote_parser = RemoteDocumentParser(
+                endpoint_url=settings.remote_parser_url,
+                transport=remote_transport,
+                timeout_seconds=settings.remote_parser_timeout_seconds,
+                api_key=settings.remote_parser_api_key,
             )
         return remote_parser, "remote-api", "remote-api"
 
