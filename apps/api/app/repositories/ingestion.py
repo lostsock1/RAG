@@ -10,7 +10,7 @@ from sqlalchemy import delete, select, update as sa_update
 from sqlalchemy.exc import IntegrityError
 
 from app.db.base import session_factory
-from app.db.models.acl import AclGrant
+from app.db.acl_models import AclGrant
 from app.db.models.audit import AuditEvent
 from app.db.models.document import Document
 from app.db.models.ingestion import IngestionRun, IngestionStage, ParsedArtifact as ParsedArtifactRecord, QualityReport

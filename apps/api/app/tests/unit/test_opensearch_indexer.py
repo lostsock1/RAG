@@ -34,7 +34,7 @@ def test_opensearch_indexer_upserts_docs():
     doc_id = uuid4()
     parent_id = uuid4()
     chunks = [_make_chunk(doc_id, i, parent_id) for i in range(3)]
-    acl = {"tenant_id": str(uuid4()), "group_ids": []}
+    acl = {"tenant_id": str(uuid4()), "owner_user_id": str(uuid4()), "allowed_user_ids": [], "group_ids": [], "allowed_group_ids": [], "visibility": "private", "sensitivity": "internal", "sensitivity_rank": 200, "expires_at": None, "acl_policy_id": str(uuid4()), "acl_policy_version": 1, "allowed_role_ids": [], "allowed_org_unit_ids": [], "allowed_project_ids": []}
 
     count = indexer.upsert(chunks=chunks, acl_metadata=acl)
     assert count == 3
@@ -53,7 +53,7 @@ def test_opensearch_indexer_doc_structure():
     doc_id = uuid4()
     parent_id = uuid4()
     chunk = _make_chunk(doc_id, 0, parent_id)
-    acl = {"tenant_id": str(uuid4()), "group_ids": ["g1", "g2"]}
+    acl = {"tenant_id": str(uuid4()), "owner_user_id": str(uuid4()), "allowed_user_ids": ["user-1"], "group_ids": ["g1", "g2"], "allowed_group_ids": ["g1", "g2"], "visibility": "group", "sensitivity": "restricted", "sensitivity_rank": 400, "expires_at": None, "acl_policy_id": str(uuid4()), "acl_policy_version": 7, "allowed_role_ids": [], "allowed_org_unit_ids": [], "allowed_project_ids": []}
 
     indexer.upsert(chunks=[chunk], acl_metadata=acl)
 
@@ -64,5 +64,13 @@ def test_opensearch_indexer_doc_structure():
     assert source["heading_path"] == ["Introduction"]
     assert source["tenant_id"] == acl["tenant_id"]
     assert source["group_ids"] == ["g1", "g2"]
+    assert source["allowed_group_ids"] == ["g1", "g2"]
+    assert source["allowed_user_ids"] == ["user-1"]
+    assert source["visibility"] == "group"
+    assert source["sensitivity"] == "restricted"
+    assert source["sensitivity_rank"] == 400
+    assert source["acl_policy_id"] == acl["acl_policy_id"]
+    assert source["acl_policy_version"] == 7
+    assert source["allowed_project_ids"] == []
     assert source["document_id"] == str(doc_id)
     assert source["chunk_index"] == 0

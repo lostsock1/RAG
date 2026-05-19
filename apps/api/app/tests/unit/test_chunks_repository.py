@@ -18,7 +18,7 @@ from app.db.models.document import Document
 from app.db.models.ingestion import IngestionRun
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
-from app.db.models.acl import AclGrant, AclAllowedUser
+from app.db.acl_models import AclGrant, AclAllowedUser
 from app.repositories.chunks import persist_chunks, get_chunks_for_document
 from app.schemas.chunks import Chunk
 

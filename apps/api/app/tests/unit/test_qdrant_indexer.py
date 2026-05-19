@@ -46,7 +46,7 @@ def test_qdrant_indexer_upserts_points():
     parent_id = uuid4()
     chunks = [_make_chunk(doc_id, i, parent_id) for i in range(3)]
     embeddings = [_make_embedding(uuid4()) for _ in range(3)]
-    acl = {"tenant_id": str(uuid4()), "group_ids": []}
+    acl = {"tenant_id": str(uuid4()), "owner_user_id": str(uuid4()), "allowed_user_ids": [], "group_ids": [], "allowed_group_ids": [], "visibility": "private", "sensitivity": "internal", "sensitivity_rank": 200, "expires_at": None, "acl_policy_id": str(uuid4()), "acl_policy_version": 1, "allowed_role_ids": [], "allowed_org_unit_ids": [], "allowed_project_ids": []}
 
     count = indexer.upsert(chunks=chunks, embeddings=embeddings, acl_metadata=acl)
     assert count == 3
@@ -76,7 +76,7 @@ def test_qdrant_indexer_point_structure():
     parent_id = uuid4()
     chunk = _make_chunk(doc_id, 0, parent_id)
     embedding = _make_embedding(uuid4())
-    acl = {"tenant_id": str(uuid4()), "group_ids": ["group1"]}
+    acl = {"tenant_id": str(uuid4()), "owner_user_id": str(uuid4()), "allowed_user_ids": ["user-1"], "group_ids": ["group1"], "allowed_group_ids": ["group1"], "visibility": "group", "sensitivity": "confidential", "sensitivity_rank": 300, "expires_at": None, "acl_policy_id": str(uuid4()), "acl_policy_version": 2, "allowed_role_ids": [], "allowed_org_unit_ids": [], "allowed_project_ids": []}
 
     indexer.upsert(chunks=[chunk], embeddings=[embedding], acl_metadata=acl)
 
@@ -86,6 +86,14 @@ def test_qdrant_indexer_point_structure():
     p = points[0]
     assert p.payload["tenant_id"] == acl["tenant_id"]
     assert p.payload["group_ids"] == ["group1"]
+    assert p.payload["allowed_group_ids"] == ["group1"]
+    assert p.payload["allowed_user_ids"] == ["user-1"]
+    assert p.payload["visibility"] == "group"
+    assert p.payload["sensitivity"] == "confidential"
+    assert p.payload["sensitivity_rank"] == 300
+    assert p.payload["acl_policy_id"] == acl["acl_policy_id"]
+    assert p.payload["acl_policy_version"] == 2
+    assert p.payload["allowed_role_ids"] == []
     assert p.payload["document_id"] == str(doc_id)
     assert p.payload["chunk_index"] == 0
     assert p.payload["text"] == "test chunk text for qdrant indexing"

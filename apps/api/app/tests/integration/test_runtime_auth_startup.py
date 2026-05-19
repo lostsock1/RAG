@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from app.core.config import get_settings
 from app.core.config import Settings
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedUser, AclGrant
 from app.db.models.document import Document
 from app.db.models.tenant import Tenant
 from app.db.models.user import User

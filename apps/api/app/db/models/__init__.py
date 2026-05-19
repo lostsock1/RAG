@@ -1,5 +1,5 @@
 from app.db.base import Base
-from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant, AclPolicy, AclPolicyDimension, AclPolicySensitivityLevel, AclPolicyVisibilityMode
 from app.db.models.audit import AuditEvent
 from app.db.models.chunk import Chunk
 from app.db.models.document import Document
@@ -12,6 +12,10 @@ __all__ = [
     "AclAllowedGroup",
     "AclAllowedUser",
     "AclGrant",
+    "AclPolicy",
+    "AclPolicyDimension",
+    "AclPolicySensitivityLevel",
+    "AclPolicyVisibilityMode",
     "AuditEvent",
     "Base",
     "Chunk",

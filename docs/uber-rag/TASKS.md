@@ -89,6 +89,7 @@
 - [x] Implement Qdrant real vector indexer adapter.
 - [x] Implement OpenSearch real lexical indexer adapter.
 - [x] Add thin ACL-safe `/search` kickoff route and retriever seam.
+- [x] Add tenant ACL bootstrap policy locking + normalized policy-aware index ACL payloads.
 - [ ] Implement query router.
 - [ ] Implement hybrid retrieval and fusion.
 - [ ] Implement reranker adapter.

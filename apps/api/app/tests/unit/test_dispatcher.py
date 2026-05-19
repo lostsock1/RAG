@@ -14,7 +14,7 @@ from sqlalchemy import insert
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.document import Document
 from app.db.models.ingestion import IngestionRun, IngestionStage, ParsedArtifact as ParsedArtifactRecord
 from app.db.models.group import Group
@@ -948,8 +948,16 @@ def test_get_document_index_acl_metadata_returns_real_group_ids(seeded_env) -> N
 
     assert metadata["tenant_id"] == str(tenant_id)
     assert metadata["group_ids"] == [str(group_id)]
+    assert metadata["allowed_group_ids"] == [str(group_id)]
     assert metadata["allowed_user_ids"] == [str(owner_user_id)]
     assert metadata["visibility"] == "private"
+    assert metadata["sensitivity"] == "internal"
+    assert metadata["sensitivity_rank"] == 200
+    assert metadata["acl_policy_id"]
+    assert metadata["acl_policy_version"] == 1
+    assert metadata["allowed_role_ids"] == []
+    assert metadata["allowed_org_unit_ids"] == []
+    assert metadata["allowed_project_ids"] == []
 
 
 def test_pipeline_runner_passes_real_acl_metadata_to_indexers(seeded_env) -> None:
@@ -1019,3 +1027,6 @@ def test_pipeline_runner_passes_real_acl_metadata_to_indexers(seeded_env) -> Non
     assert lexical_indexer.acl_metadata["group_ids"] == [str(group_id)]
     assert vector_indexer.acl_metadata["tenant_id"] == str(tenant_id)
     assert lexical_indexer.acl_metadata["visibility"] == "private"
+    assert vector_indexer.acl_metadata["acl_policy_id"]
+    assert vector_indexer.acl_metadata["acl_policy_version"] == 1
+    assert lexical_indexer.acl_metadata["sensitivity_rank"] == 200

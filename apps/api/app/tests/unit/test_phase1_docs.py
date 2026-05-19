@@ -61,3 +61,13 @@ def test_search_openapi_and_contract_match_thin_search_slice() -> None:
     assert 'results:' not in search_response_block
     assert 'total_hits:' not in search_response_block
     assert 'retrieval_mode_used:' not in search_response_block
+
+
+def test_acl_bootstrap_policy_api_and_public_visibility_are_documented() -> None:
+    api_contract = Path('docs/uber-rag/API_CONTRACT.md').read_text()
+    security_acl = Path('docs/uber-rag/SECURITY_ACL.md').read_text()
+    openapi_text = Path('docs/uber-rag/api/openapi.yaml').read_text()
+
+    assert '/api/v1/acl/bootstrap-policy' in api_contract
+    assert '/acl/bootstrap-policy:' in openapi_text
+    assert 'tenant-scoped to authenticated users in the same tenant' in security_acl

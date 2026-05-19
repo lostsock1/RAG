@@ -43,9 +43,21 @@ def test_phase1_tables_exist(inspector: Inspector) -> None:
         "acl_grants",
         "acl_allowed_users",
         "acl_allowed_groups",
+        "acl_policies",
+        "acl_policy_visibility_modes",
+        "acl_policy_sensitivity_levels",
+        "acl_policy_dimensions",
         "audit_events",
     }
     assert expected.issubset(table_names)
+
+
+def test_acl_policy_columns_exist(inspector: Inspector) -> None:
+    acl_grant_columns = {column["name"] for column in inspector.get_columns("acl_grants")}
+    acl_policy_columns = {column["name"] for column in inspector.get_columns("acl_policies")}
+
+    assert {"acl_policy_id", "acl_policy_version", "sensitivity_rank"}.issubset(acl_grant_columns)
+    assert {"tenant_id", "policy_version", "status", "locked_at", "default_visibility_mode"}.issubset(acl_policy_columns)
 
 
 def test_phase2_ingestion_tables_exist(inspector: Inspector) -> None:

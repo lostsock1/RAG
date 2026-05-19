@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import and_, exists, false, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.document import Document
 
 
@@ -38,6 +38,7 @@ def build_document_acl_filter(
         has_explicit_user_grant,
         has_matching_group_grant,
         AclGrant.visibility == "tenant",
+        AclGrant.visibility == "public",
     )
     is_unexpired_acl = or_(AclGrant.expires_at.is_(None), AclGrant.expires_at > datetime.now(UTC))
 

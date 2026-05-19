@@ -31,6 +31,18 @@ JWT/OIDC token
   -> audit log
 ```
 
+## ACL bootstrap policy
+
+Each tenant now has one bootstrap ACL policy that is intended to be configured before first ingest.
+
+- Policy shape: `policy_id`, `policy_version`, `status` (`draft|locked`), `locked_at`, `default_visibility_mode`.
+- Visibility modes use stable internal keys with renameable display names and active flags: `private`, `group`, `tenant`, `public`.
+- Sensitivity levels use stable internal keys with renameable display names, active flags, and deterministic ranks: `public=100`, `internal=200`, `confidential=300`, `restricted=400`.
+- Dimensions use stable internal keys with renameable display names. Current defaults are active `user` + `group`, plus inactive placeholders `role`, `org_unit`, and `project`.
+- First document creation / ingest locks the tenant policy if it is still `draft`. After lock, semantic edits are rejected.
+- The bootstrap policy is API-first: clients use `GET /api/v1/acl/bootstrap-policy` and `PUT /api/v1/acl/bootstrap-policy` rather than repository-only wiring.
+- Current truthful `public` semantics are tenant-scoped to authenticated users in the same tenant. `public` does not bypass tenant isolation and does not mean anonymous internet access.
+
 ## Required ACL fields
 
 ```json
@@ -41,7 +53,13 @@ JWT/OIDC token
   "allowed_group_ids": ["string"],
   "visibility": "private|group|tenant|public",
   "sensitivity": "public|internal|confidential|restricted",
-  "expires_at": "timestamp|null"
+  "sensitivity_rank": 200,
+  "expires_at": "timestamp|null",
+  "acl_policy_id": "string",
+  "acl_policy_version": 1,
+  "allowed_role_ids": [],
+  "allowed_org_unit_ids": [],
+  "allowed_project_ids": []
 }
 ```
 
@@ -51,6 +69,7 @@ JWT/OIDC token
 - **Owner visibility:** the document owner can list, retrieve, and update ACL for their own document even when visibility is `private`.
 - **Explicit user grant visibility:** a user listed in `allowed_user_ids` can access the document without sharing the owner's groups.
 - **Tenant visibility inside tenant only:** `tenant` visibility grants access to authenticated users from the same tenant only; users from other tenants receive no results and no metadata leakage.
+- **Public visibility inside tenant only:** `public` visibility grants access to any authenticated user from the same tenant even without shared group membership; users from other tenants still receive no results and no metadata leakage.
 - **Hidden docs omitted from counts and titles:** unauthorized documents do not appear in list counts, search counts, autocomplete, document titles, or error text.
 
 ## Mandatory tests

@@ -70,6 +70,7 @@ Phase 2 ingestion note:
 - Current foundation payload returns persisted ingestion-run metadata only: `id`, `document_id`, `tenant_id`, `status`, `workflow_backend`, `parser_backend`, `source_hash`, `created_at`, `updated_at`.
 - Internal persistence note only: parsed artifacts now store deployment-truthful parser provenance (`parser_backend`, `parser_version`, `parser_profile`) plus normalized OCR provenance (`status`, `applied`, `engine`, `provider`, `page_numbers`) in the DB artifact contract.
 - Internal persistence note only: quality reports now store richer structured counts (`page_count`, `table_count`, `non_empty_text_pages`, `empty_text_pages`, `block_count`, `table_page_count`, `ocr_page_count`), warnings, parser provenance, OCR summary, and a raw JSON payload in `quality_reports.raw_report_text` without requiring a schema migration. This does **not** yet change the public `/documents/{document_id}/quality-report` OpenAPI schema.
+- Internal persistence note only: document ACL grants now snapshot `acl_policy_id`, `acl_policy_version`, and `sensitivity_rank`, and index ACL payloads now include policy-aware normalized fields plus empty placeholder arrays for inactive future dimensions (`allowed_role_ids`, `allowed_org_unit_ids`, `allowed_project_ids`). The public document ACL request/response schema is unchanged in this slice.
 - `POST /api/v1/ingestion/jobs/{job_id}/retry` requires `documents:write`, reuses the existing stored object, returns `404` for not-found/denied runs plus `409` for non-retryable states (`running`, `completed`), and emits retry audit events for success (`ingestion.job.retry`), denied/not-found (`ingestion.job.retry.denied`), and conflict (`ingestion.job.retry.conflict`) outcomes.
 - Runs are dispatched through the workflow-backend-neutral dispatcher seam. `workflow_backend="scaffold"` still means the run record is orchestration-agnostic rather than Temporal-specific.
 - **Workflow backend selection:** In-process remains the default workflow backend (`WORKFLOW_BACKEND=in_process`). Temporal dispatch is explicit opt-in via `WORKFLOW_BACKEND=temporal` plus `TEMPORAL_HOST_PORT`. When `temporal` is selected without required config, startup fails clearly — no silent fallback to in-process. The Temporal worker skeleton reuses the shared pipeline runner (`PipelineRunner`) and does not redefine stage business logic.
@@ -80,12 +81,19 @@ Upload foundation note:
 ### ACL
 
 ```text
+GET    /api/v1/acl/bootstrap-policy
+PUT    /api/v1/acl/bootstrap-policy
 GET    /api/v1/documents/{document_id}/acl
 PUT    /api/v1/documents/{document_id}/acl
 GET    /api/v1/collections/{collection_id}/acl
 PUT    /api/v1/collections/{collection_id}/acl
 GET    /api/v1/users/me/permissions
 ```
+
+Bootstrap ACL policy note:
+- `GET /api/v1/acl/bootstrap-policy` returns `404` until the tenant policy is first configured.
+- `PUT /api/v1/acl/bootstrap-policy` creates or updates the tenant draft policy, requires `documents:write`, returns `409` after lock, and returns `422` for invalid policy combinations such as an inactive default visibility.
+- Truthful current visibility semantics: `public` is still tenant-scoped in the current deployment model. It grants access to any authenticated user in the same tenant, not cross-tenant or anonymous access.
 
 ### Retrieval and chat
 

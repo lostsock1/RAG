@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from app.core.request_context import RequestContext
 from app.core.security import get_request_context
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.audit import AuditEvent
 from app.db.models.document import Document
 from app.db.models.group import Group, UserGroup
@@ -111,12 +111,23 @@ def seeded_search_documents() -> dict[str, str]:
                     object_key='documents/tenant.txt',
                     ingestion_status='completed',
                 ),
+                'public_shared': Document(
+                    tenant_id=tenant_id,
+                    owner_user_id=owner_a_id,
+                    title='Tenant Authenticated Public',
+                    source_type='loose_document',
+                    source_hash='hash-public',
+                    file_name='public.txt',
+                    file_size_bytes=1,
+                    object_key='documents/public.txt',
+                    ingestion_status='completed',
+                ),
             }
 
             for key, document in documents.items():
                 session.add(document)
                 session.flush()
-                visibility = 'tenant' if key == 'tenant_shared' else 'group'
+                visibility = 'tenant' if key == 'tenant_shared' else 'public' if key == 'public_shared' else 'group'
                 acl_grant = AclGrant(
                     document_id=document.id,
                     owner_user_id=document.owner_user_id,
@@ -143,6 +154,7 @@ def seeded_search_documents() -> dict[str, str]:
                 'group_a_document_id': str(documents['group_a'].id),
                 'group_b_document_id': str(documents['group_b'].id),
                 'tenant_shared_document_id': str(documents['tenant_shared'].id),
+                'public_shared_document_id': str(documents['public_shared'].id),
             }
 
         try:
@@ -187,6 +199,15 @@ def test_search_returns_acl_safe_ranked_hits_and_audit_event(seeded_search_docum
                 'page_end': 1,
                 'heading_path': ['Shared'],
             },
+            {
+                'document_id': seeded_search_documents['public_shared_document_id'],
+                'chunk_id': 'chunk-p-1',
+                'score': 0.72,
+                'text': 'Public within tenant hit',
+                'page_start': 4,
+                'page_end': 4,
+                'heading_path': ['Public'],
+            },
         ]
     )
     client = make_client(
@@ -204,12 +225,13 @@ def test_search_returns_acl_safe_ranked_hits_and_audit_event(seeded_search_docum
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload['total'] == 2
-    assert [item['document_title'] for item in payload['items']] == ['Group B Visible', 'Tenant Shared']
-    assert retriever.queries[0].allowed_document_ids == [
+    assert payload['total'] == 3
+    assert [item['document_title'] for item in payload['items']] == ['Group B Visible', 'Tenant Shared', 'Tenant Authenticated Public']
+    assert set(retriever.queries[0].allowed_document_ids) == {
         seeded_search_documents['group_b_document_id'],
         seeded_search_documents['tenant_shared_document_id'],
-    ]
+        seeded_search_documents['public_shared_document_id'],
+    }
 
     with session_factory() as session:
         audit_event = session.scalar(select(AuditEvent).where(AuditEvent.action == 'search.query'))
@@ -219,6 +241,7 @@ def test_search_returns_acl_safe_ranked_hits_and_audit_event(seeded_search_docum
         assert audit_event.details['result_document_ids'] == [
             seeded_search_documents['group_b_document_id'],
             seeded_search_documents['tenant_shared_document_id'],
+            seeded_search_documents['public_shared_document_id'],
         ]
 
 

@@ -9,7 +9,7 @@ from app.repositories.audit import build_audit_event
 from app.services.acl_service import build_document_acl_filter
 
 
-def test_acl_filter_includes_owner_group_and_tenant_visibility() -> None:
+def test_acl_filter_includes_owner_group_tenant_and_public_visibility() -> None:
     sql_filter = build_document_acl_filter(
         tenant_id="11111111-1111-1111-1111-111111111111",
         user_id="22222222-2222-2222-2222-222222222222",
@@ -27,6 +27,7 @@ def test_acl_filter_includes_owner_group_and_tenant_visibility() -> None:
     assert "22222222-2222-2222-2222-222222222222" in compiled
     assert "33333333-3333-3333-3333-333333333333" in compiled
     assert "tenant" in compiled
+    assert "public" in compiled
     assert "is_tombstoned" in compiled
 
 

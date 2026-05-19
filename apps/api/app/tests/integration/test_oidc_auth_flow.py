@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from app.core.config import get_settings
 from app.core.oidc import OidcTokenVerifier, get_oidc_token_verifier
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.document import Document
 from app.db.models.group import Group, UserGroup
 from app.db.models.tenant import Tenant

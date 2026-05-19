@@ -8,10 +8,15 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.audit import AuditEvent
 from app.db.models.document import Document
 from app.db.models.group import Group
+from app.repositories.acl_policy import (
+    ensure_tenant_acl_policy_locked_for_session,
+    get_policy_sensitivity_rank_for_session,
+    validate_policy_visibility_for_session,
+)
 from app.services.acl_service import build_document_acl_filter
 
 
@@ -35,7 +40,10 @@ class DocumentIndexAclMetadata:
     allowed_user_ids: list[UUID]
     allowed_group_ids: list[UUID]
     sensitivity: str
+    sensitivity_rank: int
     expires_at: datetime | None
+    acl_policy_id: UUID
+    acl_policy_version: int
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -44,14 +52,35 @@ class DocumentIndexAclMetadata:
             "owner_user_id": str(self.owner_user_id),
             "allowed_user_ids": [str(value) for value in self.allowed_user_ids],
             "group_ids": [str(value) for value in self.allowed_group_ids],
+            "allowed_group_ids": [str(value) for value in self.allowed_group_ids],
             "visibility": self.visibility,
             "sensitivity": self.sensitivity,
+            "sensitivity_rank": self.sensitivity_rank,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "acl_policy_id": str(self.acl_policy_id),
+            "acl_policy_version": self.acl_policy_version,
+            "allowed_role_ids": [],
+            "allowed_org_unit_ids": [],
+            "allowed_project_ids": [],
         }
 
 
 def _is_admin(roles: list[str]) -> bool:
     return "admin" in roles
+
+
+def _ensure_acl_grant_policy_fields(session, *, acl_grant: AclGrant) -> AclGrant:
+    policy = ensure_tenant_acl_policy_locked_for_session(session, tenant_id=acl_grant.tenant_id)
+    acl_grant.acl_policy_id = policy.id
+    acl_grant.acl_policy_version = policy.policy_version
+    validate_policy_visibility_for_session(session, policy_id=policy.id, visibility=acl_grant.visibility)
+    acl_grant.sensitivity_rank = get_policy_sensitivity_rank_for_session(
+        session,
+        policy_id=policy.id,
+        sensitivity=acl_grant.sensitivity,
+    )
+    session.flush()
+    return acl_grant
 
 
 def _load_document_acl(session, document_id: UUID) -> DocumentAclView | None:
@@ -73,6 +102,8 @@ def _load_document_acl(session, document_id: UUID) -> DocumentAclView | None:
             .order_by(AclAllowedGroup.group_id)
         )
     )
+
+    acl_grant = _ensure_acl_grant_policy_fields(session, acl_grant=acl_grant)
 
     return DocumentAclView(
         document_id=document_id,
@@ -105,6 +136,11 @@ def get_document_index_acl_metadata(*, document_id: UUID) -> dict[str, object]:
                 f"Index ACL metadata could not be loaded: document {document_id} has no ACL grant."
             )
 
+        acl_grant = session.scalar(select(AclGrant).where(AclGrant.document_id == document_id))
+        assert acl_grant is not None
+        acl_grant = _ensure_acl_grant_policy_fields(session, acl_grant=acl_grant)
+        session.commit()
+
         return DocumentIndexAclMetadata(
             document_id=document.id,
             tenant_id=document.tenant_id,
@@ -113,7 +149,10 @@ def get_document_index_acl_metadata(*, document_id: UUID) -> dict[str, object]:
             allowed_user_ids=acl_view.allowed_user_ids,
             allowed_group_ids=acl_view.allowed_group_ids,
             sensitivity=acl_view.sensitivity,
+            sensitivity_rank=acl_grant.sensitivity_rank,
             expires_at=acl_view.expires_at,
+            acl_policy_id=acl_grant.acl_policy_id,
+            acl_policy_version=acl_grant.acl_policy_version,
         ).to_payload()
 
 
@@ -153,12 +192,21 @@ def create_document_with_owner_acl(
         session.add(document)
         session.flush()
 
+        acl_policy = ensure_tenant_acl_policy_locked_for_session(session, tenant_id=tenant_id)
+        sensitivity_rank = get_policy_sensitivity_rank_for_session(
+            session,
+            policy_id=acl_policy.id,
+            sensitivity="internal",
+        )
         acl_grant = AclGrant(
             document_id=document.id,
             owner_user_id=owner_user_id,
             tenant_id=tenant_id,
-            visibility="private",
+            acl_policy_id=acl_policy.id,
+            acl_policy_version=acl_policy.policy_version,
+            visibility=acl_policy.default_visibility_mode,
             sensitivity="internal",
+            sensitivity_rank=sensitivity_rank,
         )
         session.add(acl_grant)
         session.flush()
@@ -346,8 +394,17 @@ def update_document_acl(
         if acl_grant is None:
             return None
 
+        acl_grant = _ensure_acl_grant_policy_fields(session, acl_grant=acl_grant)
+        assert acl_grant.acl_policy_id is not None
+        validate_policy_visibility_for_session(session, policy_id=acl_grant.acl_policy_id, visibility=visibility)
+
         acl_grant.visibility = visibility
         acl_grant.sensitivity = sensitivity
+        acl_grant.sensitivity_rank = get_policy_sensitivity_rank_for_session(
+            session,
+            policy_id=acl_grant.acl_policy_id,
+            sensitivity=sensitivity,
+        )
         acl_grant.expires_at = expires_at
 
         session.execute(delete(AclAllowedUser).where(AclAllowedUser.acl_grant_id == acl_grant.id))

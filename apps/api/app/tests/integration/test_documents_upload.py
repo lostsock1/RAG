@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from app.core.request_context import RequestContext
 from app.core.security import get_request_context
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedUser, AclGrant
+from app.db.acl_models import AclPolicy, AclPolicyDimension, AclPolicySensitivityLevel, AclPolicyVisibilityMode
 from app.db.models.audit import AuditEvent
 from app.db.models.document import Document
 from app.db.models.ingestion import IngestionRun
@@ -152,6 +153,11 @@ def test_upload_creates_document_and_default_acl(
         acl_grant = session.scalar(select(AclGrant).where(AclGrant.document_id == document.id))
         assert acl_grant is not None
         assert acl_grant.owner_user_id == UUID(payload["owner_user_id"])
+        assert acl_grant.visibility == "private"
+        assert acl_grant.sensitivity == "internal"
+        assert acl_grant.sensitivity_rank == 200
+        assert acl_grant.acl_policy_id is not None
+        assert acl_grant.acl_policy_version == 1
 
         owner_grant = session.scalar(
             select(AclAllowedUser).where(
@@ -160,6 +166,41 @@ def test_upload_creates_document_and_default_acl(
             )
         )
         assert owner_grant is not None
+
+        policy = session.scalar(select(AclPolicy).where(AclPolicy.tenant_id == document.tenant_id))
+        assert policy is not None
+        assert policy.status == "locked"
+        assert policy.locked_at is not None
+        assert policy.default_visibility_mode == "private"
+
+        visibility_modes = {
+            row.key: row
+            for row in session.scalars(
+                select(AclPolicyVisibilityMode).where(AclPolicyVisibilityMode.policy_id == policy.id)
+            ).all()
+        }
+        assert visibility_modes["private"].display_name == "Private"
+        assert visibility_modes["group"].is_active is True
+
+        sensitivity_levels = {
+            row.key: row
+            for row in session.scalars(
+                select(AclPolicySensitivityLevel).where(AclPolicySensitivityLevel.policy_id == policy.id)
+            ).all()
+        }
+        assert sensitivity_levels["internal"].rank == 200
+
+        dimensions = {
+            row.key: row
+            for row in session.scalars(
+                select(AclPolicyDimension).where(AclPolicyDimension.policy_id == policy.id)
+            ).all()
+        }
+        assert dimensions["user"].is_active is True
+        assert dimensions["group"].is_active is True
+        assert dimensions["role"].is_active is False
+        assert dimensions["org_unit"].is_active is False
+        assert dimensions["project"].is_active is False
 
         audit_event = session.scalar(
             select(AuditEvent).where(

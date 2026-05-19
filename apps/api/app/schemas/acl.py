@@ -24,3 +24,35 @@ class DocumentAclResponse(BaseModel):
     allowed_group_ids: list[UUID]
     sensitivity: str
     expires_at: datetime | None = None
+
+
+class AclPolicyNamedValueResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    display_name: str
+    is_active: bool
+    rank: int | None = None
+
+
+class TenantAclBootstrapPolicyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    policy_id: UUID
+    tenant_id: UUID
+    policy_version: int
+    status: str
+    locked_at: datetime | None = None
+    default_visibility_mode: str
+    visibility_modes: dict[str, AclPolicyNamedValueResponse]
+    sensitivity_levels: dict[str, AclPolicyNamedValueResponse]
+    dimensions: dict[str, AclPolicyNamedValueResponse]
+
+
+class TenantAclBootstrapPolicyUpdateRequest(BaseModel):
+    default_visibility_mode: str | None = None
+    visibility_display_names: dict[str, str] | None = None
+    visibility_active_flags: dict[str, bool] | None = None
+    sensitivity_display_names: dict[str, str] | None = None
+    dimension_display_names: dict[str, str] | None = None
+    dimension_active_flags: dict[str, bool] | None = None

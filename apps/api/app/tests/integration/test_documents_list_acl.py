@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from app.core.request_context import RequestContext
 from app.core.security import get_request_context
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.audit import AuditEvent
 from app.db.models.document import Document
 from app.db.models.group import Group, UserGroup
@@ -147,6 +147,22 @@ def seeded_documents() -> dict[str, str]:
                     Document(
                         tenant_id=tenant_id,
                         owner_user_id=owner_a_id,
+                        title="Tenant Authenticated Public",
+                        source_type="loose_document",
+                        source_hash="hash-public",
+                        file_name="public.txt",
+                        file_size_bytes=1,
+                        object_key="documents/public.txt",
+                        ingestion_status="uploaded",
+                    ),
+                    "public",
+                    [],
+                    [],
+                ),
+                (
+                    Document(
+                        tenant_id=tenant_id,
+                        owner_user_id=owner_a_id,
                         title="Explicit User Visible",
                         source_type="loose_document",
                         source_hash="hash-user",
@@ -235,6 +251,7 @@ def test_group_b_user_cannot_see_group_a_document(seeded_documents: dict[str, st
     assert "Group A Secret" not in titles
     assert "Group B Visible" in titles
     assert "Tenant Shared" in titles
+    assert "Tenant Authenticated Public" in titles
     assert "Explicit User Visible" in titles
     assert "Owner Only Private" not in titles
 
@@ -275,6 +292,23 @@ def test_other_tenant_user_cannot_see_tenant_shared_document(seeded_documents: d
     response = client.get("/api/v1/documents")
     assert response.status_code == 200
     assert response.json()["items"] == []
+
+
+def test_public_visibility_remains_tenant_scoped_not_cross_tenant(seeded_documents: dict[str, str]) -> None:
+    client = make_client(
+        RequestContext(
+            tenant_id=seeded_documents["other_tenant_id"],
+            user_id=seeded_documents["other_tenant_user_id"],
+            group_ids=[],
+            roles=["editor"],
+            scopes=["documents:read"],
+        )
+    )
+
+    response = client.get("/api/v1/documents")
+
+    assert response.status_code == 200
+    assert "Tenant Authenticated Public" not in [item["title"] for item in response.json()["items"]]
 
 
 def test_missing_read_scope_cannot_list_documents(seeded_documents: dict[str, str]) -> None:

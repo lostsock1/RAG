@@ -309,6 +309,42 @@ paths:
         "204": { description: "Removed" }
 
   # ── ACL ────────────────────────────────────────────────────────
+  /acl/bootstrap-policy:
+    get:
+      summary: Get the current tenant ACL bootstrap policy
+      operationId: getAclBootstrapPolicy
+      tags: [ACL]
+      responses:
+        "200":
+          description: Current tenant ACL bootstrap policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantAclBootstrapPolicy"
+        "404":
+          description: Tenant ACL bootstrap policy has not been configured yet
+    put:
+      summary: Create or update the current tenant draft ACL bootstrap policy
+      operationId: putAclBootstrapPolicy
+      tags: [ACL]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantAclBootstrapPolicyUpdateRequest"
+      responses:
+        "200":
+          description: Tenant ACL bootstrap policy updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TenantAclBootstrapPolicy"
+        "409":
+          description: Tenant ACL bootstrap policy is already locked
+        "422":
+          description: Invalid bootstrap policy configuration
+
   /documents/{document_id}/acl:
     get:
       summary: Get ACL grants for a document
@@ -832,6 +868,62 @@ components:
         offset: { type: integer }
 
     # ── ACL ────────────────────────────────────────────────────
+    AclPolicyNamedValue:
+      type: object
+      properties:
+        key: { type: string }
+        display_name: { type: string }
+        is_active: { type: boolean }
+        rank: { type: integer, nullable: true }
+
+    TenantAclBootstrapPolicy:
+      type: object
+      properties:
+        policy_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        policy_version: { type: integer }
+        status: { type: string, enum: [draft, locked] }
+        locked_at: { type: string, format: date-time, nullable: true }
+        default_visibility_mode: { type: string, enum: [private, group, tenant, public] }
+        visibility_modes:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/AclPolicyNamedValue"
+        sensitivity_levels:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/AclPolicyNamedValue"
+        dimensions:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/AclPolicyNamedValue"
+
+    TenantAclBootstrapPolicyUpdateRequest:
+      type: object
+      description: Configure the current tenant draft ACL bootstrap policy. In the current deployment model, `public` remains tenant-scoped to authenticated users in the same tenant.
+      properties:
+        default_visibility_mode: { type: string, enum: [private, group, tenant, public], nullable: true }
+        visibility_display_names:
+          type: object
+          nullable: true
+          additionalProperties: { type: string }
+        visibility_active_flags:
+          type: object
+          nullable: true
+          additionalProperties: { type: boolean }
+        sensitivity_display_names:
+          type: object
+          nullable: true
+          additionalProperties: { type: string }
+        dimension_display_names:
+          type: object
+          nullable: true
+          additionalProperties: { type: string }
+        dimension_active_flags:
+          type: object
+          nullable: true
+          additionalProperties: { type: boolean }
+
     AclGrant:
       type: object
       properties:

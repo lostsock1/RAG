@@ -18,7 +18,7 @@ from app.core.request_context import RequestContext
 from app.core.config import Settings, get_settings
 from app.core.security import get_request_context
 from app.db.base import session_factory
-from app.db.models.acl import AclAllowedGroup, AclAllowedUser, AclGrant
+from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.audit import AuditEvent
 from app.db.models.document import Document
 from app.db.models.group import Group, UserGroup
