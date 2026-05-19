@@ -43,13 +43,24 @@ async def test_temporal_dispatcher_submits_ingestion_workflow() -> None:
 
 
 @pytest.mark.anyio
-async def test_temporal_dispatcher_raises_when_no_client_and_no_temporalio() -> None:
+async def test_temporal_dispatcher_raises_when_no_client_and_no_temporalio(monkeypatch: pytest.MonkeyPatch) -> None:
     """TemporalDispatcher.dispatch raises clearly when no client is injected and temporalio is not installed."""
+    import builtins
+
     dispatcher = TemporalDispatcher(
         host_port="temporal:7233",
         namespace="default",
         task_queue="uber-rag-ingestion",
     )
+
+    real_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "temporalio.client":
+            raise ImportError("temporalio missing")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
 
     with pytest.raises(RuntimeError, match="temporalio"):
         await dispatcher.dispatch(uuid4())

@@ -52,7 +52,7 @@ class IngestionWorkflow:
     @workflow.run
     async def run(self, run_id: str) -> str:
         await workflow.execute_activity(
-            run_ingestion_activity,
+            "run_ingestion_activity",
             run_id,
             start_to_close_timeout=timedelta(minutes=30),
         )
@@ -67,7 +67,9 @@ def build_ingestion_activity(runner):
     """
 
     @activity.defn(name="run_ingestion_activity")
-    def run_ingestion_activity(run_id: str) -> None:
-        runner.run(UUID(run_id))
+    async def run_ingestion_activity(run_id: str) -> None:
+        import asyncio
+
+        await asyncio.to_thread(runner.run, UUID(run_id))
 
     return run_ingestion_activity

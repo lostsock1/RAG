@@ -11,7 +11,7 @@
 
 - [x] Create backend app skeleton.
 - [x] Create frontend app skeleton.
-- [ ] Add docker compose for local services.
+- [x] Add docker compose for local services.
 - [x] Add `.env.example` but never commit secrets.
 - [x] Add lint, tests, formatting.
 - [x] Add ADR process.
@@ -75,6 +75,7 @@
 - [x] Add retry/re-dispatch support for existing queued or failed ingestion runs.
 - [x] Expand quality report fields to the richer contract-level report.
 - [x] Add Temporal dispatch adapter and worker skeleton (explicit opt-in, in-process default preserved).
+- [x] Prove the Temporal worker/dispatcher path against a real local Temporal service.
 
 ## Phase 3: Indexing and retrieval
 

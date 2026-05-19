@@ -36,3 +36,16 @@ services:
       - "8080:8080"
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro
+
+  temporal:
+    image: temporalio/temporal:latest
+    container_name: uber-rag-temporal
+    command: server start-dev --headless --ip 0.0.0.0 --port 7233 --ui-ip 0.0.0.0 --ui-port 8233 --db-filename /var/lib/temporal/temporal.db
+    ports:
+      - "7233:7233"
+      - "8233:8233"
+    volumes:
+      - temporal-data:/var/lib/temporal
+
+volumes:
+  temporal-data:

@@ -21,6 +21,9 @@ dev = [
     "pytest>=8.3,<9",
     "httpx>=0.28,<1",
 ]
+temporal = [
+    "temporalio>=1.27,<2",
+]
 ml = [
     "sentence-transformers>=3.3,<4",
     "FlagEmbedding>=1.2,<2",

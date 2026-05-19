@@ -50,3 +50,6 @@ corpus/
 
 # MinIO local
 minio-data/
+
+# Local Temporal proof artifacts
+.temporal/

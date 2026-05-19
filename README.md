@@ -34,7 +34,24 @@ See `AGENTS.md` for agent orientation and `docs/uber-rag/PROJECT_STATE.md` for c
 10. Verify the auth-focused backend suite:
     - `pytest apps/api/app/tests/unit/test_oidc_claim_mapping.py apps/api/app/tests/unit/test_oidc_jwks.py apps/api/app/tests/integration/test_oidc_auth_flow.py apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
 
-The local dependency stack exposes PostgreSQL on `5432`, MinIO on `9000`/`9001`, and Keycloak on `8080`, but MinIO is still planned infrastructure rather than the active runtime document-storage path. Today, local uploads use `LOCAL_STORAGE_DIR`. The runtime verifier now validates bearer tokens against the configured JWKS endpoint; issuer-based JWKS discovery is not implemented in this Phase 1 slice.
+The local dependency stack exposes PostgreSQL on `5432`, MinIO on `9000`/`9001`, Keycloak on `8080`, and a local Temporal dev service on `7233`/`8233`, but MinIO is still planned infrastructure rather than the active runtime document-storage path. Today, local uploads use `LOCAL_STORAGE_DIR`. The runtime verifier now validates bearer tokens against the configured JWKS endpoint; issuer-based JWKS discovery is not implemented in this Phase 1 slice.
+
+## Local Temporal validation (Phase 2 closeout)
+
+1. Install the repo with the Temporal SDK extra:
+   - `.venv/bin/pip install -e ".[dev,temporal]"`
+2. Start a local Temporal service. Use either path:
+   - Docker Compose: `docker compose -f infra/docker/docker-compose.yml up -d temporal`
+   - Temporal CLI fallback: `temporal server start-dev --headless --ip 127.0.0.1 --port 7233 --ui-port 8233 --db-filename ./.temporal/dev-server.db`
+3. Verify the server is reachable:
+   - `temporal operator cluster health --address 127.0.0.1:7233`
+   - Expected: `SERVING`
+4. Run the guarded live proof against the real Temporal service:
+   - `.venv/bin/pytest apps/api/app/tests/integration/test_temporal_live_ingestion.py -q`
+   - Expected: `1 passed` when Temporal is reachable; truthful `skipped` when no local Temporal server is running.
+5. Optional manual worker process from repo settings:
+   - `PYTHONPATH=apps/api WORKFLOW_BACKEND=temporal TEMPORAL_HOST_PORT=127.0.0.1:7233 TEMPORAL_TASK_QUEUE=uber-rag-ingestion DATABASE_URL=sqlite:////absolute/path/to/temporal-worker.db LOCAL_STORAGE_DIR=/absolute/path/to/local-storage PARSER_BACKEND=docling PARSER_PROFILE=local-cpu .venv/bin/python -m app.workflows.temporal_worker`
+   - This command starts the repo's Temporal worker entrypoint. It requires a real parser runtime (for example Docling) plus a configured database/storage path.
 
 ## VPS run flow (Gate C — verified 2026-05-16)
 
