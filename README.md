@@ -73,7 +73,7 @@ a local Temporal dev server.
 
 ### Deployment ✅
 
-- VPS deployed and verified (`vm-1485.lnvps.cloud`)
+- VPS deployed and verified (12-point check passed 2026-05-16)
 - Docker Compose stack: Postgres, MinIO, Keycloak, Temporal
 - 12-point end-to-end verification passed (2026-05-16)
 - 203/203 backend tests green
@@ -207,7 +207,7 @@ curl -X POST http://localhost:8080/realms/uber-rag/protocol/openid-connect/token
 
 ### VPS deployment
 
-Deployed on a Debian VPS (`vm-1485.lnvps.cloud`). Full 12-point verification
+Deployed on a Debian VPS. Full 12-point verification
 passed (2026-05-16).
 
 ```bash
