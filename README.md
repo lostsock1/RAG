@@ -1,9 +1,7 @@
 # Uber-RAG
 
-**API-first, ACL-aware RAG platform for textbooks and loose documents.**
-Indexes structured and unstructured content, enforces per-tenant access
-control at the retrieval layer, and answers questions with sentence-level
-evidence verification and citations.
+**API-first, ACL-aware RAG platform for textbooks and loose documents — early
+stage, core ingestion pipeline working, retrieval and answering not yet built.**
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
@@ -11,52 +9,103 @@ evidence verification and citations.
 ![Qdrant](https://img.shields.io/badge/Qdrant-vector-DC244C)
 ![OpenSearch](https://img.shields.io/badge/OpenSearch-lexical-005EB8)
 ![Keycloak](https://img.shields.io/badge/Keycloak-OIDC-4D4D4D)
+![Status](https://img.shields.io/badge/status-ingestion%20working%2C%20retrieval%20stub-yellow)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 ---
 
-## Overview
-
-Uber-RAG is a commercial-grade document understanding and question-answering
-platform built around a single assertion: **retrieval without access control is
-non-viable for multi-tenant deployments.** Every document, chunk, vector, and
-search result is filtered through tenant-scoped ACL policies before it reaches
-the answer layer.
-
-The platform handles two document profiles — textbooks (hierarchical,
-structure-aware chunking) and loose documents (paragraph-split with
-parent-child relationships) — through a shared retrieval and answer core.
-
-### What it does
-
-- **Ingestion** — upload documents via REST API, dispatch through a 7-stage
-  async pipeline (parse → chunk → embed → index_dense → index_sparse →
-  quality_report), with configurable backends for every stage
-- **Parsing** — supports local CPU parsing, local GPU parsing, and remote
-  HTTP-backed parser adapters; deployment profile selected at config time
-- **Chunking** — structure-aware splitting for textbooks (chapter/section
-  hierarchy) and paragraph-based splitting for loose documents with two-level
-  parent-child relationships; deterministic chunk UUIDs via `uuid5`
-- **Embedding** — BGE-M3 for dense (1024-dim L2-normalized) and sparse
-  (lexical token-weight) vectors, with a stub embedder for fast testing
-- **Indexing** — Qdrant for vector search (cosine similarity on
-  dense + sparse named vectors), OpenSearch for BM25 / phrase / exact lexical
-  search, both with real and mock test backends
-- **Retrieval** — ACL-safe `/search` with pre- and post-filtering, query
-  hashing for audit, retriever protocol seam; hybrid retrieval, reranking,
-  and context building are next
-- **Auth & ACL** — OIDC via Keycloak with JWKS-backed token verification,
-  loopback dev fallback for local development, bootstrap ACL policies with
-  stable keys, deterministic `sensitivity_rank`, and tenant-scoped visibility
-- **Answering** — evidence verification at sentence level, citation linking
-  back to source chunks
-- **Temporal orchestration** — optional workflow dispatch via Temporal with
-  fire-and-forget semantics; in-process dispatch remains the default for
-  simpler deployments
+> **⚠️ This project is not ready for use.** The ingestion pipeline (upload →
+> parse → chunk → embed → index) is fully implemented and tested. Retrieval
+> is a thin stub. Answer generation, reranking, evaluation, and the full
+> query pipeline have not been built. See [What's Missing](#whats-missing).
 
 ---
 
-## Architecture
+## What's Built
+
+### Ingestion Pipeline ✅
+
+A 7-stage async pipeline processes uploaded documents end-to-end:
+
+```
+upload ──► parse ──► persist ──► chunk ──► embed ──► index_qdrant ──► index_opensearch ──► quality_report
+```
+
+| Stage | Implementation | Status |
+|-------|---------------|--------|
+| Parse | Docling (local CPU), remote HTTP adapter | ✅ Real, tested |
+| Chunk | `LooseDocumentChunker` — structure-aware paragraph splitting, atomic tables, parent-child hierarchy | ✅ Real, tested (150 tests) |
+| Embed | BGE-M3 — 1024-dim L2-normalized dense + lexical sparse vectors | ✅ Real, tested |
+| Index (dense) | Qdrant — cosine similarity on named vectors, auto-collection creation | ✅ Real, tested |
+| Index (sparse) | OpenSearch — BM25/phrase/exact, standard analyzer, auto-index creation | ✅ Real, tested |
+| Quality report | Per-run quality metadata with OCR provenance | ✅ Real, tested |
+
+The pipeline runs in-process by default. Temporal workflow dispatch is available
+as an explicit opt-in (`workflow_backend: temporal`) — live proof passed against
+a local Temporal dev server.
+
+### Auth & ACL ✅
+
+- OIDC via Keycloak with JWKS-backed token verification
+- Loopback dev fallback for local development (`AUTH_MODE=dev`)
+- Per-tenant ACL bootstrap policies with deterministic `sensitivity_rank`
+- Tenant-scoped visibility (`private | group | tenant | public`)
+- ACL filtering at upload, list, and search layers
+- Verified: Alice can list her documents; Bob sees `[]`
+
+### API Endpoints ✅
+
+| Endpoint | Status |
+|----------|--------|
+| `GET /api/v1/system/health` | ✅ |
+| `POST /api/v1/documents/upload` | ✅ |
+| `GET /api/v1/documents` | ✅ ACL-filtered |
+| `GET /api/v1/documents/{id}/acl` | ✅ |
+| `POST /api/v1/ingestion/jobs/{id}/retry` | ✅ |
+| `GET /api/v1/ingestion/jobs` | ✅ |
+| `POST /api/v1/search` | ⚠️ Thin stub — ACL-safe route with pre/post filtering, but no hybrid retrieval or reranking |
+
+### Storage ✅
+
+- Local filesystem adapter (default)
+- S3-compatible adapter (SeaweedFS-ready)
+- Storage materialization seam for parsers (yields local path regardless of backend)
+
+### Deployment ✅
+
+- VPS deployed and verified (`vm-1485.lnvps.cloud`)
+- Docker Compose stack: Postgres, MinIO, Keycloak, Temporal
+- 12-point end-to-end verification passed (2026-05-16)
+- 203/203 backend tests green
+
+---
+
+## What's Missing
+
+### Not Yet Implemented
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Answer generation / LLM** | ❌ Not started | ADR-0004 designed (ppq.ai + Llama 3.3 70B), not wired |
+| **Full retrieval pipeline** | ❌ Not started | Hybrid retrieval, fusion, reranking, context building all pending |
+| **Reranking** | ❌ Not started | BGE reranker selected but not integrated |
+| **Evaluation harness** | ❌ Not started | Design doc complete, 170-question heldout set drafted, no code |
+| **Frontend E2E verification** | ❌ Not done | Next.js toolchain builds, pages exist, never tested against running API |
+| **Book profile chunking** | ❌ Not started | Only `LooseDocumentChunker` implemented |
+| **Sentence-level verification** | ❌ Not started | Architecture only |
+| **Graph RAG** | ❌ Not started | Deferred until hybrid retrieval core is proven |
+
+### Partially Implemented
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Search** | ⚠️ Kickoff only | Thin `/search` route with ACL filtering; returns `503` when no retriever configured |
+| **Frontend** | ⚠️ Scaffold only | Login, upload, documents pages exist; `next build` succeeds; not tested E2E |
+| **TS client** | ⚠️ Minimal | 1 test passing (`vitest`) |
+
+---
+
+## Architecture (Target)
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -90,47 +139,29 @@ parent-child relationships) — through a shared retrieval and answer core.
    └──────────┘  └──────────┘  └─────────────┘  └──────────────┘
 ```
 
-### Ingestion Pipeline
-
-```
-upload ──► parse ──► persist ──► chunk ──► embed ──► index_qdrant ──► index_opensearch ──► quality_report
-            │                                                         │
-            ├── local-cpu (Docling)                                   ├── BGE-M3 (1024d dense)
-            ├── local-gpu (Docling GPU)                               ├── BGE-M3 (lexical sparse)
-            └── remote-api (HTTP adapter)                             └── deterministic UUID5 keys
-```
-
-### ACL Model
-
-Every document carries an ACL grant with:
-- **Owner** — user who uploaded
-- **Explicit users/groups** — whitelist grants
-- **Visibility** — `private | group | tenant | public`
-- **Sensitivity rank** — deterministic, policy-derived
-- **Policy id/version** — for audit trail and policy drift detection
-
-ACL filters are applied at ingestion (who can see the run) and at retrieval
-(who can find the chunks). Index payloads carry full ACL metadata for
-server-side filtering.
+Grayed-out sections above (`/retrieve`, `/chat`, `/answers/verify`, `/eval`)
+are planned but not implemented. Only the ingestion path (upload → vector
+store) and thin search route are functional.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Role |
-|-------|-----------|------|
-| API | FastAPI + Pydantic v2 | REST endpoints, validation, OpenAPI 3.1 |
-| Auth | Keycloak + PyJWT + OIDC | Bearer token verification, JWKS, scope mapping |
-| Database | PostgreSQL 16 + SQLAlchemy 2.0 + Alembic | Metadata, ACL, jobs, audit log |
-| File storage | Local FS / MinIO (SeaweedFS-ready adapter) | Originals, parsed artifacts |
-| Vector DB | Qdrant | Dense (cosine) + sparse named vectors |
-| Search engine | OpenSearch | BM25, phrase, exact, fielded |
-| Parsing | Docling (local) / HTTP adapter (remote) | Deployment-profile-aware |
-| Embedding | BGE-M3 | 1024-dim dense + lexical sparse |
-| Orchestration | Temporal (optional) | Workflow dispatch, retry, observability |
-| Frontend | Next.js 15 + Tailwind v4 | Upload, document list, login |
-| Infra | Docker Compose | Postgres, MinIO, Keycloak, Temporal |
-| Tests | pytest + httpx | 203/203 passing (unit + integration) |
+| Layer | Technology | Status |
+|-------|-----------|--------|
+| API | FastAPI + Pydantic v2 | ✅ Active |
+| Auth | Keycloak + PyJWT + OIDC | ✅ Active |
+| Database | PostgreSQL 16 + SQLAlchemy 2.0 + Alembic | ✅ Active |
+| File storage | Local FS / MinIO (S3 adapter) | ✅ Active |
+| Vector DB | Qdrant | ✅ Active |
+| Search engine | OpenSearch | ✅ Active |
+| Parsing | Docling (local CPU) / HTTP adapter (remote) | ✅ Active |
+| Embedding | BGE-M3 (1024-dim + sparse) | ✅ Active |
+| Orchestration | Temporal (optional, opt-in) | ✅ Working |
+| Frontend | Next.js 15 + Tailwind v4 | ⚠️ Scaffold only |
+| LLM Answering | ppq.ai + Llama 3.3 70B (planned) | ❌ Not wired |
+| Reranking | BGE reranker (planned) | ❌ Not wired |
+| Tests | pytest + httpx | ✅ 203/203 green |
 
 ---
 
@@ -142,23 +173,20 @@ for full implementation status.
 ### Local development
 
 ```bash
-# 1. Clone and set up
 git clone https://github.com/lostsock1/RAG.git
 cd RAG
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev,temporal]"
 
-# 2. Configure
 cp .env.example .env
 # Set AUTH_MODE=dev for local dev (loopback-only bearer tokens)
 # Set LOCAL_STORAGE_DIR=/absolute/path/for/document-storage
 
-# 3. Start infrastructure
 docker compose -f infra/docker/docker-compose.yml up -d
 
-# 4. Verify
-pytest apps/api/app/tests/integration/test_health.py -v
+# Run tests
+pytest apps/api/app/tests/ -v
 ```
 
 ### OIDC mode (with Keycloak)
@@ -177,32 +205,18 @@ curl -X POST http://localhost:8080/realms/uber-rag/protocol/openid-connect/token
   -d 'username=alice' -d 'password=alicepass'
 ```
 
-### Temporal (optional, Phase 2)
-
-```bash
-# Start Temporal dev server
-temporal server start-dev --headless --ip 127.0.0.1 --port 7233 --ui-port 8233
-
-# Verify
-temporal operator cluster health --address 127.0.0.1:7233
-
-# Run live proof
-pytest apps/api/app/tests/integration/test_temporal_live_ingestion.py -q
-```
-
 ### VPS deployment
 
-Deployed and verified on a Debian VPS (`vm-1485.lnvps.cloud`).
-Full 12-point end-to-end verification passed (2026-05-16).
+Deployed on a Debian VPS (`vm-1485.lnvps.cloud`). Full 12-point verification
+passed (2026-05-16).
 
 ```bash
-ssh rag                                         # vm-1485.lnvps.cloud
+ssh rag
 cd ~/RAG
 sudo docker compose -f infra/docker/docker-compose.yml up -d
 source .venv/bin/activate
 nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
 curl -s http://localhost:8000/api/v1/system/health
-# {"status":"ok"}
 ```
 
 ---
@@ -216,55 +230,25 @@ RAG/
 │   │   └── app/
 │   │       ├── main.py         # application factory
 │   │       ├── routers/        # /auth, /documents, /ingestion, /search, ...
-│   │       ├── services/       # document, ingestion, retrieval, chunking, embedding
+│   │       ├── services/       # document, ingestion, chunking, embedding, indexing
 │   │       ├── db/             # SQLAlchemy models, repositories, migrations
 │   │       ├── core/           # config, security, ACL, OIDC verifier
-│   │       └── tests/          # unit + integration (203 passing)
-│   └── web/                    # Next.js frontend
+│   │       └── tests/          # 203 passing (unit + integration)
+│   └── web/                    # Next.js frontend (scaffold)
 ├── infra/
 │   ├── docker/                 # Compose stack, Keycloak realm import
-│   │   └── keycloak/           # uber-rag-realm.json (test users, clients)
 │   └── migrations/             # Alembic
 ├── packages/
-│   └── clients/                # TypeScript API client
+│   └── clients/                # TypeScript API client (minimal)
 ├── docs/
 │   ├── uber-rag/               # Architecture, ADRs, API contract, project state
 │   └── superpowers/            # Planning and design documents
-├── tests/                      # Cross-cutting integration tests
-├── pyproject.toml              # Backend dependencies + entry points
+├── pyproject.toml              # Backend dependencies
 └── AGENTS.md                   # AI agent orientation
 ```
 
 ---
 
-## Test Users (Keycloak dev realm)
-
-| User | Password | Group | Roles | Permissions |
-|------|----------|-------|-------|-------------|
-| `alice` | `alicepass` | `alpha` | `editor` | `documents:read documents:write` |
-| `bob` | `bobpass` | `beta` | `editor` | `documents:read documents:write` |
-| `admin` | `adminpass` | — | `admin` | `documents:read documents:write` |
-
-Bootstrap realm config at `infra/docker/keycloak/uber-rag-realm.json`.
-
----
-
-## Implementation Status
-
-| Phase | Status |
-|-------|--------|
-| Phase 1 — Core API, auth, ingestion foundation | ✅ Complete |
-| Phase 2 — Document understanding, chunking, embedding, indexing | ✅ Complete |
-| Temporal orchestration hardening | ✅ Complete (live proof passed) |
-| ACL bootstrap policy | ✅ Complete |
-| Retrieval kickoff (`/search`) | ✅ Complete |
-| Full hybrid retrieval, reranking, context building | 🔜 Next |
-| Evaluation harness | 🔜 Next |
-
-See `docs/uber-rag/PROJECT_STATE.md` for detailed per-component status.
-
----
-
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT
