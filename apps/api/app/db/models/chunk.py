@@ -44,6 +44,7 @@ class Chunk(Base):
         from app.schemas.chunks import Chunk as ChunkSchema
 
         return ChunkSchema(
+            id=self.id,
             document_id=self.document_id,
             unit_type=self.unit_type,
             heading_path=list(self.heading_path) if self.heading_path else [],

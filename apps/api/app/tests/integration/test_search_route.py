@@ -14,16 +14,18 @@ from sqlalchemy import create_engine, select
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
+from app.core.config import Settings
 from app.core.request_context import RequestContext
 from app.core.security import get_request_context
 from app.db.base import session_factory
 from app.db.acl_models import AclAllowedGroup, AclAllowedUser, AclGrant
 from app.db.models.audit import AuditEvent
+from app.db.models.chunk import Chunk
 from app.db.models.document import Document
 from app.db.models.group import Group, UserGroup
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
-from app.main import app
+from app.main import app, create_app
 
 
 class RetrieverStub:
@@ -227,6 +229,9 @@ def test_search_returns_acl_safe_ranked_hits_and_audit_event(seeded_search_docum
     payload = response.json()
     assert payload['total'] == 3
     assert [item['document_title'] for item in payload['items']] == ['Group B Visible', 'Tenant Shared', 'Tenant Authenticated Public']
+    assert payload['items'][0]['citation_id'] == 'chunk-b-1'
+    assert payload['items'][0]['source_viewer_url'] == '/api/v1/search/sources/chunk-b-1'
+    assert payload['items'][0]['route'] == 'semantic'
     assert set(retriever.queries[0].allowed_document_ids) == {
         seeded_search_documents['group_b_document_id'],
         seeded_search_documents['tenant_shared_document_id'],
@@ -306,6 +311,27 @@ def test_search_returns_empty_items_when_no_hits(seeded_search_documents: dict[s
     assert response.json() == {'items': [], 'total': 0}
 
 
+def test_search_rejects_whitespace_only_query_with_422(seeded_search_documents: dict[str, str]) -> None:
+    client = make_client(
+        RequestContext(
+            tenant_id=seeded_search_documents['tenant_id'],
+            user_id=seeded_search_documents['user_b_id'],
+            group_ids=[seeded_search_documents['group_b_id']],
+            roles=['editor'],
+            scopes=['documents:read'],
+        ),
+        RetrieverStub(hits=[]),
+    )
+
+    response = client.post('/api/v1/search', json={'query': '   \t\n  ', 'top_k': 5})
+
+    assert response.status_code == 422
+    assert any(
+        'whitespace' in err['msg'].lower() or 'blank' in err['msg'].lower()
+        for err in response.json()['detail']
+    )
+
+
 def test_search_returns_503_when_retriever_is_not_configured(seeded_search_documents: dict[str, str]) -> None:
     client = make_client(
         RequestContext(
@@ -323,3 +349,141 @@ def test_search_returns_503_when_retriever_is_not_configured(seeded_search_docum
     assert response.json() == {
         'detail': 'Search retrieval is not configured yet. Configure a search retriever before using /search.'
     }
+
+
+def test_search_uses_runtime_wired_hybrid_retriever_when_search_is_configured() -> None:
+    class _FakeOpenSearchClient:
+        def __init__(self, document_id: str, chunk_id: str) -> None:
+            self.document_id = document_id
+            self.chunk_id = chunk_id
+
+        def search(self, *, index: str, body: dict) -> dict:
+            assert body['query']['bool']['must'] == [{'match_phrase': {'text': 'visible exact'}}]
+            return {
+                'hits': {
+                    'hits': [
+                        {
+                            '_score': 1.5,
+                            '_source': {
+                                'document_id': self.document_id,
+                                'chunk_id': self.chunk_id,
+                                'chunk_index': 1,
+                                'text': 'Visible exact text',
+                                'page_start': 2,
+                                'page_end': 2,
+                                'heading_path': ['Quoted'],
+                            },
+                        }
+                    ]
+                }
+            }
+
+    class _FakeQdrantClient:
+        def query_points(self, **kwargs: object) -> list[object]:
+            return []
+
+    class _FakeQueryEmbedder:
+        def embed_query(self, query: str) -> dict[str, object]:
+            return {'dense': [0.1, 0.2], 'sparse': {'indices': [1], 'values': [0.8]}}
+
+    tenant_id = uuid4()
+    user_id = uuid4()
+    group_id = uuid4()
+
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'search-runtime.db'}"
+        engine = create_engine(database_url)
+        config = Config(str(Path('infra/migrations/alembic.ini')))
+        config.set_main_option('sqlalchemy.url', database_url)
+
+        with engine.begin() as connection:
+            config.attributes['connection'] = connection
+            command.upgrade(config, 'head')
+
+        session_factory.configure(bind=engine)
+
+        with session_factory() as session:
+            session.add(Tenant(id=tenant_id, name='Tenant One', slug='tenant-search-runtime'))
+            session.add(User(id=user_id, tenant_id=tenant_id, email='user@example.com', display_name='User', roles=['editor']))
+            session.add(Group(id=group_id, tenant_id=tenant_id, name='group-search'))
+            session.add(UserGroup(user_id=user_id, group_id=group_id))
+
+            document = Document(
+                tenant_id=tenant_id,
+                owner_user_id=user_id,
+                title='Runtime Search Doc',
+                source_type='loose_document',
+                source_hash='hash-runtime',
+                file_name='runtime.txt',
+                file_size_bytes=1,
+                object_key='documents/runtime.txt',
+                ingestion_status='completed',
+            )
+            session.add(document)
+            session.flush()
+            acl_grant = AclGrant(
+                document_id=document.id,
+                owner_user_id=user_id,
+                tenant_id=tenant_id,
+                visibility='group',
+                sensitivity='internal',
+            )
+            session.add(acl_grant)
+            session.flush()
+            session.add(AclAllowedUser(acl_grant_id=acl_grant.id, user_id=user_id))
+            session.add(AclAllowedGroup(acl_grant_id=acl_grant.id, group_id=group_id))
+            search_chunk = Chunk(
+                document_id=document.id,
+                unit_type='paragraph',
+                heading_path=['Quoted'],
+                page_start=2,
+                page_end=2,
+                text='Visible exact text',
+                parent_id=uuid4(),
+                chunk_index=1,
+            )
+            session.add(search_chunk)
+            session.commit()
+            document_id = str(document.id)
+            chunk_id = str(search_chunk.id)
+
+        custom_app = create_app(
+            Settings(
+                auth_mode='dev',
+                database_url=database_url,
+                local_storage_dir=str(Path(tmp_dir) / 'storage'),
+                search_backend='hybrid',
+                opensearch_index_name='chunks-test',
+                qdrant_collection_name='chunks-test',
+            )
+        )
+        custom_app.dependency_overrides[get_request_context] = lambda: RequestContext(
+            tenant_id=str(tenant_id),
+            user_id=str(user_id),
+            group_ids=[str(group_id)],
+            roles=['editor'],
+            scopes=['documents:read'],
+        )
+        custom_app.state.search_lexical_client = _FakeOpenSearchClient(document_id, chunk_id)
+        custom_app.state.search_vector_client = _FakeQdrantClient()
+        custom_app.state.search_query_embedder = _FakeQueryEmbedder()
+
+        try:
+            with TestClient(custom_app) as client:
+                response = client.post('/api/v1/search', json={'query': '"visible exact"', 'top_k': 5})
+
+                assert hasattr(custom_app.state, 'search_retriever')
+                assert response.status_code == 200
+                payload = response.json()
+                assert payload['items'][0]['document_title'] == 'Runtime Search Doc'
+                assert payload['items'][0]['chunk_id'] == chunk_id
+                assert payload['items'][0]['source_viewer_url'] == f'/api/v1/search/sources/{chunk_id}'
+
+                source_response = client.get(f'/api/v1/search/sources/{chunk_id}')
+
+                assert source_response.status_code == 200
+                assert source_response.json()['focus_chunk_id'] == chunk_id
+        finally:
+            custom_app.dependency_overrides.clear()
+            session_factory.configure(bind=None)
+            engine.dispose()

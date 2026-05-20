@@ -45,7 +45,7 @@ def test_build_document_parser_rejects_seaweedfs_with_local_docling(tmp_path: Pa
 
 - [ ] **Step 2: Run targeted parser backend tests to verify red**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
 Expected: FAIL because factory currently resolves `docling` regardless of storage backend.
 
 - [ ] **Step 3: Implement minimal guard**
@@ -65,7 +65,7 @@ In `apps/api/app/services/parsers/factory.py`, before returning local Docling fo
 
 - [ ] **Step 4: Re-run targeted parser backend tests**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -106,17 +106,17 @@ def test_app_startup_rejects_seaweedfs_with_local_docling_parser(monkeypatch) ->
 
 - [ ] **Step 2: Run targeted startup tests to verify red**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
 Expected: FAIL until the factory guard is active in startup.
 
 - [ ] **Step 3: Re-run startup tests after Task 1 code**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
 Expected: PASS if startup surfaces the same error cleanly.
 
 - [ ] **Step 4: Run full suite**
 
-Run: `cd /Users/djesys/RAG && python -m pytest --tb=short -q`
+Run: `cd /djesys/code/RAG && python -m pytest --tb=short -q`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**

@@ -10,6 +10,7 @@ from app.db.base import make_engine, session_factory
 from app.services.ocr import build_ocr_service
 from app.services.parsers.factory import build_document_parser
 from app.services.storage import build_storage_adapter
+from app.services.retrieval.runtime import build_search_retriever
 
 
 @asynccontextmanager
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI):
     engine = None
 
     app.state.settings = settings
+    app.state.search_source_context_window = max(settings.search_source_context_window, 0)
 
     if settings.database_url:
         engine = make_engine(settings.database_url)
@@ -63,6 +65,10 @@ async def lifespan(app: FastAPI):
                 storage=storage,
             )
 
+    search_retriever = build_search_retriever(settings=settings, state=app.state)
+    if search_retriever is not None:
+        app.state.search_retriever = search_retriever
+
     yield
 
     session_factory.configure(bind=None)
@@ -81,6 +87,12 @@ async def lifespan(app: FastAPI):
 
     if hasattr(app.state, "settings"):
         delattr(app.state, "settings")
+
+    if hasattr(app.state, "search_source_context_window"):
+        delattr(app.state, "search_source_context_window")
+
+    if hasattr(app.state, "search_retriever"):
+        delattr(app.state, "search_retriever")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

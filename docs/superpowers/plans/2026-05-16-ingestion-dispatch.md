@@ -116,7 +116,7 @@ Note: `setup_db` is an existing fixture pattern in this test file. Check the fil
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_ingestion_repository.py -v -k "test_create_ingestion_stages or test_update_stage_status or test_update_run_status or test_recover_orphaned"`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_ingestion_repository.py -v -k "test_create_ingestion_stages or test_update_stage_status or test_update_run_status or test_recover_orphaned"`
 Expected: FAIL — functions not defined yet.
 
 - [ ] **Step 3: Implement the repository functions**
@@ -209,12 +209,12 @@ from app.db.models.ingestion import IngestionRun, IngestionStage, ParsedArtifact
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_ingestion_repository.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_ingestion_repository.py -v`
 Expected: All tests PASS.
 
 - [ ] **Step 5: Run full test suite to verify no regressions**
 
-Run: `cd /Users/djesys/RAG && python -m pytest --tb=short -q`
+Run: `cd /djesys/code/RAG && python -m pytest --tb=short -q`
 Expected: All tests PASS.
 
 - [ ] **Step 6: Commit**
@@ -438,7 +438,7 @@ def test_stage_skips_if_already_completed(setup_db):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
 Expected: FAIL — `app.workflows.stages` module not found.
 
 - [ ] **Step 3: Implement the stage functions**
@@ -559,7 +559,7 @@ def run_quality_report_stage(
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
 Expected: `test_run_parse_stage_calls_parser_and_checkpoints` will fail because `DoclingDocumentParser()` without a converter raises `RuntimeError`. We need to inject a test converter.
 
 Update the `run_parse_stage` test to inject a converter into the parser. Modify the `_resolve_parser` function to accept an optional parser instance, or modify the test to use a different approach.
@@ -651,12 +651,12 @@ def test_run_parse_stage_calls_parser_and_checkpoints(setup_db):
 
 - [ ] **Step 5: Run tests again**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
 Expected: All tests PASS.
 
 - [ ] **Step 6: Run full test suite**
 
-Run: `cd /Users/djesys/RAG && python -m pytest --tb=short -q`
+Run: `cd /djesys/code/RAG && python -m pytest --tb=short -q`
 Expected: All tests PASS.
 
 - [ ] **Step 7: Commit**
@@ -736,7 +736,7 @@ def test_in_process_dispatcher_marks_run_failed_on_stage_error(setup_db):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v -k "test_in_process"`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v -k "test_in_process"`
 Expected: FAIL — `app.workflows.dispatcher` module not found.
 
 - [ ] **Step 3: Implement the dispatcher**
@@ -851,12 +851,12 @@ class InProcessDispatcher:
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
 Expected: All tests PASS.
 
 - [ ] **Step 5: Run full test suite**
 
-Run: `cd /Users/djesys/RAG && python -m pytest --tb=short -q`
+Run: `cd /djesys/code/RAG && python -m pytest --tb=short -q`
 Expected: All tests PASS.
 
 - [ ] **Step 6: Commit**
@@ -1007,7 +1007,7 @@ def test_upload_triggers_ingestion_dispatch_to_completed(client):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_ingestion_dispatch.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_ingestion_dispatch.py -v`
 Expected: FAIL — the upload route doesn't call the dispatcher yet.
 
 - [ ] **Step 3: Wire dispatcher into the upload route**
@@ -1172,12 +1172,12 @@ app = create_app()
 
 - [ ] **Step 5: Run the integration test**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_ingestion_dispatch.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_ingestion_dispatch.py -v`
 Expected: PASS.
 
 - [ ] **Step 6: Run full test suite**
 
-Run: `cd /Users/djesys/RAG && python -m pytest --tb=short -q`
+Run: `cd /djesys/code/RAG && python -m pytest --tb=short -q`
 Expected: All tests PASS.
 
 - [ ] **Step 7: Commit**

@@ -14,8 +14,9 @@ from app.services.indexers.base import VectorIndexer, LexicalIndexer
 from app.services.indexers.stub import StubVectorIndexer, StubLexicalIndexer
 
 
-def _make_chunk(document_id=None, chunk_index=0):
+def _make_chunk(document_id=None, chunk_index=0, chunk_id=None):
     return Chunk(
+        id=chunk_id or uuid4(),
         document_id=document_id or uuid4(),
         unit_type="paragraph",
         heading_path=[],

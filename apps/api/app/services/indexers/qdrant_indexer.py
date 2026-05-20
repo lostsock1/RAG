@@ -93,6 +93,8 @@ class QdrantVectorIndexer:
 
         points: list[PointStruct] = []
         for chunk, emb in zip(chunks, embeddings):
+            if chunk.id is None:
+                raise RuntimeError("Qdrant indexing requires persisted chunk IDs.")
             point_id = _deterministic_point_id(chunk.document_id, chunk.chunk_index)
             point = PointStruct(
                 id=str(point_id),
@@ -105,6 +107,7 @@ class QdrantVectorIndexer:
                 },
                 payload={
                     "document_id": str(chunk.document_id),
+                    "chunk_id": str(chunk.id),
                     "chunk_index": chunk.chunk_index,
                     "unit_type": chunk.unit_type,
                     "heading_path": chunk.heading_path,

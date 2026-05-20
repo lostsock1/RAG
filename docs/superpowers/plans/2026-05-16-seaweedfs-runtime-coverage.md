@@ -61,7 +61,7 @@ def test_s3_compatible_storage_adapter_put_object_forwards_expected_payload() ->
 
 - [ ] **Step 2: Run test to verify it fails or is absent**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_storage_adapters.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_storage_adapters.py -v`
 Expected: FAIL or missing-test state before implementation.
 
 - [ ] **Step 3: Add minimal production changes only if required**
@@ -70,7 +70,7 @@ If the test fails, adjust production code only as needed. Otherwise leave `apps/
 
 - [ ] **Step 4: Run unit storage tests**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_storage_adapters.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_storage_adapters.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -144,7 +144,7 @@ def test_upload_reuses_same_object_key_with_s3_compatible_storage(
 
 - [ ] **Step 2: Run the integration file to verify red**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_documents_upload.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_documents_upload.py -v`
 Expected: FAIL until SeaweedFS-style test fixture/setup is added.
 
 - [ ] **Step 3: Implement fake-client-backed fixture**
@@ -218,12 +218,12 @@ def seaweedfs_client(auth_context: RequestContext, s3_calls: list[dict]):
 
 - [ ] **Step 4: Run integration test file again**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_documents_upload.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_documents_upload.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Run full suite**
 
-Run: `cd /Users/djesys/RAG && python -m pytest --tb=short -q`
+Run: `cd /djesys/code/RAG && python -m pytest --tb=short -q`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**

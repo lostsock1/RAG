@@ -53,9 +53,14 @@ def test_search_openapi_and_contract_match_thin_search_slice() -> None:
     assert 'Search retrieval is not configured yet. Configure a search retriever before using /search.' in api_contract
     assert 'top_k:' in openapi_text
     assert 'document_title:' in openapi_text
+    assert 'citation_id:' in openapi_text
+    assert 'source_viewer_url:' in openapi_text
+    assert 'route:' in openapi_text
     assert 'items:' in openapi_text
     assert 'total:' in openapi_text
     assert '"503":' in openapi_text
+    assert '/search/sources/{chunk_id}:' in openapi_text
+    assert 'SearchSourceResponse' in openapi_text
     assert 'collections:' not in openapi_text.split('    SearchRequest:')[1].split('    SearchResponse:')[0]
     search_response_block = openapi_text.split('    SearchResponse:')[1].split('    # ── Chat')[0]
     assert 'results:' not in search_response_block
@@ -71,3 +76,12 @@ def test_acl_bootstrap_policy_api_and_public_visibility_are_documented() -> None
     assert '/api/v1/acl/bootstrap-policy' in api_contract
     assert '/acl/bootstrap-policy:' in openapi_text
     assert 'tenant-scoped to authenticated users in the same tenant' in security_acl
+
+
+def test_phase3_entry_note_exists_and_mentions_fusion_choice() -> None:
+    text = Path('docs/uber-rag/research/2026-05-20-phase-3-entry.md').read_text()
+
+    assert 'Qdrant' in text
+    assert 'OpenSearch' in text
+    assert 'BGE-M3' in text
+    assert 'RRF' in text or 'DBSF' in text

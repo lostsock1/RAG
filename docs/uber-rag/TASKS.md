@@ -90,13 +90,16 @@
 - [x] Implement OpenSearch real lexical indexer adapter.
 - [x] Add thin ACL-safe `/search` kickoff route and retriever seam.
 - [x] Add tenant ACL bootstrap policy locking + normalized policy-aware index ACL payloads.
-- [ ] Implement query router.
-- [ ] Implement hybrid retrieval and fusion.
-- [ ] Implement reranker adapter.
+- [x] Implement query router.
+- [x] Implement hybrid retrieval and fusion.
+- [x] Add source viewer endpoint.
+
+**Phase 3 exit criteria verified (2026-05-20):** ACL leakage ✅, citation resolution ✅, exact-string routing ✅, p50 latency 5.07 ms ✅.
+
+## Phase 4: Reranking, generation, verification
+
+- [ ] Implement reranker adapter (BGE-reranker-v2-m3).
 - [ ] Implement context builder.
-
-## Phase 4: Chat and verification
-
 - [ ] Implement LLM adapter.
 - [ ] Implement chat API.
 - [ ] Implement streaming API.

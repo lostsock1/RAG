@@ -62,7 +62,7 @@ def test_build_document_parser_rejects_unknown_backend():
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
 Expected: FAIL because factory module does not exist yet.
 
 - [ ] **Step 3: Implement the factory**
@@ -96,7 +96,7 @@ def build_document_parser(settings: Settings) -> tuple[DocumentParser, str, str]
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -123,7 +123,7 @@ assert app.state.dispatcher._parser_profile == "local-cpu"
 
 - [ ] **Step 2: Run the targeted startup test**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
 Expected: FAIL because dispatcher does not yet expose truthful metadata.
 
 - [ ] **Step 3: Update main.py**
@@ -145,7 +145,7 @@ Replace direct parser construction with factory usage:
 
 - [ ] **Step 4: Run startup test again**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_runtime_auth_startup.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -190,7 +190,7 @@ def test_in_process_dispatcher_records_truthful_parser_metadata(dispatcher_env):
 
 - [ ] **Step 2: Run the targeted dispatcher test**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
 Expected: FAIL because dispatcher constructor/signature still only accepts parser.
 
 - [ ] **Step 3: Implement truthful metadata threading**
@@ -222,12 +222,12 @@ and in `_execute_pipeline()`:
 
 - [ ] **Step 4: Run dispatcher tests again**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Run full suite**
 
-Run: `cd /Users/djesys/RAG && python -m pytest --tb=short -q`
+Run: `cd /djesys/code/RAG && python -m pytest --tb=short -q`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**

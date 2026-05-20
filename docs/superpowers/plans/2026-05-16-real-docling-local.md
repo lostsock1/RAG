@@ -54,7 +54,7 @@ def test_docling_parser_raises_when_local_file_missing(tmp_path: Path):
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_docling_parser_adapter.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_docling_parser_adapter.py -v`
 Expected: FAIL because `DoclingDocumentParser` does not yet accept `storage_root` or implement runtime parsing rules.
 
 - [ ] **Step 3: Implement runtime parser path**
@@ -168,7 +168,7 @@ Finally, change `parse()` to use `_parse_with_docling()` when no converter overr
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_docling_parser_adapter.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_docling_parser_adapter.py -v`
 Expected: PASS for injected-converter path and new failure-path tests.
 
 - [ ] **Step 5: Commit**
@@ -196,7 +196,7 @@ def test_docling_parser_accepts_storage_root(tmp_path: Path):
 
 - [ ] **Step 2: Run the targeted test**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
 Expected: FAIL before the constructor change, PASS after.
 
 - [ ] **Step 3: Wire storage root into app startup**
@@ -216,7 +216,7 @@ Update `main.py` dispatcher construction block:
 
 - [ ] **Step 4: Run targeted tests**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_parser_backends.py -v`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -233,12 +233,12 @@ git commit -m "feat: wire local storage root into runtime docling parser"
 
 - [ ] **Step 1: Run parser-focused tests**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_docling_parser_adapter.py apps/api/app/tests/unit/test_parser_backends.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_docling_parser_adapter.py apps/api/app/tests/unit/test_parser_backends.py -v`
 Expected: PASS.
 
 - [ ] **Step 2: Run full suite**
 
-Run: `cd /Users/djesys/RAG && python -m pytest --tb=short -q`
+Run: `cd /djesys/code/RAG && python -m pytest --tb=short -q`
 Expected: PASS.
 
 - [ ] **Step 3: Update project memory if code landed cleanly**

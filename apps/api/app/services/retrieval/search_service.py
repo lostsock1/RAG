@@ -19,6 +19,16 @@ def _normalize_hit(raw_hit: RetrievalHit | dict) -> RetrievalHit:
     return RetrievalHit(**raw_hit)
 
 
+def _build_citation_id(hit: RetrievalHit) -> str | None:
+    return hit.chunk_id
+
+
+def _build_source_viewer_url(citation_id: str | None) -> str | None:
+    if citation_id is None:
+        return None
+    return f'/api/v1/search/sources/{citation_id}'
+
+
 class SearchService:
     def __init__(self, retriever: SearchRetriever | None = None) -> None:
         if retriever is None:
@@ -50,20 +60,25 @@ class SearchService:
             if hit.document_id in document_map
         ][: payload.top_k]
 
-        items = [
-            SearchHitResponse(
-                document_id=hit.document_id,
-                document_title=document_map[hit.document_id].title,
-                source_type=document_map[hit.document_id].source_type,
-                chunk_id=hit.chunk_id,
-                score=hit.score,
-                text=hit.text,
-                page_start=hit.page_start,
-                page_end=hit.page_end,
-                heading_path=hit.heading_path,
+        items = []
+        for hit in filtered_hits:
+            citation_id = _build_citation_id(hit)
+            items.append(
+                SearchHitResponse(
+                    document_id=hit.document_id,
+                    document_title=document_map[hit.document_id].title,
+                    source_type=document_map[hit.document_id].source_type,
+                    chunk_id=hit.chunk_id,
+                    citation_id=citation_id,
+                    source_viewer_url=_build_source_viewer_url(citation_id),
+                    route=hit.route,
+                    score=hit.score,
+                    text=hit.text,
+                    page_start=hit.page_start,
+                    page_end=hit.page_end,
+                    heading_path=hit.heading_path,
+                )
             )
-            for hit in filtered_hits
-        ]
 
         write_audit_event(
             tenant_id=UUID(context.tenant_id),

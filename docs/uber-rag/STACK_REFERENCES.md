@@ -77,11 +77,15 @@ Phase 2 entry review note:
 - Qdrant Hybrid Queries: https://qdrant.tech/documentation/search/hybrid-queries/
 - Qdrant Filtering: https://qdrant.tech/documentation/search/filtering/
 - Qdrant Quantization: https://qdrant.tech/documentation/guides/quantization/
+- Qdrant text search: https://qdrant.tech/documentation/guides/text-search/
+- Qdrant multitenancy: https://qdrant.tech/documentation/manage-data/multitenancy/
 
 Implementation impact:
 - Use payload filters for ACL and metadata.
 - Use dense + sparse retrieval, fusion, and staged retrieval.
 - Quantization requires measurement before production.
+- Phase 3 entry review (2026-05-20): Qdrant now documents both RRF and DBSF in its hybrid-query stack, but it is still not the lexical system of record for BM25/phrase ranking.
+- Phase 3 entry review (2026-05-20): require indexed ACL fields before production filtering; strict mode / unindexed-filter guards should be enabled where available.
 
 ## Lexical search
 
@@ -90,6 +94,10 @@ Implementation impact:
 - OpenSearch docs: https://docs.opensearch.org/
 - OpenSearch neural/hybrid search: https://docs.opensearch.org/latest/search-plugins/neural-search/
 - OpenSearch document-level security: https://docs.opensearch.org/latest/security/access-control/document-level-security/
+- OpenSearch hybrid query: https://docs.opensearch.org/latest/query-dsl/compound/hybrid/
+- OpenSearch match phrase query: https://docs.opensearch.org/latest/query-dsl/full-text/match-phrase/
+- OpenSearch bool query: https://docs.opensearch.org/latest/query-dsl/compound/bool/
+- OpenSearch keyword search: https://docs.opensearch.org/latest/search-plugins/keyword-search/
 
 Considered, rejected (see ADR-0001):
 - Tantivy: https://tantivy-search.github.io/ — embeddable Rust BM25 engine; rejected for lack of DLS, clustering, and managed multilingual analyzers.
@@ -98,6 +106,8 @@ Considered, rejected (see ADR-0001):
 Implementation impact:
 - Exact lookup, phrase search, IDs, page references, and rare terms need lexical search.
 - OpenSearch DLS is defense in depth — application-level ACL filters remain mandatory at every retrieval layer (see SECURITY_ACL.md).
+- Phase 3 entry review (2026-05-20): use top-level hybrid/bool filters for ACL gating; do not rely on `post_filter` for ACL enforcement in hybrid retrieval.
+- Phase 3 entry review (2026-05-20): OpenSearch remains the lexical/BM25/phrase-search backend of record for Search MVP.
 
 ## Parsing and ingestion
 
@@ -139,12 +149,14 @@ Phase 2 entry review note:
 - BGE documentation: https://bge-model.com/bge/bge_m3.html
 - BGE reranker v2 m3 model card: https://huggingface.co/BAAI/bge-reranker-v2-m3
 - FlagEmbedding repo: https://github.com/FlagOpen/FlagEmbedding
+- BGE multilingual Gemma 2 model card: https://huggingface.co/BAAI/bge-multilingual-gemma2
 
 Implementation impact:
 - BGE-M3 supports dense, sparse, and multivector retrieval.
 - Start with dense + sparse + cross-encoder rerank.
 - Use multivector only as a later precision stage or for selected corpora.
 - Hide embedding model behind an `Embedder` interface so swap-out is a config change, not a refactor.
+- Phase 3 entry review (2026-05-20): no deprecation signal found for BGE-M3. `bge-multilingual-gemma2` is a candidate for stronger multilingual dense retrieval, but not a clean replacement for BGE-M3's single-model dense+sparse+multivector role.
 
 ## LLM serving
 

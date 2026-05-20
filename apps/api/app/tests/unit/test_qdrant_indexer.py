@@ -15,6 +15,7 @@ from app.services.indexers.qdrant_indexer import QdrantVectorIndexer
 
 def _make_chunk(document_id=None, chunk_index=0, parent_id=None):
     return Chunk(
+        id=uuid4(),
         document_id=document_id or uuid4(),
         unit_type="paragraph",
         heading_path=[],
@@ -75,7 +76,7 @@ def test_qdrant_indexer_point_structure():
     doc_id = uuid4()
     parent_id = uuid4()
     chunk = _make_chunk(doc_id, 0, parent_id)
-    embedding = _make_embedding(uuid4())
+    embedding = _make_embedding(chunk.id)
     acl = {"tenant_id": str(uuid4()), "owner_user_id": str(uuid4()), "allowed_user_ids": ["user-1"], "group_ids": ["group1"], "allowed_group_ids": ["group1"], "visibility": "group", "sensitivity": "confidential", "sensitivity_rank": 300, "expires_at": None, "acl_policy_id": str(uuid4()), "acl_policy_version": 2, "allowed_role_ids": [], "allowed_org_unit_ids": [], "allowed_project_ids": []}
 
     indexer.upsert(chunks=[chunk], embeddings=[embedding], acl_metadata=acl)
@@ -95,5 +96,6 @@ def test_qdrant_indexer_point_structure():
     assert p.payload["acl_policy_version"] == 2
     assert p.payload["allowed_role_ids"] == []
     assert p.payload["document_id"] == str(doc_id)
+    assert p.payload["chunk_id"] == str(embedding.chunk_id)
     assert p.payload["chunk_index"] == 0
     assert p.payload["text"] == "test chunk text for qdrant indexing"

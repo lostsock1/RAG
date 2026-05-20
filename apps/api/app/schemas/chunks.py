@@ -14,6 +14,7 @@ class DocumentProfile(StrEnum):
 class Chunk(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    id: UUID | None = None
     document_id: UUID
     unit_type: str
     heading_path: list[str] = Field(default_factory=list)

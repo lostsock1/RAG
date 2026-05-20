@@ -591,6 +591,42 @@ paths:
                     type: string
                     example: Search retrieval is not configured yet. Configure a search retriever before using /search.
 
+  /search/sources/{chunk_id}:
+    get:
+      summary: Get the cited chunk with surrounding context
+      description: |
+        Returns the smallest truthful source slice currently available for a cited chunk.
+        ACL is enforced again at source fetch time.
+      operationId: getSearchSource
+      tags: [Search]
+      parameters:
+        - name: chunk_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Source chunk with surrounding context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchSourceResponse"
+        "401":
+          description: Missing or invalid authentication
+        "403":
+          description: Authenticated but missing the required `documents:read` scope
+        "404":
+          description: Search source was not found or you do not have access to it
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [detail]
+                properties:
+                  detail:
+                    type: string
+                    example: Search source was not found or you do not have access to it.
+
   /retrieve:
     post:
       summary: Retrieve full source context for a citation
@@ -1103,7 +1139,7 @@ components:
     SearchHitResponse:
       type: object
       additionalProperties: false
-      required: [document_id, document_title, source_type, score, text, heading_path]
+      required: [document_id, document_title, source_type, route, score, text, heading_path]
       properties:
         document_id: { type: string }
         document_title: { type: string }
@@ -1111,6 +1147,13 @@ components:
         chunk_id:
           type: string
           nullable: true
+        citation_id:
+          type: string
+          nullable: true
+        source_viewer_url:
+          type: string
+          nullable: true
+        route: { type: string }
         score: { type: number }
         text: { type: string }
         page_start:
@@ -1133,6 +1176,42 @@ components:
           items:
             $ref: "#/components/schemas/SearchHitResponse"
         total: { type: integer }
+
+    SearchSourceChunkResponse:
+      type: object
+      additionalProperties: false
+      required: [chunk_id, text, heading_path, is_focus]
+      properties:
+        chunk_id: { type: string }
+        text: { type: string }
+        page_start:
+          type: integer
+          nullable: true
+        page_end:
+          type: integer
+          nullable: true
+        heading_path:
+          type: array
+          items: { type: string }
+        is_focus: { type: boolean }
+
+    SearchSourceResponse:
+      type: object
+      additionalProperties: false
+      required: [citation_id, document_id, document_title, source_type, focus_chunk_id, items]
+      properties:
+        citation_id: { type: string }
+        document_id: { type: string }
+        document_title: { type: string }
+        source_type: { type: string }
+        focus_chunk_id: { type: string }
+        parent_chunk_id:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchSourceChunkResponse"
 
     # ── Chat ───────────────────────────────────────────────────
     ChatRequest:

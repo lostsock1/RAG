@@ -152,6 +152,9 @@ Current response shape:
       "document_title": "string",
       "source_type": "book|loose_document",
       "chunk_id": "string|null",
+      "citation_id": "string|null",
+      "source_viewer_url": "/api/v1/search/sources/chunk-1",
+      "route": "exact|semantic",
       "score": 0.91,
       "text": "string",
       "page_start": 3,
@@ -164,9 +167,22 @@ Current response shape:
 ```
 
 Truthful current semantics:
-- If no search retriever is configured, `/api/v1/search` returns `503 Service Unavailable` with: `Search retrieval is not configured yet. Configure a search retriever before using /search.` This avoids a false-success `200` empty result.
+- If no search retriever is configured, `/api/v1/search` returns `503 Service Unavailable` with: `Search retrieval is not configured yet. Configure a search retriever before using /search.` This avoids a false-success `200` empty result. Setting `SEARCH_BACKEND=hybrid` now wires the Phase 3 runtime retriever into the app startup path.
+- Quoted queries go through the lexical exact lane and are executed as an OpenSearch `match_phrase` query, not a plain `match` query.
+- `citation_id` and `source_viewer_url` are returned only when the retrieval hit has a resolvable chunk id. If a hit cannot be tied back to a chunk, the API omits those fields instead of emitting a broken source-viewer URL.
+- `route` exposes the query route chosen by the current retrieval stack (`exact` or `semantic` in the current MVP).
 - Search audit events store `query_sha256` plus non-sensitive metadata such as `query_length`, `top_k`, allowed document ids, and result document ids. Raw query text is not stored in plaintext.
 - Richer planned search filters (`collections`, `source_types`, `document_types`, `retrieval_mode`, `include_sources`, date/language filters) remain future contract work and are not part of the current public `/search` slice.
+
+## Current source viewer slice
+
+`GET /api/v1/search/sources/{chunk_id}` returns the smallest truthful source slice currently available for a cited chunk.
+
+Truthful current semantics:
+- The endpoint requires `documents:read`.
+- Tenant and allowed-document ACL filtering is applied inside the source-slice repository query before any chunk text is returned; inaccessible or unknown chunks still return `404` with `Search source was not found or you do not have access to it.`
+- The response returns the focus chunk plus the immediate same-parent context window around it. Parent chunks return only themselves in this MVP.
+- Successful source-viewer fetches are audited as `search.source.view`. Not-found-or-denied attempts are audited as `search.source.view.denied` with non-sensitive details only (`citation_id`, reason).
 
 ## Chat response sketch
 

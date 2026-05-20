@@ -97,12 +97,15 @@ class OpenSearchLexicalIndexer:
 
         actions = []
         for chunk in chunks:
+            if chunk.id is None:
+                raise RuntimeError("OpenSearch indexing requires persisted chunk IDs.")
             doc_id = _deterministic_doc_id(chunk.document_id, chunk.chunk_index)
             action = {
                 "_index": self._index_name,
                 "_id": str(doc_id),
                 "_source": {
                     "document_id": str(chunk.document_id),
+                    "chunk_id": str(chunk.id),
                     "chunk_index": chunk.chunk_index,
                     "unit_type": chunk.unit_type,
                     "heading_path": chunk.heading_path,

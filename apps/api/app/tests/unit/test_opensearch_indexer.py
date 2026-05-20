@@ -14,6 +14,7 @@ from app.services.indexers.opensearch_indexer import OpenSearchLexicalIndexer
 
 def _make_chunk(document_id=None, chunk_index=0, parent_id=None):
     return Chunk(
+        id=uuid4(),
         document_id=document_id or uuid4(),
         unit_type="paragraph",
         heading_path=["Introduction"],
@@ -51,9 +52,12 @@ def test_opensearch_indexer_doc_structure():
     """Each upserted doc should carry text, heading_path, and ACL fields."""
     indexer = OpenSearchLexicalIndexer(index_name="test_structure", _mock=True)
     doc_id = uuid4()
+    chunk_id = uuid4()
     parent_id = uuid4()
     chunk = _make_chunk(doc_id, 0, parent_id)
     acl = {"tenant_id": str(uuid4()), "owner_user_id": str(uuid4()), "allowed_user_ids": ["user-1"], "group_ids": ["g1", "g2"], "allowed_group_ids": ["g1", "g2"], "visibility": "group", "sensitivity": "restricted", "sensitivity_rank": 400, "expires_at": None, "acl_policy_id": str(uuid4()), "acl_policy_version": 7, "allowed_role_ids": [], "allowed_org_unit_ids": [], "allowed_project_ids": []}
+
+    chunk = chunk.model_copy(update={"id": chunk_id})
 
     indexer.upsert(chunks=[chunk], acl_metadata=acl)
 
@@ -73,4 +77,5 @@ def test_opensearch_indexer_doc_structure():
     assert source["acl_policy_version"] == 7
     assert source["allowed_project_ids"] == []
     assert source["document_id"] == str(doc_id)
+    assert source["chunk_id"] == str(chunk_id)
     assert source["chunk_index"] == 0

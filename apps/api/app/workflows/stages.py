@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from uuid import UUID, uuid5
+from uuid import UUID
 
 from app.repositories.ingestion import (
     get_stages_for_run,
@@ -216,12 +216,13 @@ def run_embed_stage(
         update_stage_status(stage_id=stage_id, status="completed", details={"embedding_count": 0})
         return []
 
-    # Deterministic chunk UUID from (document_id, chunk_index) via UUID v5
-    _CHUNK_UUID_NS = UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # standard URL namespace
-    chunk_ids = [
-        uuid5(_CHUNK_UUID_NS, f"{c.document_id}:{c.chunk_index}")
-        for c in leaf_chunks
-    ]
+    chunk_ids = []
+    for chunk in leaf_chunks:
+        if chunk.id is None:
+            raise RuntimeError(
+                "Chunk embedding requires persisted chunk IDs. Re-run chunk persistence before embedding."
+            )
+        chunk_ids.append(chunk.id)
     texts = [c.text for c in leaf_chunks]
     results = embedder.embed(chunk_ids=chunk_ids, texts=texts)
 

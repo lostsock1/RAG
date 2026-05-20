@@ -100,7 +100,7 @@ def test_chunker_protocol_exists():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_chunker.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_chunker.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.schemas.chunks'`
 
 - [ ] **Step 3: Create the Chunk schema**
@@ -171,13 +171,13 @@ class Chunker(Protocol):
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_chunker.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_chunker.py -v`
 Expected: 4 passed
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/djesys/RAG && git add apps/api/app/schemas/chunks.py apps/api/app/services/chunkers/ apps/api/app/tests/unit/test_chunker.py && git commit -m "feat: add Chunk schema, DocumentProfile enum, and Chunker protocol"
+cd /djesys/code/RAG && git add apps/api/app/schemas/chunks.py apps/api/app/services/chunkers/ apps/api/app/tests/unit/test_chunker.py && git commit -m "feat: add Chunk schema, DocumentProfile enum, and Chunker protocol"
 ```
 
 ---
@@ -303,7 +303,7 @@ def test_loose_chunker_single_parent_for_flat_doc():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_chunker.py -v -k "loose"`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_chunker.py -v -k "loose"`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.services.chunkers.loose'`
 
 - [ ] **Step 3: Implement LooseDocumentChunker**
@@ -454,13 +454,13 @@ __all__ = ["Chunker", "LooseDocumentChunker"]
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_chunker.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_chunker.py -v`
 Expected: All tests pass (4 schema tests + 7 chunker tests = 11)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /Users/djesys/RAG && git add apps/api/app/services/chunkers/ apps/api/app/tests/unit/test_chunker.py && git commit -m "feat: implement LooseDocumentChunker with parent-child hierarchy"
+cd /djesys/code/RAG && git add apps/api/app/services/chunkers/ apps/api/app/tests/unit/test_chunker.py && git commit -m "feat: implement LooseDocumentChunker with parent-child hierarchy"
 ```
 
 ---
@@ -650,7 +650,7 @@ def test_get_chunks_for_document_empty(seeded_db):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_chunks_repository.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_chunks_repository.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'app.db.models.chunk'`
 
 - [ ] **Step 3: Create the Chunk DB model**
@@ -873,13 +873,13 @@ def get_chunks_for_document(*, document_id: UUID) -> list[ChunkModel]:
 
 - [ ] **Step 6: Run test to verify it passes**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_chunks_repository.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_chunks_repository.py -v`
 Expected: 3 passed
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /Users/djesys/RAG && git add apps/api/app/db/models/chunk.py apps/api/app/db/models/__init__.py infra/migrations/versions/20260517_0006_chunks_table.py apps/api/app/repositories/chunks.py apps/api/app/tests/unit/test_chunks_repository.py && git commit -m "feat: add chunks DB model, migration, and persistence repository"
+cd /djesys/code/RAG && git add apps/api/app/db/models/chunk.py apps/api/app/db/models/__init__.py infra/migrations/versions/20260517_0006_chunks_table.py apps/api/app/repositories/chunks.py apps/api/app/tests/unit/test_chunks_repository.py && git commit -m "feat: add chunks DB model, migration, and persistence repository"
 ```
 
 ---
@@ -962,7 +962,7 @@ def test_run_chunk_stage_produces_chunks(seeded_env):
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v -k "chunk"`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v -k "chunk"`
 Expected: FAIL — `ImportError: cannot import name 'run_chunk_stage'`
 
 - [ ] **Step 3: Implement run_chunk_stage**
@@ -1076,18 +1076,18 @@ And update the chunk stage call to use `source_type`:
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v -k "chunk"`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v -k "chunk"`
 Expected: 2 passed
 
 - [ ] **Step 6: Run full dispatcher test suite to verify no regressions**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/unit/test_dispatcher.py -v`
 Expected: All tests pass (existing + 2 new)
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /Users/djesys/RAG && git add apps/api/app/workflows/stages.py apps/api/app/workflows/pipeline_runner.py apps/api/app/tests/unit/test_dispatcher.py && git commit -m "feat: wire chunk stage into PipelineRunner between persist_artifact and quality_report"
+cd /djesys/code/RAG && git add apps/api/app/workflows/stages.py apps/api/app/workflows/pipeline_runner.py apps/api/app/tests/unit/test_dispatcher.py && git commit -m "feat: wire chunk stage into PipelineRunner between persist_artifact and quality_report"
 ```
 
 ---
@@ -1114,18 +1114,18 @@ The test should:
 
 - [ ] **Step 3: Run the integration test**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/integration/test_ingestion_dispatch.py -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/integration/test_ingestion_dispatch.py -v`
 Expected: All tests pass
 
 - [ ] **Step 4: Run the full test suite**
 
-Run: `cd /Users/djesys/RAG && python -m pytest apps/api/app/tests/ -v`
+Run: `cd /djesys/code/RAG && python -m pytest apps/api/app/tests/ -v`
 Expected: All tests pass
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /Users/djesys/RAG && git add apps/api/app/tests/integration/test_ingestion_dispatch.py && git commit -m "test: add integration test for full pipeline with chunking stage"
+cd /djesys/code/RAG && git add apps/api/app/tests/integration/test_ingestion_dispatch.py && git commit -m "test: add integration test for full pipeline with chunking stage"
 ```
 
 ---
@@ -1167,5 +1167,5 @@ Mark chunking-related tasks as done:
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/djesys/RAG && git add docs/uber-rag/ && git commit -m "docs: update project memory for chunking stage implementation"
+cd /djesys/code/RAG && git add docs/uber-rag/ && git commit -m "docs: update project memory for chunking stage implementation"
 ```
