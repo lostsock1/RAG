@@ -7,6 +7,8 @@ from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
+from qdrant_client.models import FieldCondition, Filter, MatchAny
+
 from app.services.retrieval.base import RetrievalQuery
 from app.services.retrieval.qdrant_retriever import QdrantRetriever
 
@@ -33,23 +35,23 @@ def test_qdrant_retriever_includes_allowed_document_filter() -> None:
 
     retriever.search_dense(query, [0.1, 0.2, 0.3])
 
-    assert client.query_points_calls == [
-        {
-            "collection_name": "chunks-test",
-            "query": [0.1, 0.2, 0.3],
-            "using": "dense",
-            "limit": 7,
-            "query_filter": {
-                "must": [
-                    {
-                        "key": "document_id",
-                        "match": {"any": ["doc-1", "doc-2"]},
-                    }
-                ]
-            },
-            "with_payload": True,
-        }
-    ]
+    assert len(client.query_points_calls) == 1
+    call = client.query_points_calls[0]
+    assert call["collection_name"] == "chunks-test"
+    assert call["query"] == [0.1, 0.2, 0.3]
+    assert call["using"] == "dense"
+    assert call["limit"] == 7
+    assert call["with_payload"] is True
+
+    # Verify the filter is a proper Filter object with correct structure
+    query_filter = call["query_filter"]
+    assert isinstance(query_filter, Filter)
+    assert len(query_filter.must) == 1
+    condition = query_filter.must[0]
+    assert isinstance(condition, FieldCondition)
+    assert condition.key == "document_id"
+    assert isinstance(condition.match, MatchAny)
+    assert condition.match.any == ["doc-1", "doc-2"]
 
 
 def test_qdrant_retriever_uses_persisted_chunk_id_from_payload() -> None:

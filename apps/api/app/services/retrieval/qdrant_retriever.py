@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from qdrant_client.models import SparseVector
+from qdrant_client.models import FieldCondition, Filter, MatchAny, SparseVector
 
 from app.services.retrieval.base import QueryEmbedding, RetrievalHit, RetrievalQuery
 
@@ -50,15 +50,15 @@ class QdrantRetriever:
         return _map_qdrant_hits(response)
 
 
-def _build_document_filter(allowed_document_ids: list[str]) -> dict:
-    return {
-        "must": [
-            {
-                "key": "document_id",
-                "match": {"any": allowed_document_ids},
-            }
+def _build_document_filter(allowed_document_ids: list[str]) -> Filter:
+    return Filter(
+        must=[
+            FieldCondition(
+                key="document_id",
+                match=MatchAny(any=allowed_document_ids),
+            )
         ]
-    }
+    )
 
 
 def _map_qdrant_hits(response: object) -> list[RetrievalHit]:
