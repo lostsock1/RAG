@@ -56,6 +56,7 @@ Full ADRs live in `adr/`. Index:
 - [ADR-0011 — Structured Document-Understanding Architecture for Phase 2](adr/0011-structured-document-understanding-architecture.md) — Accepted 2026-05-16
 - [ADR-0012 — Chunking Strategy: Structure-Aware Parent-Child with Profile Routing](adr/0012-chunking-strategy.md) — Accepted 2026-05-17
 - [ADR-0013 — Embedding Model: BGE-M3 Dense + Sparse](adr/0013-embedding-model-bge-m3.md) — Proposed 2026-05-17
+- [ADR-0014 — Phase 4 Reranker Selection: Reconfirm `bge-reranker-v2-m3`](adr/0014-reranker-selection-phase-4.md) — Accepted 2026-05-21
 
 ## Proposed / Deferred decisions
 

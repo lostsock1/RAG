@@ -11,6 +11,7 @@ from app.services.ocr import build_ocr_service
 from app.services.parsers.factory import build_document_parser
 from app.services.storage import build_storage_adapter
 from app.services.retrieval.runtime import build_search_retriever
+from app.services.llm_runtime import build_llm_backend
 
 
 @asynccontextmanager
@@ -68,6 +69,8 @@ async def lifespan(app: FastAPI):
     search_retriever = build_search_retriever(settings=settings, state=app.state)
     if search_retriever is not None:
         app.state.search_retriever = search_retriever
+
+    app.state.llm_backend = build_llm_backend(settings=settings, state=app.state)
 
     yield
 

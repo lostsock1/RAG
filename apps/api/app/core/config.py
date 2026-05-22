@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,6 +51,19 @@ class Settings(BaseSettings):
     opensearch_use_ssl: bool = False
     opensearch_verify_certs: bool = True
     opensearch_index_name: str = "uber_rag_chunks"
+    reranker_backend: Literal["disabled", "stub", "bge-reranker-v2-m3"] = "disabled"
+    reranker_model_name: str = "BAAI/bge-reranker-v2-m3"
+    reranker_batch_size: int = 8
+    reranker_max_length: int = 512
+    reranker_candidate_limit: int = 20
+    context_builder_max_characters: int = Field(default=4000, ge=1)
+    context_builder_max_blocks: int | None = Field(default=None, ge=1)
+    llm_backend: Literal["disabled", "stub", "ppq"] = "disabled"
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
+    llm_model_name: str = "meta-llama/Llama-3.3-70B-Instruct"
+    llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
+    llm_max_output_tokens: int = Field(default=512, ge=1)
     ocr_engine: str = "tesseract"
     postgres_user: str = "uber_rag"
     postgres_password: str = "uber_rag"

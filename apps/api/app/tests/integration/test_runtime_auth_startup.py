@@ -424,3 +424,21 @@ def test_create_app_lifespan_uses_injected_settings_over_global_env(monkeypatch)
                 assert not env_storage_dir.exists()
         finally:
             session_factory.configure(bind=None)
+
+
+def test_app_startup_wires_llm_backend_from_injected_settings() -> None:
+    custom_app = main_module.create_app(
+        Settings(
+            auth_mode="dev",
+            llm_backend="stub",
+            llm_model_name="runtime-model",
+            llm_temperature=0.2,
+            llm_max_output_tokens=222,
+        )
+    )
+
+    with TestClient(custom_app, client=("127.0.0.1", 50003)):
+        assert hasattr(custom_app.state, "llm_backend")
+        assert custom_app.state.llm_backend._model_name == "runtime-model"
+        assert custom_app.state.llm_backend._default_temperature == 0.2
+        assert custom_app.state.llm_backend._default_max_output_tokens == 222

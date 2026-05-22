@@ -65,6 +65,24 @@ class _FakeSearchSourcesRepository:
         }
 
 
+class _FakeReranker:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list[str], int]] = []
+
+    def rerank(self, *, query: str, hits: list[RetrievalHit], top_k: int) -> list[RetrievalHit]:
+        self.calls.append((query, [hit.chunk_id or hit.document_id for hit in hits], top_k))
+        return list(reversed(hits[:top_k]))
+
+
+class _TextSortingReranker:
+    def __init__(self) -> None:
+        self.calls: list[list[str]] = []
+
+    def rerank(self, *, query: str, hits: list[RetrievalHit], top_k: int) -> list[RetrievalHit]:
+        self.calls.append([hit.chunk_id or hit.document_id for hit in hits])
+        return sorted(hits, key=lambda hit: hit.text)[:top_k]
+
+
 def test_hybrid_retriever_uses_exact_lane_without_dense_search_for_quoted_query() -> None:
     lexical = _FakeLexicalRetriever(
         [
@@ -205,3 +223,153 @@ def test_parent_expansion_fetches_parent_chunk_for_synthesis_route() -> None:
         ("parent-1", "parent text", ["Section A"])
     ]
     assert search_sources.calls == [["child-1"]]
+
+
+def test_hybrid_retriever_invokes_reranker_for_non_exact_query() -> None:
+    lexical = _FakeLexicalRetriever(
+        [
+            RetrievalHit(document_id="doc-1", chunk_id="chunk-a", score=1.0, text="A"),
+            RetrievalHit(document_id="doc-1", chunk_id="chunk-b", score=0.8, text="B lexical"),
+        ]
+    )
+    vector = _FakeVectorRetriever(
+        dense_hits=[
+            RetrievalHit(document_id="doc-1", chunk_id="chunk-b", score=0.9, text="B dense"),
+            RetrievalHit(document_id="doc-1", chunk_id="chunk-c", score=0.7, text="C dense"),
+        ],
+        sparse_hits=[
+            RetrievalHit(document_id="doc-1", chunk_id="chunk-b", score=0.95, text="B sparse")
+        ],
+    )
+    reranker = _FakeReranker()
+    retriever = HybridSearchRetriever(
+        router=QueryRouter(),
+        lexical_retriever=lexical,
+        vector_retriever=vector,
+        query_embedder=_FakeQueryEmbedder({"dense": [0.1], "sparse": {"indices": [], "values": []}}),
+        reranker=reranker,
+    )
+
+    results = retriever.search(
+        RetrievalQuery(
+            query="hybrid query",
+            tenant_id="tenant-1",
+            allowed_document_ids=["doc-1"],
+            top_k=3,
+        )
+    )
+
+    assert reranker.calls == [("hybrid query", ["chunk-b", "chunk-a", "chunk-c"], 3)]
+    assert [hit.chunk_id for hit in results] == ["chunk-c", "chunk-a", "chunk-b"]
+
+
+def test_hybrid_retriever_expands_parent_hits_before_reranking() -> None:
+    lexical = _FakeLexicalRetriever(
+        [
+            RetrievalHit(document_id="doc-1", chunk_id="child-1", score=1.0, text="alpha leaf"),
+            RetrievalHit(document_id="doc-1", chunk_id="child-2", score=0.9, text="zulu leaf"),
+        ]
+    )
+    vector = _FakeVectorRetriever(dense_hits=[], sparse_hits=[])
+    search_sources = _FakeSearchSourcesRepository(
+        {
+            "child-1": {
+                "chunk_id": "parent-1",
+                "document_id": "doc-1",
+                "text": "zulu parent",
+                "heading_path": ["Section Z"],
+                "page_start": 10,
+                "page_end": 11,
+            },
+            "child-2": {
+                "chunk_id": "parent-2",
+                "document_id": "doc-1",
+                "text": "alpha parent",
+                "heading_path": ["Section A"],
+                "page_start": 2,
+                "page_end": 3,
+            },
+        }
+    )
+    reranker = _TextSortingReranker()
+    retriever = HybridSearchRetriever(
+        router=QueryRouter(),
+        lexical_retriever=lexical,
+        vector_retriever=vector,
+        query_embedder=_FakeQueryEmbedder({"dense": [0.1], "sparse": {"indices": [], "values": []}}),
+        search_sources_repository=search_sources,
+        reranker=reranker,
+    )
+
+    results = retriever.search(
+        RetrievalQuery(
+            query="summarize section",
+            tenant_id="tenant-1",
+            allowed_document_ids=["doc-1"],
+            top_k=2,
+        )
+    )
+
+    assert reranker.calls == [["parent-1", "parent-2"]]
+    assert [hit.chunk_id for hit in results] == ["parent-2", "parent-1"]
+    assert [hit.text for hit in results] == ["alpha parent", "zulu parent"]
+
+
+def test_hybrid_retriever_bypasses_reranker_for_exact_query() -> None:
+    lexical = _FakeLexicalRetriever(
+        [
+            RetrievalHit(document_id="doc-1", chunk_id="chunk-1", score=9.0, text="exact hit"),
+        ]
+    )
+    vector = _FakeVectorRetriever(dense_hits=[], sparse_hits=[])
+    reranker = _FakeReranker()
+    retriever = HybridSearchRetriever(
+        router=QueryRouter(),
+        lexical_retriever=lexical,
+        vector_retriever=vector,
+        query_embedder=_FakeQueryEmbedder({"dense": [0.1], "sparse": {"indices": [], "values": []}}),
+        reranker=reranker,
+    )
+
+    results = retriever.search(
+        RetrievalQuery(
+            query='"needle phrase"',
+            tenant_id="tenant-1",
+            allowed_document_ids=["doc-1"],
+            top_k=3,
+        )
+    )
+
+    assert [hit.route for hit in results] == ["exact"]
+    assert reranker.calls == []
+
+
+def test_hybrid_retriever_bypasses_reranker_for_identifier_style_exact_query() -> None:
+    lexical = _FakeLexicalRetriever(
+        [
+            RetrievalHit(document_id="doc-1", chunk_id="chunk-1", score=9.0, text="identifier hit"),
+        ]
+    )
+    vector = _FakeVectorRetriever(dense_hits=[], sparse_hits=[])
+    reranker = _FakeReranker()
+    retriever = HybridSearchRetriever(
+        router=QueryRouter(),
+        lexical_retriever=lexical,
+        vector_retriever=vector,
+        query_embedder=_FakeQueryEmbedder({"dense": [0.1], "sparse": {"indices": [], "values": []}}),
+        reranker=reranker,
+    )
+
+    results = retriever.search(
+        RetrievalQuery(
+            query="RFC-9110",
+            tenant_id="tenant-1",
+            allowed_document_ids=["doc-1"],
+            top_k=3,
+        )
+    )
+
+    assert [hit.route for hit in results] == ["exact"]
+    assert vector.dense_calls == []
+    assert vector.sparse_calls == []
+    assert reranker.calls == []

@@ -86,7 +86,7 @@ Exit criteria:
 
 ---
 
-## Phase 2: Ingestion MVP (current)
+## Phase 2: Ingestion MVP
 
 Entry gate: re-evaluate Docling release notes, OCR engines (Tesseract/PaddleOCR/alternatives), Temporal community momentum, SeaweedFS stability. **Entry review completed 2026-05-16** — ADR-0009, ADR-0010, ADR-0011 accepted.
 
@@ -133,10 +133,7 @@ Goal: an uploaded document is parsed, chunked, embedded, indexed, and visible in
 
 **Remaining:**
 
-- ACL metadata plumbing — replace hardcoded `tenant_id` + empty `group_ids` with real resolution
-- One document profile fully wired (start with loose-doc; book profile in Phase 5)
-- Temporal worker tested against a live Temporal server
-- Real remote parser adapter behind the `remote-api` seam
+- No remaining Phase 2 gate blockers. Follow-on breadth work (especially book-profile completion and later retrieval/generation integrations) now lives in later phases and `TASKS.md`.
 
 ### Exit criteria
 
@@ -175,7 +172,7 @@ Exit criteria:
 
 ## Phase 4: Reranking, generation, verification
 
-Entry gate: re-evaluate BGE-Reranker-v2-m3 (check for newer rerankers), vLLM/llama.cpp release notes, the model winner from ADR-0004, citation/verification techniques on Awesome-AI-Memory.
+Entry gate: re-evaluate BGE-Reranker-v2-m3 (check for newer rerankers), vLLM/llama.cpp release notes, the model winner from ADR-0004, citation/verification techniques on Awesome-AI-Memory. **Current status (2026-05-21): closed** — ADR-0014 reconfirms `bge-reranker-v2-m3` as the Phase 4 default because it best fits current latency, no-GPU, and low-friction operational/security constraints; see `docs/uber-rag/research/2026-05-21-phase-4-entry.md`.
 
 Goal: end-to-end answer with citations. Stage 1 evidence discipline (citation required per paragraph) and negative-answer behavior.
 

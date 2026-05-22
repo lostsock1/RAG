@@ -2,7 +2,7 @@
 
 This file is the durable reference map for Uber-RAG. Update it after research. Prefer official docs and primary papers. Include access dates and implementation impact.
 
-Access date placeholder: replace with the current date when verified.
+Last reviewed: 2026-05-21.
 
 ## OpenCode agent configuration
 
@@ -148,6 +148,8 @@ Phase 2 entry review note:
 - BGE-M3 model card: https://huggingface.co/BAAI/bge-m3
 - BGE documentation: https://bge-model.com/bge/bge_m3.html
 - BGE reranker v2 m3 model card: https://huggingface.co/BAAI/bge-reranker-v2-m3
+- BGE reranker v2 gemma model card: https://huggingface.co/BAAI/bge-reranker-v2-gemma
+- BGE reranker v2 MiniCPM layerwise model card: https://huggingface.co/BAAI/bge-reranker-v2-minicpm-layerwise
 - FlagEmbedding repo: https://github.com/FlagOpen/FlagEmbedding
 - BGE multilingual Gemma 2 model card: https://huggingface.co/BAAI/bge-multilingual-gemma2
 
@@ -157,6 +159,8 @@ Implementation impact:
 - Use multivector only as a later precision stage or for selected corpora.
 - Hide embedding model behind an `Embedder` interface so swap-out is a config change, not a refactor.
 - Phase 3 entry review (2026-05-20): no deprecation signal found for BGE-M3. `bge-multilingual-gemma2` is a candidate for stronger multilingual dense retrieval, but not a clean replacement for BGE-M3's single-model dense+sparse+multivector role.
+- Phase 4 entry review (2026-05-21): BGE-M3 remains source-backed for the embedding row. ADR-0014 closes the reranker row by explicitly reconfirming `bge-reranker-v2-m3` as the Phase 4 default because it best fits the current hot-path latency, no-GPU development, and low-friction operational/security constraints. `bge-reranker-v2-gemma` remains the first reopen candidate if quality targets are missed; `bge-reranker-v2-minicpm-layerwise` is not the default because of `trust_remote_code` friction.
+- DeepEye verification (2026-05-21): independent research unanimously confirms ADR-0014. New findings: (1) `v2-gemma` is deprecated by HuggingFace Inference — weakens it as reopen candidate; (2) `bge-reranker-v2.5-gemma2-lightweight` (9B, BEIR 63.1) is a future GPU-era candidate; (3) community ONNX export (`newtechstudio/bge-reranker-v2-m3-onnx`) with TEI ORT backend delivers ~400ms CPU latency for 20 pairs; (4) `trust_remote_code` risk is worse than originally documented — CVE-2026-27893 (HIGH 8.8), demonstrated RCE PoCs; (5) MIRACL multilingual gap between v2-m3 and v2-gemma is only +0.6 nDCG@10 — negligible for Uber-RAG's trilingual corpus.
 
 ## LLM serving
 
@@ -172,11 +176,13 @@ Implementation impact:
 
 All LLM calls go through an internal OpenAI-compatible adapter (`LlmBackend` interface). Provider swap is a config change: `LLM_ADAPTER` env var (`ppq` | `vllm` | `llamacpp`).
 
-Serving runtime: vLLM is the working default per ADR-0003's benchmark plan once GPU hardware lands. llama.cpp remains a candidate for lower-memory scenarios. Both stay behind an OpenAI-compatible internal adapter.
+Serving runtime: vLLM remains an expected future candidate once GPU hardware lands. llama.cpp remains a candidate for lower-memory scenarios. Phase 4 entry review (2026-05-21) adds **SGLang** as a first-class future runtime candidate; current TGI docs are now in maintenance mode and explicitly recommend vLLM, SGLang, and llama.cpp going forward.
 
 Deferred until GPU hardware available:
 - vLLM OpenAI-compatible server: https://docs.vllm.ai/en/latest/serving/openai_compatible_server/
+- SGLang docs: https://docs.sglang.ai/
 - llama.cpp server: https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md
+- Hugging Face TGI docs: https://huggingface.co/docs/text-generation-inference
 
 ## Evaluation and quality
 

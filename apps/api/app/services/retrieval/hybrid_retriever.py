@@ -5,6 +5,7 @@ from typing import Callable
 
 from app.services.retrieval.base import QueryEmbedder, RetrievalHit, RetrievalQuery
 from app.services.retrieval.fusion import reciprocal_rank_fusion
+from app.services.retrieval.reranker import Reranker, StubReranker
 from app.services.retrieval.router import QueryRouter
 
 
@@ -17,6 +18,8 @@ class HybridSearchRetriever:
         vector_retriever: object,
         query_embedder: QueryEmbedder,
         search_sources_repository: object | None = None,
+        reranker: Reranker | None = None,
+        rerank_candidate_limit: int | None = None,
         fuse: Callable[[list[list[str]]], list[str]] = reciprocal_rank_fusion,
     ) -> None:
         self._router = router
@@ -24,6 +27,8 @@ class HybridSearchRetriever:
         self._vector_retriever = vector_retriever
         self._query_embedder = query_embedder
         self._search_sources_repository = search_sources_repository
+        self._reranker = reranker or StubReranker()
+        self._rerank_candidate_limit = rerank_candidate_limit
         self._fuse = fuse
 
     def search(self, query: RetrievalQuery) -> list[RetrievalHit]:
@@ -42,9 +47,10 @@ class HybridSearchRetriever:
             lexical_hits=lexical_hits,
             dense_hits=dense_hits,
             sparse_hits=sparse_hits,
-            top_k=query.top_k,
+            top_k=self._resolve_rerank_candidate_limit(query.top_k),
         )
-        return self._expand_parent_hits(fused_hits)
+        expanded_hits = self._expand_parent_hits(fused_hits)
+        return self._reranker.rerank(query=query.query, hits=expanded_hits, top_k=query.top_k)
 
     def _fuse_hits(
         self,
@@ -119,6 +125,11 @@ class HybridSearchRetriever:
             seen_candidate_ids.add(candidate_id)
 
         return expanded_hits
+
+    def _resolve_rerank_candidate_limit(self, top_k: int) -> int:
+        if self._rerank_candidate_limit is None:
+            return top_k
+        return max(top_k, self._rerank_candidate_limit)
 
 
 __all__ = ["HybridSearchRetriever"]

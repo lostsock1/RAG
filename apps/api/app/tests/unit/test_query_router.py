@@ -11,3 +11,10 @@ def test_query_router_sends_quoted_query_to_exact_route() -> None:
 
     assert route.mode == "exact"
     assert route.latency_tier == 1
+
+
+def test_query_router_sends_identifier_style_token_to_exact_route() -> None:
+    route = QueryRouter().classify("RFC-9110")
+
+    assert route.mode == "exact"
+    assert route.latency_tier == 1
