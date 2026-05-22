@@ -93,22 +93,25 @@ async def test_streaming_load_concurrent(eval_stack: EvalStack, monkeypatch):
     if not api_key:
         pytest.skip("PPQ_API_KEY not set — skipping streaming load test")
 
-    # Swap in real LLM
+    # Swap in real LLM + NLI verifier from shared Settings
+    from app.core.config import Settings
     from app.services.llm_backend import PpqLlmBackend
     from app.services.answer_verifier_nli import NliAnswerVerifier
+
+    settings = Settings()
 
     real_llm = PpqLlmBackend(
         base_url="https://api.ppq.ai/v1",
         api_key=api_key,
-        model_name="meta-llama/Llama-3.3-70B-Instruct",
-        default_temperature=0.0,
-        default_max_output_tokens=512,
+        model_name=settings.llm_model_name,
+        default_temperature=settings.llm_temperature,
+        default_max_output_tokens=settings.llm_max_output_tokens,
     )
     eval_stack.chat_service._llm_backend = real_llm
     eval_stack.chat_service._answer_verifier = NliAnswerVerifier(
-        scoring_mode="not_contradicted",
-        entailment_threshold=0.5,
-        unsupported_ratio=0.2,
+        entailment_threshold=settings.nli_entailment_threshold,
+        scoring_mode=settings.nli_scoring_mode,
+        unsupported_ratio=settings.nli_unsupported_ratio,
     )
 
     # Disable audit writes

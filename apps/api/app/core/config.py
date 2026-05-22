@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     keycloak_port: int = 8080
     verifier_backend: Literal["substring", "nli", "disabled"] = "substring"
     nli_entailment_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    nli_scoring_mode: Literal["entailment", "not_contradicted"] = "entailment"  # ADR-0016
+    nli_unsupported_ratio: float = Field(default=0.0, ge=0.0, le=1.0)  # ADR-0016
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

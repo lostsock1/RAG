@@ -74,6 +74,8 @@ def _build_chat_service(request: Request) -> ChatService:
     if settings.verifier_backend == "nli":
         answer_verifier = NliAnswerVerifier(
             entailment_threshold=settings.nli_entailment_threshold,
+            scoring_mode=settings.nli_scoring_mode,
+            unsupported_ratio=settings.nli_unsupported_ratio,
         )
     elif settings.verifier_backend == "disabled":
         answer_verifier = _PassThroughVerifier()

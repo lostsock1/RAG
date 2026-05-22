@@ -70,25 +70,34 @@ def _run_mode(
     api_key: str,
     scoring_mode: str,
     unsupported_ratio: float,
-    nli_threshold: float = 0.5,
+    nli_threshold: float | None = None,
 ) -> ModeResult:
-    """Run the 15 answered questions with a specific NLI verifier configuration."""
+    """Run the 15 answered questions with a specific NLI verifier configuration.
+
+    Uses Settings defaults for nli_entailment_threshold, nli_scoring_mode,
+    and nli_unsupported_ratio unless overridden by explicit parameters.
+    This ensures eval and production share the same configuration source.
+    """
+    from app.core.config import Settings
     from app.services.llm_backend import PpqLlmBackend
     from app.services.answer_verifier_nli import NliAnswerVerifier
+
+    settings = Settings()
 
     # Swap in real LLM backend
     real_llm = PpqLlmBackend(
         base_url="https://api.ppq.ai/v1",
         api_key=api_key,
-        model_name="meta-llama/Llama-3.3-70B-Instruct",
-        default_temperature=0.0,
-        default_max_output_tokens=512,
+        model_name=settings.llm_model_name,
+        default_temperature=settings.llm_temperature,
+        default_max_output_tokens=settings.llm_max_output_tokens,
     )
     eval_stack.chat_service._llm_backend = real_llm
 
-    # Swap in NLI verifier with specified params
+    # Swap in NLI verifier — use Settings defaults, override mode/ratio for comparison
+    effective_threshold = nli_threshold if nli_threshold is not None else settings.nli_entailment_threshold
     nli_verifier = NliAnswerVerifier(
-        entailment_threshold=nli_threshold,
+        entailment_threshold=effective_threshold,
         scoring_mode=scoring_mode,
         unsupported_ratio=unsupported_ratio,
     )
