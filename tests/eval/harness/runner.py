@@ -22,16 +22,19 @@ class EvalRunner:
 
     Parameters
     ----------
-    chat_service_factory : callable
-        A callable that returns a ChatService instance.
-        This enables dependency injection for testing.
+    chat_service : ChatService
+        A ChatService instance (or any object with an .answer() method).
+        For testing, pass a stub that accepts the same interface.
     dataset : EvalDataset
         The loaded eval dataset.
+    request_context : object
+        A RequestContext to pass to ChatService.answer().
     """
 
-    def __init__(self, chat_service_factory, dataset: EvalDataset) -> None:
-        self._chat_service_factory = chat_service_factory
+    def __init__(self, chat_service, dataset: EvalDataset, request_context=None) -> None:
+        self._chat_service = chat_service
         self._dataset = dataset
+        self._request_context = request_context
 
     def run(
         self,
@@ -54,10 +57,8 @@ class EvalRunner:
 
         results: list[RunnerResult] = []
         for question in questions:
-            chat_service = self._chat_service_factory()
-
             start = time.perf_counter()
-            response = chat_service.answer(question.query)
+            response = self._call_chat_service(question)
             elapsed_ms = (time.perf_counter() - start) * 1000.0
 
             verification = getattr(response, "verification", None)
@@ -73,3 +74,48 @@ class EvalRunner:
             )
 
         return results
+
+    def _call_chat_service(self, question: EvalQuestion):
+        """Call the ChatService with the question.
+
+        Tries the real ChatService interface first (keyword args),
+        falls back to a simple callable for stubs.
+        """
+        import inspect
+
+        sig = inspect.signature(self._chat_service.answer)
+        params = list(sig.parameters.keys())
+
+        # Real ChatService.answer(context=, payload=, delivery_mode=)
+        if "context" in params and "payload" in params:
+            from app.schemas.chat import ChatRequest
+
+            payload = ChatRequest(question=question.query)
+            if self._request_context is not None:
+                return self._chat_service.answer(
+                    context=self._request_context,
+                    payload=payload,
+                    delivery_mode="eval",
+                )
+            else:
+                return self._chat_service.answer(
+                    context=self._make_default_context(),
+                    payload=payload,
+                    delivery_mode="eval",
+                )
+
+        # Simple stub interface: answer(query_string)
+        return self._chat_service.answer(question.query)
+
+    @staticmethod
+    def _make_default_context():
+        """Create a default RequestContext for eval runs."""
+        from app.core.request_context import RequestContext
+
+        return RequestContext(
+            tenant_id="00000000-0000-0000-0000-000000000000",
+            user_id="00000000-0000-0000-0000-000000000001",
+            group_ids=["eval-group"],
+            roles=["eval"],
+            scopes=["documents:read"],
+        )
