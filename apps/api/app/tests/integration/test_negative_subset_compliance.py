@@ -1,10 +1,14 @@
-"""Integration test: negative-answer subset compliance.
+"""Integration test: negative-answer subset compliance (empty-corpus sanity check).
 
 Verifies that the negative questions in heldout-v1.yaml all produce
 status='not_enough_evidence' when run against a ChatService with an empty
 corpus (no indexed content).
 
-This test satisfies Phase 4 exit criterion #2: negative-answer compliance >= 0.90.
+This is a sanity check — the primary Phase 4 measurement runs against the
+populated eval_stack fixture in tests/eval/test_negative_populated_corpus.py.
+
+Phase 4 exit criterion #2: negative-answer compliance >= 0.90 on populated corpus.
+(Empty-corpus stub compliance is expected to be 1.00.)
 """
 
 from __future__ import annotations
@@ -65,8 +69,13 @@ def _make_eval_context() -> object:
     )
 
 
-class TestNegativeSubsetCompliance:
-    """Phase 4 exit criterion #2: negative-answer compliance >= 0.90."""
+class TestNegativeSubsetComplianceEmptyCorpus:
+    """Sanity check: negative questions with empty corpus.
+
+    Every negative question should produce not_enough_evidence when
+    there is no indexed content. This is a baseline sanity check,
+    not the primary Phase 4 measurement.
+    """
 
     @pytest.fixture(autouse=True)
     def _disable_audit(self, monkeypatch):
@@ -109,24 +118,8 @@ class TestNegativeSubsetCompliance:
         scores = [score_negative(q, r.response) for q, r in zip(negative_questions, results)]
         report = aggregate(scores)
 
-        # Every negative question should be compliant
+        # Every negative question should be compliant with empty corpus
         assert report.negative_answer_compliance == 1.00, (
-            f"Expected compliance 1.00, got {report.negative_answer_compliance:.2f}. "
+            f"Expected compliance 1.00 with empty corpus, got {report.negative_answer_compliance:.2f}. "
             f"Failures: {[s.question_id for s in scores if not s.compliant]}"
-        )
-
-    def test_negative_compliance_above_threshold(self, negative_questions, chat_service, eval_context):
-        """Gate: negative_answer_compliance must be >= 0.95 for CI."""
-        runner = EvalRunner(
-            chat_service=chat_service,
-            dataset=load_dataset(HELDOUT_PATH),
-            request_context=eval_context,
-        )
-        results = runner.run(questions=negative_questions)
-
-        scores = [score_negative(q, r.response) for q, r in zip(negative_questions, results)]
-        report = aggregate(scores)
-
-        assert report.negative_answer_compliance >= 0.95, (
-            f"Negative compliance {report.negative_answer_compliance:.2f} is below 0.95 threshold"
         )
