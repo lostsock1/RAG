@@ -652,7 +652,7 @@ paths:
   # ── Chat ───────────────────────────────────────────────────────
   /chat:
     post:
-      summary: Generate an answer with citations
+      summary: Generate an answer from retrieved evidence
       operationId: chat
       tags: [Chat]
       requestBody:
@@ -663,15 +663,17 @@ paths:
               $ref: "#/components/schemas/ChatRequest"
       responses:
         "200":
-          description: Answer with citations and verification
+          description: Answer result for the current first chat slice
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatResponse"
+        "503":
+          description: Retrieval or generation backend is not configured
 
   /chat/stream:
     post:
-      summary: Stream an answer with citations (SSE)
+      summary: Stream an answer result over SSE
       operationId: chatStream
       tags: [Chat]
       requestBody:
@@ -682,54 +684,57 @@ paths:
               $ref: "#/components/schemas/ChatRequest"
       responses:
         "200":
-          description: SSE stream of answer tokens and citation events
+          description: Minimal SSE sequence (`start`, `answer`, `done`)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "503":
+          description: Retrieval or generation backend is not configured
 
   /citations/resolve:
     post:
       summary: Resolve citation IDs to source metadata
       operationId: resolveCitations
       tags: [Chat]
+      security: [{ BearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [citation_ids]
-              properties:
-                citation_ids:
-                  type: array
-                  items: { type: string }
+              $ref: "#/components/schemas/ResolveCitationsRequest"
       responses:
         "200":
           description: Resolved citations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolveCitationsResponse"
+        "503":
+          description: Search retrieval is not configured
 
   /answers/verify:
     post:
-      summary: Verify answer sentences against source evidence
+      summary: Verify answer sentences against retrieved source evidence
       operationId: verifyAnswer
       tags: [Chat]
+      security: [{ BearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [answer, source_chunks]
-              properties:
-                answer:
-                  type: string
-                source_chunks:
-                  type: array
-                  items:
-                    $ref: "#/components/schemas/SourceChunk"
+              $ref: "#/components/schemas/VerifyAnswerRequest"
       responses:
         "200":
-          description: Sentence-level verification verdicts
+          description: Sentence-level verification summary
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VerificationResult"
+                $ref: "#/components/schemas/VerificationSummary"
+        "503":
+          description: Search retrieval is not configured
 
   # ── Evaluation ─────────────────────────────────────────────────
   /eval/datasets:
@@ -1216,58 +1221,149 @@ components:
     # ── Chat ───────────────────────────────────────────────────
     ChatRequest:
       type: object
-      required: [query]
+      additionalProperties: false
+      required: [question]
       properties:
-        query: { type: string }
-        collections:
-          type: array
-          items: { type: string, format: uuid }
-        retrieval_mode:
+        question:
           type: string
-          enum: [auto, exact, semantic, book, table, formula, hybrid]
-          default: auto
+          minLength: 1
         top_k:
           type: integer
-          default: 20
-        stream:
-          type: boolean
-          default: false
+          default: 5
+          minimum: 1
+          maximum: 50
 
     ChatResponse:
       type: object
+      additionalProperties: false
+      required:
+        - answer_text
+        - status
+        - context_block_count
+        - retrieval_hit_count
+        - citations
       properties:
-        answer: { type: string }
+        answer_text:
+          type: string
         status:
           type: string
-          enum: [answered, partial, not_found, denied]
+          enum: [answered, not_enough_evidence]
+        model_name:
+          type: string
+          nullable: true
+        provider_name:
+          type: string
+          nullable: true
+        context_block_count:
+          type: integer
+        retrieval_hit_count:
+          type: integer
+        usage:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: integer
         citations:
           type: array
           items:
             $ref: "#/components/schemas/Citation"
         verification:
-          $ref: "#/components/schemas/VerificationSummary"
-        audit_id: { type: string, format: uuid }
+          allOf:
+            - $ref: "#/components/schemas/VerificationSummary"
+          nullable: true
 
     Citation:
       type: object
+      additionalProperties: false
+      required:
+        - citation_id
+        - document_id
+        - document_title
+        - chunk_id
+        - source_viewer_url
       properties:
         citation_id: { type: string }
         document_id: { type: string, format: uuid }
-        title: { type: string }
-        page_start: { type: integer }
-        page_end: { type: integer }
-        section: { type: string }
-        chunk_id: { type: string, format: uuid }
+        document_title: { type: string }
+        chunk_id: { type: string }
+        source_viewer_url: { type: string }
+        page_start: { type: integer, nullable: true }
+        page_end: { type: integer, nullable: true }
+        heading_path:
+          type: array
+          items: { type: string }
+          default: []
 
     VerificationSummary:
       type: object
+      additionalProperties: false
+      required:
+        - status
+        - sentence_count
+        - supported_sentence_count
+        - unsupported_sentence_count
+        - insufficient_evidence_sentence_count
+        - sentences
       properties:
-        unsupported_claims:
+        status:
+          type: string
+          enum: [supported, unsupported, insufficient_evidence]
+        sentence_count: { type: integer }
+        supported_sentence_count: { type: integer }
+        unsupported_sentence_count: { type: integer }
+        insufficient_evidence_sentence_count: { type: integer }
+        sentences:
+          type: array
+          items:
+            $ref: "#/components/schemas/VerificationSentenceResult"
+
+    VerificationSentenceResult:
+      type: object
+      additionalProperties: false
+      required:
+        - sentence
+        - status
+      properties:
+        sentence: { type: string }
+        status:
+          type: string
+          enum: [supported, unsupported, insufficient_evidence]
+        citation_ids:
           type: array
           items: { type: string }
-        confidence:
-          type: string
-          enum: [high, medium, low]
+          default: []
+
+    ResolveCitationsRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - citations
+      properties:
+        citations:
+          type: array
+          items: { type: string }
+
+    ResolveCitationsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Citation"
+
+    VerifyAnswerRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - question
+        - answer_text
+      properties:
+        question: { type: string, minLength: 1 }
+        answer_text: { type: string }
+        top_k: { type: integer, default: 5, minimum: 1, maximum: 50 }
 
     VerificationResult:
       type: object

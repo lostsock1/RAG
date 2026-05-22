@@ -98,11 +98,12 @@
 
 ## Phase 4: Reranking, generation, verification
 
-- [ ] Implement reranker adapter (BGE-reranker-v2-m3).
-- [ ] Implement context builder.
-- [ ] Implement LLM adapter.
-- [ ] Implement chat API.
-- [ ] Implement streaming API.
+- [x] Close the Phase 4 reranker stack decision (`bge-reranker-v2-m3` vs `bge-reranker-v2-gemma` vs `bge-reranker-v2-minicpm-layerwise`) with comparative synthesis and an ADR or explicit reconfirmation.
+- [x] Implement reranker adapter behind a model-swappable `Reranker` interface (`bge-reranker-v2-m3` is the accepted Phase 4 default; the seam remains swappable for future reopen candidates).
+- [x] Implement context builder.
+- [x] Implement LLM adapter.
+- [x] Implement chat API.
+- [x] Implement streaming API.
 - [ ] Implement citation resolver.
 - [ ] Implement sentence-level verifier.
 - [ ] Implement not-found behavior.

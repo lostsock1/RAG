@@ -184,27 +184,61 @@ Truthful current semantics:
 - The response returns the focus chunk plus the immediate same-parent context window around it. Parent chunks return only themselves in this MVP.
 - Successful source-viewer fetches are audited as `search.source.view`. Not-found-or-denied attempts are audited as `search.source.view.denied` with non-sensitive details only (`citation_id`, reason).
 
-## Chat response sketch
+## Current chat slice
+
+The current `POST /api/v1/chat` and `POST /api/v1/chat/stream` slice is intentionally narrow and reuses the existing ACL-safe search path before any generation happens.
+
+Current request shape:
 
 ```json
 {
-  "answer": "string",
-  "status": "answered|partial|not_found|denied",
-  "citations": [
-    {
-      "citation_id": "string",
-      "document_id": "uuid",
-      "title": "string",
-      "page_start": 1,
-      "page_end": 2,
-      "section": "string",
-      "chunk_id": "uuid"
-    }
-  ],
-  "verification": {
-    "unsupported_claims": [],
-    "confidence": "high|medium|low"
-  },
-  "audit_id": "uuid"
+  "question": "string",
+  "top_k": 5
 }
 ```
+
+Current response shape (`POST /api/v1/chat` and the `answer` SSE event payload):
+
+```json
+{
+  "answer_text": "string",
+  "status": "answered|not_enough_evidence",
+  "model_name": "string|null",
+  "provider_name": "string|null",
+  "context_block_count": 1,
+  "retrieval_hit_count": 1,
+  "usage": {
+    "total_tokens": 7
+  }
+}
+```
+
+Truthful current semantics:
+- The endpoint requires `documents:read`.
+- `POST /api/v1/chat` returns `503 Service Unavailable` when search retrieval is not configured and separately when the LLM backend is disabled or missing.
+- Evidence discipline is enforced before generation. If retrieval returns zero usable hits or context construction yields zero usable blocks, the service does **not** call the LLM and returns `status=not_enough_evidence` with the truthful not-enough-evidence message: `I do not have enough permitted source evidence to answer that yet.`
+- Post-generation verification is enforced after the LLM produces a draft answer. The `AnswerVerifier` checks each answer sentence against the authorized context blocks. If verification shows insufficient support, the service returns `status=not_enough_evidence` and omits the unsupported generated text.
+- When verification passes, the response includes `citations` (resolved from authorized retrieval hits) and a `verification` summary with per-sentence support status.
+- `POST /api/v1/chat/stream` currently emits a minimal SSE sequence: `start`, `answer`, `done`. The `answer` event contains the same JSON payload shape as the non-streaming endpoint, including citations and verification.
+- Chat audit events are recorded as `chat.answer` with non-sensitive metadata only: query SHA-256, request size/`top_k`, delivery mode, ACL filter marker, retrieved document ids, retrieval/context counts, whether the LLM was invoked, selected model/provider when used, verification status, citation count, and the final outcome status. Raw question text, answer text, and source chunk text are not written to audit details.
+
+## Current citation resolve slice
+
+`POST /api/v1/citations/resolve` resolves citation IDs against ACL-filtered retrieval hits.
+
+Truthful current semantics:
+- The endpoint requires `documents:read`.
+- Returns `503` when search retrieval is not configured.
+- Only citations that match authorized retrieval hits are returned. Unresolvable or unauthorized citation IDs are silently omitted.
+- The search query is constructed by joining the requested citation IDs with spaces.
+
+## Current answer verify slice
+
+`POST /api/v1/answers/verify` runs deterministic sentence-level verification against ACL-filtered retrieved evidence.
+
+Truthful current semantics:
+- The endpoint requires `documents:read`.
+- Returns `503` when search retrieval is not configured.
+- Accepts `question`, `answer_text`, and optional `top_k`.
+- Runs retrieval and context building, then checks each answer sentence against the authorized context blocks using casefolded substring overlap.
+- Returns a `VerificationSummary` with per-sentence support status and matched citation IDs.

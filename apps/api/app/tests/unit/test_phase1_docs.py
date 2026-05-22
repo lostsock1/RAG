@@ -85,3 +85,42 @@ def test_phase3_entry_note_exists_and_mentions_fusion_choice() -> None:
     assert 'OpenSearch' in text
     assert 'BGE-M3' in text
     assert 'RRF' in text or 'DBSF' in text
+
+
+def test_chat_openapi_and_contract_match_current_first_chat_slice() -> None:
+    api_contract = Path('docs/uber-rag/API_CONTRACT.md').read_text()
+    openapi_text = Path('docs/uber-rag/api/openapi.yaml').read_text()
+    chat_request_block = openapi_text.split('    ChatRequest:')[1].split('    ChatResponse:')[0]
+    chat_response_block = openapi_text.split('    ChatResponse:')[1].split('    Citation:')[0]
+
+    assert 'Current chat slice' in api_contract
+    assert 'permitted source evidence' in api_contract
+    assert 'question:' in chat_request_block
+    assert 'top_k:' in chat_request_block
+    assert 'query:' not in chat_request_block
+    assert 'collections:' not in chat_request_block
+    assert 'retrieval_mode:' not in chat_request_block
+    assert 'answer_text:' in chat_response_block
+    assert 'status:' in chat_response_block
+    assert 'model_name:' in chat_response_block
+    assert 'provider_name:' in chat_response_block
+    assert 'context_block_count:' in chat_response_block
+    assert 'retrieval_hit_count:' in chat_response_block
+    assert 'usage:' in chat_response_block
+    assert 'answer:' not in chat_response_block
+    assert 'citations:' in chat_response_block
+    assert 'verification:' in chat_response_block
+    assert '/chat/stream:' in openapi_text
+    assert 'text/event-stream' in openapi_text
+
+
+def test_phase4_trust_path_openapi_and_contract_are_truthful() -> None:
+    api_contract = Path('docs/uber-rag/API_CONTRACT.md').read_text()
+    openapi_text = Path('docs/uber-rag/api/openapi.yaml').read_text()
+
+    assert '/citations/resolve' in api_contract
+    assert '/answers/verify' in api_contract
+    assert '/citations/resolve:' in openapi_text
+    assert '/answers/verify:' in openapi_text
+    assert 'VerifyAnswerRequest' in openapi_text
+    assert 'ResolveCitationsRequest' in openapi_text
