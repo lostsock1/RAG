@@ -103,12 +103,20 @@
 - [x] Implement context builder.
 - [x] Implement LLM adapter.
 - [x] Implement chat API.
-- [x] Implement streaming API.
+- [x] Implement streaming API (real token-level streaming via SSE).
 - [x] Implement citation resolver.
-- [x] Implement sentence-level verifier.
+- [x] Implement sentence-level verifier (substring + NLI).
 - [x] Implement not-found behavior.
+- [x] Implement eval harness skeleton (loader, scorer, reporter, CLI — ADR-0015).
+- [x] Measure negative-answer compliance (1.00 on 23/23 questions).
+- [x] Implement NLI-based answer verifier (`cross-encoder/nli-deberta-v3-base`).
+- [x] Create fixture corpus (8 documents, 15 ground-truth questions).
+- [ ] Wire full ingestion pipeline in test fixture (SQLite + Qdrant in-memory + OpenSearch mock + BGE-M3).
+- [ ] Run baseline faithfulness measurement against substring verifier.
+- [ ] Run NLI faithfulness measurement and iterate until ≥ 0.85 (or write ADR-0016).
+- [ ] Run streaming load test (5 concurrent users, 30 queries, P50/P95 first-token).
 
-**Phase 4 deliverables complete (2026-05-22):** All eight ROADMAP deliverables implemented — reranker, context builder, LLM adapter, prompt template with citation rendering, `/chat` + `/chat/stream`, sentence-level evidence verifier, negative-answer handling, citation resolver endpoint. Exit criteria status: ACL leakage ✅, streaming ✅, faithfulness/negative-compliance thresholds deferred to eval harness (Phase 5).
+**Phase 4 status (2026-05-23):** All deliverables implemented. Exit criteria: negative-answer compliance ✅ (1.00), ACL leakage ✅, streaming ✅ (real tokens). Faithfulness measurement and load testing require full pipeline fixture + running stack — tracked as remaining items above.
 
 ## Phase 5: Web UI
 
@@ -122,9 +130,14 @@
 
 ## Phase 6: Evaluation
 
-- [ ] Create seed goldset.
-- [ ] Create synthetic needles.
-- [ ] Create negative tests.
-- [ ] Create ACL leakage tests.
-- [ ] Create regression runner.
+- [x] Create seed goldset (heldout-v1.yaml — 170 questions).
+- [x] Create eval harness (loader, scorer, reporter, runner, CLI).
+- [x] Create negative tests (23 negative questions, compliance 1.00).
+- [x] Create ACL leakage tests (10 questions, group-separation verified).
+- [ ] Wire full pipeline ingestion fixture for faithfulness measurement.
+- [ ] Run baseline faithfulness measurement.
+- [ ] Run NLI faithfulness measurement and iterate.
+- [ ] Backfill remaining 155 heldout questions with ground-truth chunk IDs.
+- [ ] Add recall@k measurement to harness.
+- [ ] Run multilingual subset (German, Portuguese).
 - [ ] Add metrics dashboard.

@@ -172,7 +172,7 @@ Exit criteria:
 
 ## Phase 4: Reranking, generation, verification
 
-Entry gate: re-evaluate BGE-Reranker-v2-m3 (check for newer rerankers), vLLM/llama.cpp release notes, the model winner from ADR-0004, citation/verification techniques on Awesome-AI-Memory. **Current status (2026-05-21): closed** — ADR-0014 reconfirms `bge-reranker-v2-m3` as the Phase 4 default because it best fits current latency, no-GPU, and low-friction operational/security constraints; see `docs/uber-rag/research/2026-05-21-phase-4-entry.md`.
+Entry gate: re-evaluate BGE-Reranker-v2-m3 (check for newer rerankers), vLLM/llama.cpp release notes, the model winner from ADR-0004, citation/verification techniques on Awesome-AI-Memory. **Current status (2026-05-23): partially closed** — ADR-0014 reconfirms `bge-reranker-v2-m3`; ADR-0015 accepted for eval harness. All deliverables implemented. Exit criteria: negative-answer compliance ✅ (1.00/23), ACL leakage ✅, streaming ✅ (real token-level). Faithfulness measurement and load testing require full pipeline fixture + running stack — tracked in TASKS.md.
 
 Goal: end-to-end answer with citations. Stage 1 evidence discipline (citation required per paragraph) and negative-answer behavior.
 

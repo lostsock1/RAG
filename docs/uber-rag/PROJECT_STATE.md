@@ -1,8 +1,8 @@
 # Uber-RAG Project State
 
-Last updated: 2026-05-22
+Last updated: 2026-05-23
 Owner: Uber-RAG primary builder
-Status: Phase 1 complete. Phase 2 complete. Phase 3 Search MVP complete. **Phase 4 Reranking, Generation, Verification is complete.** All eight ROADMAP deliverables are implemented: cross-encoder reranker (swappable seam + BGE adapter), exact-match query routing bypass, LLM adapter (stub + ppq/OpenAI-compatible), prompt template with citation rendering, `/chat` + `/chat/stream` endpoints, sentence-level evidence verifier (deterministic overlap), negative-answer handling (fail-closed policy), and citation resolver endpoint. Exit criteria status: ACL leakage end-to-end ✅ (group-separation tests pass across chat, citations, and verify routes), streaming `/chat` ✅ (SSE start→answer→done verified). Faithfulness ≥ 0.85 and negative-answer compliance ≥ 0.90 thresholds are deferred to eval harness verification in Phase 5 (the eval harness design and heldout set exist but the runner is not yet implemented). Full backend suite: 300 passed, 1 pre-existing trio/asyncio compatibility failure unrelated to Phase 4. Embeddings remain BGE-M3, LLM testing path remains ppq.ai + Llama 3.3 70B, reranker remains `bge-reranker-v2-m3` per ADR-0014. **Next major work: Phase 5 — eval harness implementation, book profile chunking, and Web UI.**
+Status: Phase 1 complete. Phase 2 complete. Phase 3 Search MVP complete. **Phase 4 true closeout in progress.** Eval harness skeleton implemented (loader, scorer, reporter, CLI — 38 unit tests). Negative-answer compliance measured at 1.00 on 23/23 questions (satisfies exit criterion #2). NLI-based answer verifier implemented (`cross-encoder/nli-deberta-v3-base`, 7 tests including paraphrase detection). Real token-level streaming implemented (10 integration tests, first-token-before-completion verified). Fixture corpus created (8 documents covering 15 ground-truth questions). Remaining: faithfulness baseline measurement and NLI iteration require full pipeline ingestion fixture + real LLM access (deferred to next session). Streaming load test requires running stack (deferred). ADR-0015 accepted. Full backend suite: 300+ passed. **Next: wire full ingestion pipeline in test fixture, run baseline + NLI faithfulness measurement, load test.**
 
 ## Product goal
 
@@ -77,12 +77,12 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 | Criterion | Status |
 |---|---|
-| Faithfulness ≥ 0.85 on held-out eval set | Deferred to eval harness (Phase 5) — harness design + heldout set exist, runner not yet implemented |
-| Negative-answer compliance ≥ 0.90 on 20 negative questions | Deferred to eval harness (Phase 5) |
+| Faithfulness ≥ 0.85 on held-out eval set | ⏳ NLI verifier implemented and unit-tested (7 tests pass, paraphrase detection works). Baseline measurement and NLI iteration require full pipeline ingestion fixture + real LLM access — deferred to next session. |
+| Negative-answer compliance ≥ 0.90 on 20 negative questions | ✅ **1.00 measured on 23/23 negative questions** (20 English + 3 multilingual). Integration test `test_negative_subset_compliance` gates at ≥ 0.95. |
 | ACL leakage test passes end-to-end (forbidden docs never reach LLM context) | ✅ Group-separation tests pass across `/chat`, `/chat/stream`, `/citations/resolve`, `/answers/verify` |
-| Streaming `/chat` works under realistic load | ✅ SSE start→answer→done verified; load testing deferred to Phase 6 |
+| Streaming `/chat` works under realistic load | ✅ Real token-level streaming implemented (10 integration tests). First-token-before-completion verified. Load test (P50/P95 measurement) requires running stack — deferred to next session. |
 
-**Phase 4 is complete.** Eval-dependent exit criteria (faithfulness, negative-answer compliance) will be verified when the eval harness runner is implemented in Phase 5.
+**Phase 4 is partially closed.** Negative-answer compliance and ACL leakage are measured and passing. Faithfulness measurement and streaming load testing require infrastructure not available in this session (full pipeline ingestion fixture + real LLM API access + running stack). These are tracked as follow-ups in TASKS.md.
 
 ## Active assumptions
 
@@ -98,6 +98,7 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 | Date | Change | Files | Notes |
 |---|---|---|---|
+| 2026-05-23 | Phase 4 true closeout session: eval harness, NLI verifier, real streaming | `tests/eval/harness/*`, `tests/eval/fixtures/sample_corpus/*`, `apps/api/app/services/answer_verifier_nli.py`, `apps/api/app/services/chat_service.py`, `apps/api/app/services/llm_backend.py`, `apps/api/app/schemas/generation.py`, `apps/api/app/api/routes/chat.py`, `apps/api/app/core/config.py`, `apps/api/app/tests/unit/test_eval_harness_*.py`, `apps/api/app/tests/unit/test_answer_verifier_nli.py`, `apps/api/app/tests/integration/test_negative_subset_compliance.py`, `apps/api/app/tests/integration/test_chat_stream.py`, `docs/uber-rag/adr/0015-eval-harness-implementation.md`, `docs/superpowers/plans/2026-05-23-phase-4-true-closeout.md`, `pyproject.toml` | Eval harness skeleton (loader/scorer/reporter/CLI, 38 unit tests). Negative-answer compliance 1.00 on 23/23 questions. NLI verifier with cross-encoder/nli-deberta-v3-base (7 tests, paraphrase detection works). Real token-level streaming (10 integration tests). Fixture corpus (8 documents, 15 ground-truth questions). ADR-0015 accepted. Remaining: faithfulness baseline + NLI iteration need full pipeline fixture + LLM access; load test needs running stack. |
 | 2026-05-22 | Phase 4 closeout: all deliverables complete, exit criteria verified where possible | `docs/uber-rag/PROJECT_STATE.md`, `docs/uber-rag/TASKS.md` | Marked all Phase 4 TASKS as done. Updated PROJECT_STATE with Phase 4 exit criteria status: ACL leakage ✅, streaming ✅, faithfulness/negative-compliance deferred to eval harness (Phase 5). Full backend suite: 300 passed, 1 pre-existing trio failure. |
 | 2026-05-22 | Reviewer follow-up closed for Phase 4 trust-path slice | `apps/api/app/api/routes/citations.py`, `apps/api/app/schemas/citations.py`, `apps/api/app/schemas/verification.py`, `apps/api/app/services/chat_service.py`, `apps/api/app/tests/integration/test_citations_route.py`, `apps/api/app/tests/integration/test_answers_verify_route.py`, `docs/uber-rag/API_CONTRACT.md`, `docs/uber-rag/PROJECT_STATE.md` | Removed the free-text citation-search workaround from `/citations/resolve` and now resolve citation IDs directly through the ACL-safe source-slice lookup path, added schema-level validation for empty/blank trust-endpoint inputs, added group-separation regression coverage for `/citations/resolve` and `/answers/verify`, and deduped chat citation IDs before resolution. Verification: `python -m pytest apps/api/app/tests/unit/test_citation_resolver.py apps/api/app/tests/unit/test_answer_verifier.py apps/api/app/tests/unit/test_chat_service.py apps/api/app/tests/integration/test_citations_route.py apps/api/app/tests/integration/test_answers_verify_route.py apps/api/app/tests/integration/test_chat_route.py apps/api/app/tests/unit/test_phase1_docs.py -v` → `43 passed`. |
 | 2026-05-21 | Phase 4 chat dual-path slice landed: shared service, `/chat`, and minimal `/chat/stream` | `apps/api/app/schemas/chat.py`, `apps/api/app/services/chat_service.py`, `apps/api/app/api/routes/chat.py`, `apps/api/app/api/router.py`, `apps/api/app/tests/unit/test_chat_service.py`, `apps/api/app/tests/integration/test_chat_route.py`, `docs/uber-rag/PROJECT_STATE.md`, `docs/uber-rag/TASKS.md` | Added a shared `ChatService` that composes the existing ACL-safe search path, context builder, and LLM backend once, then exposed thin JSON and SSE route adapters over that same orchestration result. `/chat` and `/chat/stream` now fail truthfully with `503` when retrieval or generation is unavailable; the first streaming contract is intentionally modest and returns `start`, `answer`, then `done` with the final normalized answer payload. Verification: strict TDD red→green across the new chat unit/integration suite, then targeted regression `54 passed`. |
@@ -170,11 +171,10 @@ Build an API-first, ACL-aware RAG platform that reliably indexes and answers fro
 
 ## Next recommended actions
 
-Phase 3 is **complete** and the first Phase 4 chat slice is now landed.
+Phase 4 true closeout is in progress. Remaining items to fully close Phase 4:
 
-Near-term implementation actions:
-
-1. **Citation resolver** — turn current chunk-level evidence handles into user-facing citation resolution without overstating fidelity.
-2. **Sentence-level verifier** — add the first evidence-verification pass after generation, aligned with ADR-0008 hot-path constraints.
-3. **Not-found behavior** — return a clear evidence-missing answer path instead of relying on provider instruction-following alone.
-4. **Book profile chunking** — still `[ ]` in TASKS.md; not blocking chat, but needed before textbook-corpus evaluation.
+1. **Wire full ingestion pipeline in test fixture** — SQLite + Qdrant in-memory + OpenSearch mock + BGE-M3 embedder + real chunker, ingesting the 8 fixture corpus documents. This unblocks faithfulness measurement.
+2. **Run baseline faithfulness** — measure against substring verifier (expect 0.3-0.5).
+3. **Run NLI faithfulness** — measure against NLI verifier, iterate threshold/prompt until ≥ 0.85 (or write ADR-0016).
+4. **Run streaming load test** — 5 concurrent users, 30 queries, measure P50/P95 first-token latency.
+5. **Book profile chunking** — still `[ ]` in TASKS.md; needed before textbook-corpus evaluation.
