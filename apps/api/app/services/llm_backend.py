@@ -115,7 +115,7 @@ class PpqLlmBackend:
             answer_text=answer_text,
             model_name=body.get("model", model_name),
             provider_name="ppq",
-            usage=body.get("usage"),
+            usage=_sanitize_usage(body.get("usage")),
         )
 
     async def generate_stream(self, request: GenerateAnswerRequest) -> AsyncIterator[TokenEvent]:
@@ -167,6 +167,19 @@ class PpqLlmBackend:
             # If we get here without [DONE], yield final
             yield TokenEvent(text="", is_final=True, usage=None)
 
+
+
+
+def _sanitize_usage(usage: dict | None) -> dict[str, int] | None:
+    """Extract only simple int-valued fields from the LLM usage dict.
+
+    Some providers (e.g. ppq.ai) return nested dicts and floats in the
+    usage payload.  Our schema requires dict[str, int] | None, so we
+    strip anything that is not a plain integer.
+    """
+    if usage is None:
+        return None
+    return {k: v for k, v in usage.items() if isinstance(v, int)}
 
 def _resolve_request_settings(
     request: GenerateAnswerRequest,
