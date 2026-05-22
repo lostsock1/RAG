@@ -51,8 +51,8 @@ def _payload(blocks: list[ContextBlock]) -> ContextPayload:
 
 @pytest.mark.slow
 def test_nli_verifier_detects_paraphrased_entailment() -> None:
-    """A paraphrased sentence should be marked as supported."""
-    verifier = NliAnswerVerifier()
+    """A paraphrased sentence should be marked as supported (entailment mode)."""
+    verifier = NliAnswerVerifier(scoring_mode="entailment")
     payload = _payload([
         _block(
             "The second law states that entropy of an isolated system "
@@ -80,8 +80,8 @@ def test_nli_verifier_detects_paraphrased_entailment() -> None:
 
 @pytest.mark.slow
 def test_nli_verifier_detects_hallucination() -> None:
-    """An exaggerated claim not entailed by context should be unsupported."""
-    verifier = NliAnswerVerifier()
+    """An exaggerated claim not entailed by context should be unsupported (entailment mode)."""
+    verifier = NliAnswerVerifier(scoring_mode="entailment")
     payload = _payload([
         _block(
             "The second law states that entropy of an isolated system "
@@ -129,7 +129,7 @@ def test_nli_verifier_insufficient_evidence_when_no_context() -> None:
 @pytest.mark.slow
 def test_nli_verifier_selects_best_matching_block() -> None:
     """Citation should point to the block that best entails the sentence."""
-    verifier = NliAnswerVerifier()
+    verifier = NliAnswerVerifier(scoring_mode="entailment")
     payload = _payload([
         _block(
             "Photosynthesis converts light to chemical energy.",
@@ -162,8 +162,8 @@ def test_nli_verifier_selects_best_matching_block() -> None:
 
 @pytest.mark.slow
 def test_nli_verifier_mixed_sentences() -> None:
-    """Overall status should be 'unsupported' when any sentence is unsupported."""
-    verifier = NliAnswerVerifier()
+    """Overall status should be 'unsupported' when any sentence is unsupported (all-or-nothing)."""
+    verifier = NliAnswerVerifier(scoring_mode="entailment")
     payload = _payload([
         _block(
             "The second law states that entropy of an isolated system "
@@ -212,7 +212,7 @@ def test_nli_verifier_empty_answer() -> None:
 @pytest.mark.slow
 def test_nli_verifier_verbatim_match() -> None:
     """A verbatim sentence should also be detected as supported."""
-    verifier = NliAnswerVerifier()
+    verifier = NliAnswerVerifier(scoring_mode="entailment")
     payload = _payload([
         _block(
             "Alpha evidence proves the answer.",
@@ -227,3 +227,123 @@ def test_nli_verifier_verbatim_match() -> None:
 
     assert summary.sentences[0].status == "supported"
     assert summary.sentences[0].citation_ids == ["cite-alpha"]
+
+
+# ---------------------------------------------------------------------------
+# Test 8: not_contradicted scoring mode — paraphrased content passes
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_nli_verifier_not_contradicted_paraphrase() -> None:
+    """In not_contradicted mode, a paraphrased sentence should be supported."""
+    verifier = NliAnswerVerifier(scoring_mode="not_contradicted")
+    payload = _payload([
+        _block(
+            "The second law states that entropy of an isolated system "
+            "can never decrease over time.",
+            citation_id="thermo-2nd",
+        )
+    ])
+
+    summary = verifier.verify(
+        answer_text="Entropy never decreases in an isolated system.",
+        context_payload=payload,
+    )
+
+    assert summary.sentences[0].status == "supported"
+
+
+# ---------------------------------------------------------------------------
+# Test 9: not_contradicted mode — contradiction still caught
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_nli_verifier_not_contradicted_catches_contradiction() -> None:
+    """In not_contradicted mode, a contradicted sentence should be unsupported."""
+    verifier = NliAnswerVerifier(scoring_mode="not_contradicted")
+    payload = _payload([
+        _block(
+            "The population of Liechtenstein is 39,584.",
+            citation_id="pop-1",
+        )
+    ])
+
+    summary = verifier.verify(
+        answer_text="Liechtenstein has a population of over 100,000 people.",
+        context_payload=payload,
+    )
+
+    assert summary.sentences[0].status == "unsupported", (
+        f"Expected 'unsupported' for contradicted sentence, got "
+        f"'{summary.sentences[0].status}'"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test 10: unsupported_ratio allows some unsupported sentences
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_nli_verifier_unsupported_ratio() -> None:
+    """With unsupported_ratio=0.5, 1 unsupported out of 2 should still be 'supported'."""
+    verifier = NliAnswerVerifier(
+        scoring_mode="entailment",
+        unsupported_ratio=0.5,
+    )
+    payload = _payload([
+        _block(
+            "The second law states that entropy of an isolated system "
+            "can never decrease over time.",
+            citation_id="thermo-2nd",
+        )
+    ])
+
+    summary = verifier.verify(
+        answer_text=(
+            "Entropy never decreases in an isolated system. "
+            "Quantum tunneling allows particles to pass through walls."
+        ),
+        context_payload=payload,
+    )
+
+    assert summary.sentence_count == 2
+    assert summary.sentences[0].status == "supported"
+    assert summary.sentences[1].status == "unsupported"
+    # With ratio=0.5, 1/2 unsupported is exactly at the limit → "supported"
+    assert summary.status == "supported"
+
+
+# ---------------------------------------------------------------------------
+# Test 11: unsupported_ratio strict — 1 unsupported out of 2 fails at ratio=0.4
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_nli_verifier_unsupported_ratio_strict() -> None:
+    """With unsupported_ratio=0.4, 1 unsupported out of 2 should be 'unsupported'."""
+    verifier = NliAnswerVerifier(
+        scoring_mode="entailment",
+        unsupported_ratio=0.4,
+    )
+    payload = _payload([
+        _block(
+            "The second law states that entropy of an isolated system "
+            "can never decrease over time.",
+            citation_id="thermo-2nd",
+        )
+    ])
+
+    summary = verifier.verify(
+        answer_text=(
+            "Entropy never decreases in an isolated system. "
+            "Quantum tunneling allows particles to pass through walls."
+        ),
+        context_payload=payload,
+    )
+
+    assert summary.sentence_count == 2
+    # 1/2 = 0.5 > 0.4 → "unsupported"
+    assert summary.status == "unsupported"
