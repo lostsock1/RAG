@@ -104,9 +104,11 @@
 - [x] Implement LLM adapter.
 - [x] Implement chat API.
 - [x] Implement streaming API.
-- [ ] Implement citation resolver.
-- [ ] Implement sentence-level verifier.
-- [ ] Implement not-found behavior.
+- [x] Implement citation resolver.
+- [x] Implement sentence-level verifier.
+- [x] Implement not-found behavior.
+
+**Phase 4 deliverables complete (2026-05-22):** All eight ROADMAP deliverables implemented — reranker, context builder, LLM adapter, prompt template with citation rendering, `/chat` + `/chat/stream`, sentence-level evidence verifier, negative-answer handling, citation resolver endpoint. Exit criteria status: ACL leakage ✅, streaming ✅, faithfulness/negative-compliance thresholds deferred to eval harness (Phase 5).
 
 ## Phase 5: Web UI
 
