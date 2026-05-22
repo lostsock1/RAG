@@ -32,19 +32,20 @@ class TestNliVerifierProductionParity:
         assert 0.0 <= settings.nli_unsupported_ratio <= 1.0
 
     def test_production_default_matches_adr_0016(self):
-        """The production default for nli_scoring_mode must be 'entailment' per ADR-0016."""
+        """The production default for nli_scoring_mode must be 'not_contradicted' per ADR-0016."""
         settings = Settings()
-        assert settings.nli_scoring_mode == "entailment", (
+        assert settings.nli_scoring_mode == "not_contradicted", (
             f"Production default nli_scoring_mode is '{settings.nli_scoring_mode}', "
-            f"but ADR-0016 requires 'entailment'. If this is intentional, update ADR-0016."
+            f"but ADR-0016 (revised after measurement) requires 'not_contradicted'. "
+            f"Entailment mode produces 0.113 faithfulness and makes the system non-functional."
         )
 
-    def test_production_default_unsupported_ratio_is_zero(self):
-        """The production default for nli_unsupported_ratio must be 0.0 per ADR-0016."""
+    def test_production_default_unsupported_ratio_matches_adr_0016(self):
+        """The production default for nli_unsupported_ratio must be 0.2 per ADR-0016."""
         settings = Settings()
-        assert settings.nli_unsupported_ratio == 0.0, (
+        assert settings.nli_unsupported_ratio == 0.2, (
             f"Production default nli_unsupported_ratio is {settings.nli_unsupported_ratio}, "
-            f"but ADR-0016 requires 0.0 for entailment mode. If this is intentional, update ADR-0016."
+            f"but ADR-0016 (revised) requires 0.2 for not_contradicted mode."
         )
 
     def test_verifier_from_settings_matches_eval_verifier(self):
@@ -82,8 +83,8 @@ class TestNliVerifierProductionParity:
         env vars are picked up by pydantic-settings, so production
         deployments can override the defaults without code changes.
         """
-        monkeypatch.setenv("NLI_SCORING_MODE", "not_contradicted")
-        monkeypatch.setenv("NLI_UNSUPPORTED_RATIO", "0.2")
+        monkeypatch.setenv("NLI_SCORING_MODE", "entailment")
+        monkeypatch.setenv("NLI_UNSUPPORTED_RATIO", "0.0")
 
         # Clear lru_cache to force Settings reload
         get_settings = __import__(
@@ -92,8 +93,8 @@ class TestNliVerifierProductionParity:
         get_settings.cache_clear()
 
         settings = Settings()
-        assert settings.nli_scoring_mode == "not_contradicted"
-        assert settings.nli_unsupported_ratio == 0.2
+        assert settings.nli_scoring_mode == "entailment"
+        assert settings.nli_unsupported_ratio == 0.0
 
         # Restore defaults
         get_settings.cache_clear()

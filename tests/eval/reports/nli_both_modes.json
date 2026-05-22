@@ -1,0 +1,320 @@
+{
+  "entailment": {
+    "scoring_mode": "entailment",
+    "unsupported_ratio": 0.0,
+    "faithfulness": 0.1133,
+    "total_questions": 15,
+    "per_question": [
+      {
+        "question_id": "h01",
+        "type": "definition",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h04",
+        "type": "definition",
+        "faithfulness": 0.5,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h10",
+        "type": "definition",
+        "faithfulness": 0.5,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h12",
+        "type": "definition",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h13",
+        "type": "definition",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h16",
+        "type": "exact_lookup",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h19",
+        "type": "exact_lookup",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h25",
+        "type": "exact_lookup",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h29",
+        "type": "formula",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "h31",
+        "type": "formula",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "n03",
+        "type": "needle",
+        "faithfulness": 0.5,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "n06",
+        "type": "needle",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "n12",
+        "type": "needle",
+        "faithfulness": 0.2,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "n15",
+        "type": "needle",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      },
+      {
+        "question_id": "n19",
+        "type": "needle",
+        "faithfulness": 0.0,
+        "contains_rate": 0.0,
+        "absent_fail": false,
+        "status_match": false,
+        "response_status": "not_enough_evidence",
+        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+      }
+    ]
+  },
+  "not_contradicted": {
+    "scoring_mode": "not_contradicted",
+    "unsupported_ratio": 0.2,
+    "faithfulness": 1.0,
+    "total_questions": 15,
+    "per_question": [
+      {
+        "question_id": "h01",
+        "type": "definition",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The second law of thermodynamics, as stated in the textbook, is that the total entropy of an isolated system never decreases over time. In any spontaneous process occurring within an isolated system, "
+      },
+      {
+        "question_id": "h04",
+        "type": "definition",
+        "faithfulness": 1.0,
+        "contains_rate": 0.6666666666666666,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "A catalyst is a substance that increases the reaction rate of a chemical reaction without itself being consumed in the process. It works by providing an alternative reaction pathway with a lower activ"
+      },
+      {
+        "question_id": "h10",
+        "type": "definition",
+        "faithfulness": 1.0,
+        "contains_rate": 0.6,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "Based on the provided evidence, 'photosynthesis' can be defined as the biochemical process by which green plants, algae, and certain bacteria convert light energy from the Sun into chemical energy sto"
+      },
+      {
+        "question_id": "h12",
+        "type": "definition",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "According to the economics textbook, inflation is defined as \"a general increase in the level of prices across an economy over a period of time.\" This means that when the overall price level rises, ea"
+      },
+      {
+        "question_id": "h13",
+        "type": "definition",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "According to the textbook, a covalent bond is a chemical bond formed when two atoms share one or more pairs of electrons to achieve a stable electron configuration. This is stated in the text of rank="
+      },
+      {
+        "question_id": "h16",
+        "type": "exact_lookup",
+        "faithfulness": 1.0,
+        "contains_rate": 0.5,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The value of the gravitational constant G stated in the textbook is 6.67430(15) \u00d7 10\u207b\u00b9\u00b9 N m\u00b2/kg\u00b2, with a relative standard uncertainty of 2.2 \u00d7 10\u207b\u2075, as of 2018, according to the CODATA recommended va"
+      },
+      {
+        "question_id": "h19",
+        "type": "exact_lookup",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The four fundamental forces listed in the physics textbook are:  1. Gravitational force 2. Electromagnetic force 3. Strong nuclear force 4. Weak nuclear force  These forces are mentioned in evidence b"
+      },
+      {
+        "question_id": "h25",
+        "type": "exact_lookup",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The provided evidence blocks do not explicitly list the five stages of grief in a single block. However, based on the information provided, we can infer the stages from different blocks:  1. Block 1 m"
+      },
+      {
+        "question_id": "h29",
+        "type": "formula",
+        "faithfulness": 1.0,
+        "contains_rate": 0.25,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The equation for the ideal gas law is not explicitly stated in the provided evidence blocks as being from a chemistry textbook, but it is mentioned in the context of a physics textbook. According to t"
+      },
+      {
+        "question_id": "h31",
+        "type": "formula",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "According to the provided evidence, Ohm's law is stated as: V = IR, which describes the linear relationship between **voltage (V)**, **current (I)**, and **resistance (R)** in an electrical circuit."
+      },
+      {
+        "question_id": "n03",
+        "type": "needle",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The exact population figure given for Liechtenstein is 39,584."
+      },
+      {
+        "question_id": "n06",
+        "type": "needle",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The specific temperature anomaly recorded in the textbook's climate data table for the year 1883 is -0.21\u00b0C. This information is found in the evidence blocks with ranks 1, 2, and 3. Rank 2 provides a "
+      },
+      {
+        "question_id": "n12",
+        "type": "needle",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The provided evidence blocks do not explicitly mention a specific rare mineral as an example of a crystal structure with 8-fold symmetry. However, they do mention \"grossular garnet\" and its apparent 8"
+      },
+      {
+        "question_id": "n15",
+        "type": "needle",
+        "faithfulness": 1.0,
+        "contains_rate": 0.6666666666666666,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The treaty that was signed but never ratified, as mentioned in the evidence blocks, is the Treaty of Lausanne. This is stated in evidence blocks 1 and 2."
+      },
+      {
+        "question_id": "n19",
+        "type": "needle",
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
+        "absent_fail": false,
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The provided evidence blocks do not contain information about the textbook's index entry for 'Zeno'. They do mention that Zeno's paradoxes, including the famous paradox of Achilles and the tortoise, a"
+      }
+    ]
+  },
+  "production_default": "entailment",
+  "adr": "0016-faithfulness-metric-selection"
+}
