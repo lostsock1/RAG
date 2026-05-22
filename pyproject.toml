@@ -40,6 +40,9 @@ ingestion = [
     "uber-rag[vector-db]",
     "uber-rag[search]",
 ]
+eval = [
+    "sentence-transformers>=3.3,<4",
+]
 
 [build-system]
 requires = ["setuptools>=75"]
@@ -52,6 +55,10 @@ testpaths = [
 ]
 pythonpath = [
     "apps/api",
+]
+markers = [
+    "slow: tests that load ML models (skip on lightweight CI runners)",
+    "runload: load tests that require a running stack",
 ]
 
 [tool.setuptools.packages.find]

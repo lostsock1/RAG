@@ -9,12 +9,43 @@ from app.core.request_context import RequestContext
 from app.core.security import require_scopes
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.answer_verifier import AnswerVerifier
+from app.services.answer_verifier_nli import NliAnswerVerifier
 from app.services.chat_service import ChatService
 from app.services.citation_resolver import CitationResolver
 from app.services.context_builder import DefaultContextBuilder
 from app.services.retrieval.search_service import SearchService
 
 router = APIRouter()
+
+
+class _PassThroughVerifier:
+    """Pass-through verifier that marks every sentence as supported.
+
+    Used when verifier_backend is 'disabled'. This allows the chat
+    pipeline to run without any verification overhead.
+    """
+
+    def verify(self, *, answer_text: str, context_payload):
+        from app.schemas.verification import VerificationSentenceResult, VerificationSummary
+        import re
+
+        sentences = [
+            part.strip()
+            for part in re.split(r"(?<=[.!?])\s+", answer_text)
+            if part.strip()
+        ]
+        results = [
+            VerificationSentenceResult(sentence=s, status="supported", citation_ids=[])
+            for s in sentences
+        ]
+        return VerificationSummary(
+            status="supported",
+            sentence_count=len(results),
+            supported_sentence_count=len(results),
+            unsupported_sentence_count=0,
+            insufficient_evidence_sentence_count=0,
+            sentences=results,
+        )
 
 
 def _build_chat_service(request: Request) -> ChatService:
@@ -39,12 +70,22 @@ def _build_chat_service(request: Request) -> ChatService:
             detail="LLM generation is not configured yet. Configure an LLM backend before using /chat.",
         )
 
+    # Select answer verifier backend based on configuration.
+    if settings.verifier_backend == "nli":
+        answer_verifier = NliAnswerVerifier(
+            entailment_threshold=settings.nli_entailment_threshold,
+        )
+    elif settings.verifier_backend == "disabled":
+        answer_verifier = _PassThroughVerifier()
+    else:
+        answer_verifier = AnswerVerifier()
+
     return ChatService(
         search_service=SearchService(retriever=retriever),
         context_builder=DefaultContextBuilder(),
         llm_backend=llm_backend,
         citation_resolver=CitationResolver(),
-        answer_verifier=AnswerVerifier(),
+        answer_verifier=answer_verifier,
         max_context_characters=settings.context_builder_max_characters,
         max_context_blocks=settings.context_builder_max_blocks,
     )

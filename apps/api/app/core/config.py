@@ -77,6 +77,8 @@ class Settings(BaseSettings):
     keycloak_admin: str = "admin"
     keycloak_admin_password: str = "admin"
     keycloak_port: int = 8080
+    verifier_backend: Literal["substring", "nli", "disabled"] = "substring"
+    nli_entailment_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
