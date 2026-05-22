@@ -197,7 +197,10 @@ async def test_streaming_load_concurrent(eval_stack: EvalStack, monkeypatch):
     answered = [r for r in results if r.status == "answered"]
     assert len(answered) >= 3, f"Expected >= 3 answered, got {len(answered)}"
 
-    # Latency assertions (generous for ppq.ai API under concurrent load)
+    # Latency assertions per ADR-0017: P50 < 5s, P95 < 6s under 5 concurrent
+    # Measured baseline: P50 ~2.5s, P95 ~3.4s with ppq.ai + NLI verifier.
+    # These ceilings are regression guards, not targets. The ADR-0008 ~2s
+    # target gap is acknowledged in ADR-0017.
     if first_token_values:
-        assert p50_ft < 5000, f"P50 first-token latency {p50_ft:.0f}ms exceeds 5000ms"
-        assert p95_ft < 15000, f"P95 first-token latency {p95_ft:.0f}ms exceeds 15000ms"
+        assert p50_ft < 5000, f"P50 first-token latency {p50_ft:.0f}ms exceeds 5000ms (ADR-0017)"
+        assert p95_ft < 6000, f"P95 first-token latency {p95_ft:.0f}ms exceeds 6000ms (ADR-0017)"
