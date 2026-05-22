@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from typing import cast
 from uuid import UUID
 
 from app.core.request_context import RequestContext
@@ -119,11 +120,13 @@ class ChatService:
             )
             return result
 
-        citation_ids = [
-            citation_id
-            for sentence in verification.sentences
-            for citation_id in sentence.citation_ids
-        ]
+        citation_ids = list(
+            dict.fromkeys(
+                citation_id
+                for sentence in verification.sentences
+                for citation_id in sentence.citation_ids
+            )
+        )
         citations = self._citation_resolver.resolve(
             citation_ids=citation_ids, hits=search_response.items
         ).items
@@ -162,8 +165,8 @@ class ChatService:
         delivery_mode: str,
     ) -> None:
         write_audit_event(
-            tenant_id=UUID(context.tenant_id),
-            user_id=UUID(context.user_id),
+            tenant_id=cast(str, UUID(context.tenant_id)),
+            user_id=cast(str, UUID(context.user_id)),
             action="chat.answer",
             resource_type="document",
             resource_id=None,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class VerificationSentenceResult(BaseModel):
@@ -10,7 +10,7 @@ class VerificationSentenceResult(BaseModel):
 
     sentence: str
     status: Literal["supported", "unsupported", "insufficient_evidence"]
-    citation_ids: list[str] = []
+    citation_ids: list[str] = Field(default_factory=list)
 
 
 class VerificationSummary(BaseModel):
@@ -27,6 +27,13 @@ class VerificationSummary(BaseModel):
 class VerifyAnswerRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    question: str
+    question: str = Field(min_length=1)
     answer_text: str
-    top_k: int = 5
+    top_k: int = Field(default=5, ge=1, le=50)
+
+    @field_validator("question")
+    @classmethod
+    def reject_blank_question(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Question must not be blank or whitespace-only.")
+        return value

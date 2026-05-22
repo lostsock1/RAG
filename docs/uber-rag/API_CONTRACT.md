@@ -228,9 +228,10 @@ Truthful current semantics:
 
 Truthful current semantics:
 - The endpoint requires `documents:read`.
-- Returns `503` when search retrieval is not configured.
-- Only citations that match authorized retrieval hits are returned. Unresolvable or unauthorized citation IDs are silently omitted.
-- The search query is constructed by joining the requested citation IDs with spaces.
+- Returns `503` when source-slice lookup is not configured.
+- Accepts a non-empty list of non-blank citation IDs; empty or blank values are rejected with validation errors.
+- Each citation ID is resolved directly as a chunk identifier through the ACL-safe source-slice lookup path. There is no free-text citation search fallback.
+- Only citations that resolve to authorized chunks are returned. Unresolvable or unauthorized citation IDs are silently omitted.
 
 ## Current answer verify slice
 
@@ -239,6 +240,6 @@ Truthful current semantics:
 Truthful current semantics:
 - The endpoint requires `documents:read`.
 - Returns `503` when search retrieval is not configured.
-- Accepts `question`, `answer_text`, and optional `top_k`.
+- Accepts non-blank `question`, `answer_text`, and optional `top_k`.
 - Runs retrieval and context building, then checks each answer sentence against the authorized context blocks using casefolded substring overlap.
 - Returns a `VerificationSummary` with per-sentence support status and matched citation IDs.
