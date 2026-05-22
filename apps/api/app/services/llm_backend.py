@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Protocol
+import asyncio
+import json as _json
+from typing import AsyncIterator, Protocol
 
 import httpx
 
-from app.schemas.generation import GenerateAnswerRequest, GenerateAnswerResponse
+from app.schemas.generation import GenerateAnswerRequest, GenerateAnswerResponse, TokenEvent
 
 SYSTEM_INSTRUCTION = (
     "Answer only from the provided sources. If the sources do not contain enough evidence, say so clearly. "
@@ -15,6 +17,7 @@ SYSTEM_INSTRUCTION = (
 
 class LlmBackend(Protocol):
     def generate(self, request: GenerateAnswerRequest) -> GenerateAnswerResponse: ...
+    def generate_stream(self, request: GenerateAnswerRequest) -> AsyncIterator[TokenEvent]: ...
 
 
 class StubLlmBackend:
@@ -41,6 +44,23 @@ class StubLlmBackend:
             model_name=model_name,
             provider_name="stub",
             usage=None,
+        )
+
+    async def generate_stream(self, request: GenerateAnswerRequest) -> AsyncIterator[TokenEvent]:
+        model_name, _, _ = _resolve_request_settings(
+            request,
+            default_model_name=self._model_name,
+            default_temperature=self._default_temperature,
+            default_max_output_tokens=self._default_max_output_tokens,
+        )
+        tokens = ["Stub ", "answer ", "for: ", request.question]
+        for token in tokens:
+            await asyncio.sleep(0.01)  # simulate streaming delay
+            yield TokenEvent(text=token, is_final=False)
+        yield TokenEvent(
+            text="",
+            is_final=True,
+            usage={"prompt_tokens": 0, "completion_tokens": len(tokens), "total_tokens": len(tokens)},
         )
 
 
@@ -97,6 +117,55 @@ class PpqLlmBackend:
             provider_name="ppq",
             usage=body.get("usage"),
         )
+
+    async def generate_stream(self, request: GenerateAnswerRequest) -> AsyncIterator[TokenEvent]:
+        model_name, temperature, max_output_tokens = _resolve_request_settings(
+            request,
+            default_model_name=self._model_name,
+            default_temperature=self._default_temperature,
+            default_max_output_tokens=self._default_max_output_tokens,
+        )
+        payload = {
+            "model": model_name,
+            "temperature": temperature,
+            "max_tokens": max_output_tokens,
+            "stream": True,
+            "messages": [
+                {"role": "system", "content": SYSTEM_INSTRUCTION},
+                {"role": "user", "content": _render_user_message(request)},
+            ],
+        }
+
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                f"{self._base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                json=payload,
+                timeout=httpx.Timeout(self._timeout_seconds, read=self._timeout_seconds),
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    line = line.strip()
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]  # strip "data: " prefix
+                    if data_str == "[DONE]":
+                        yield TokenEvent(text="", is_final=True, usage=None)
+                        return
+                    try:
+                        chunk = _json.loads(data_str)
+                    except _json.JSONDecodeError:
+                        continue
+                    choices = chunk.get("choices", [])
+                    if not choices:
+                        continue
+                    delta = choices[0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        yield TokenEvent(text=content, is_final=False)
+            # If we get here without [DONE], yield final
+            yield TokenEvent(text="", is_final=True, usage=None)
 
 
 def _resolve_request_settings(

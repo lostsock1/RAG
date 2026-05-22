@@ -22,3 +22,13 @@ class GenerateAnswerResponse(BaseModel):
     model_name: str
     provider_name: str
     usage: dict[str, int] | None = None
+
+
+class TokenEvent(BaseModel):
+    """A single token emitted during streaming LLM generation."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str
+    is_final: bool = False
+    usage: dict[str, int] | None = None

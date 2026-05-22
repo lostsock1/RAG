@@ -101,16 +101,17 @@ def chat_route(
 
 
 @router.post("/stream")
-def chat_stream_route(
+async def chat_stream_route(
     request: Request,
     payload: ChatRequest,
     context: RequestContext = Depends(require_scopes(["documents:read"])),
 ) -> StreamingResponse:
-    result = _build_chat_service(request).answer(context=context, payload=payload, delivery_mode="streaming")
+    chat_service = _build_chat_service(request)
 
-    def _events():
-        yield "event: start\ndata: {}\n\n"
-        yield f"event: answer\ndata: {json.dumps(result.model_dump(), separators=(",", ":"))}\n\n"
-        yield "event: done\ndata: {}\n\n"
+    async def _events():
+        async for event in chat_service.answer_stream(context=context, payload=payload):
+            event_type = event["type"]
+            event_data = json.dumps(event["data"], separators=(",", ":"), default=str)
+            yield f"event: {event_type}\ndata: {event_data}\n\n"
 
     return StreamingResponse(_events(), media_type="text/event-stream")

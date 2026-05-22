@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import cast
+from typing import AsyncIterator, cast
 from uuid import UUID
 
 from app.core.request_context import RequestContext
@@ -152,6 +152,104 @@ class ChatService:
             delivery_mode=delivery_mode,
         )
         return result
+
+    async def answer_stream(
+        self,
+        *,
+        context: RequestContext,
+        payload: ChatRequest,
+    ) -> AsyncIterator[dict]:
+        """Stream answer generation with real token-level streaming.
+
+        Yields event dicts with 'type' and 'data' keys:
+        - {"type": "retrieval", "data": {"hit_count": N, "block_count": M}}
+        - {"type": "token", "data": {"text": "..."}}
+        - {"type": "verification", "data": {"status": "supported"|"unsupported"}}
+        - {"type": "citations", "data": {"citations": [...]}}
+        - {"type": "final", "data": {"status": "answered"|"not_enough_evidence", "answer_text": "..."}}
+        - {"type": "done", "data": {}}
+        """
+        # 1. Search (blocking — fast)
+        search_response = self._search_service.search(
+            context=context,
+            payload=SearchRequest(query=payload.question, top_k=payload.top_k),
+        )
+        context_payload = self._context_builder.build(
+            BuildContextRequest(
+                hits=[
+                    RetrievalHit(
+                        document_id=item.document_id,
+                        chunk_id=item.chunk_id,
+                        score=item.score,
+                        text=item.text,
+                        page_start=item.page_start,
+                        page_end=item.page_end,
+                        heading_path=item.heading_path,
+                        route=item.route,
+                    )
+                    for item in search_response.items
+                ],
+                document_titles={item.document_id: item.document_title for item in search_response.items},
+                max_characters=self._max_context_characters,
+                max_blocks=self._max_context_blocks,
+            )
+        )
+
+        yield {"type": "retrieval", "data": {
+            "hit_count": search_response.total,
+            "block_count": context_payload.block_count,
+        }}
+
+        # 2. Check if we have evidence
+        if search_response.total == 0 or context_payload.block_count == 0:
+            yield {"type": "final", "data": {
+                "status": "not_enough_evidence",
+                "answer_text": NOT_ENOUGH_EVIDENCE_MESSAGE,
+            }}
+            yield {"type": "done", "data": {}}
+            return
+
+        # 3. Stream LLM tokens
+        full_answer = ""
+        async for event in self._llm_backend.generate_stream(
+            GenerateAnswerRequest(question=payload.question, context_payload=context_payload)
+        ):
+            if event.is_final:
+                break
+            full_answer += event.text
+            yield {"type": "token", "data": {"text": event.text}}
+
+        # 4. Verify
+        verification = self._answer_verifier.verify(
+            answer_text=full_answer,
+            context_payload=context_payload,
+        )
+
+        if verification.status != "supported":
+            yield {"type": "verification", "data": {"status": "unsupported"}}
+            yield {"type": "final", "data": {
+                "status": "not_enough_evidence",
+                "answer_text": NOT_ENOUGH_EVIDENCE_MESSAGE,
+            }}
+            yield {"type": "done", "data": {}}
+            return
+
+        yield {"type": "verification", "data": {"status": "supported"}}
+
+        # 5. Citations
+        citation_ids = list(dict.fromkeys(
+            cid for s in verification.sentences for cid in s.citation_ids
+        ))
+        citations = self._citation_resolver.resolve(
+            citation_ids=citation_ids, hits=search_response.items
+        ).items
+
+        yield {"type": "citations", "data": {"citations": [c.model_dump() for c in citations]}}
+        yield {"type": "final", "data": {
+            "status": "answered",
+            "answer_text": full_answer,
+        }}
+        yield {"type": "done", "data": {}}
 
     def _write_chat_audit_event(
         self,

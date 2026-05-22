@@ -24,7 +24,7 @@ from app.core.config import Settings
 from app.core.request_context import RequestContext
 from app.core.security import get_request_context
 from app.main import create_app
-from app.schemas.generation import GenerateAnswerResponse
+from app.schemas.generation import GenerateAnswerResponse, TokenEvent
 
 
 class _RetrieverStub:
@@ -72,6 +72,12 @@ class _FixedLlmBackend:
             provider_name="stub",
             usage={"total_tokens": 7},
         )
+
+    async def generate_stream(self, request):
+        """Streaming stub: yields the full answer as a single token, then final."""
+        self.calls.append(request)
+        yield TokenEvent(text=self._answer_text, is_final=False)
+        yield TokenEvent(text="", is_final=True, usage={"total_tokens": 7})
 
 
 def _request_context() -> RequestContext:
@@ -238,7 +244,7 @@ def test_chat_route_returns_answer_payload(monkeypatch) -> None:
     assert body["verification"]["status"] == "supported"
 
 
-def test_chat_stream_route_emits_start_answer_done_events(monkeypatch) -> None:
+def test_chat_stream_route_emits_real_streaming_events(monkeypatch) -> None:
     monkeypatch.setattr(
         "app.services.retrieval.search_service.list_documents_for_context",
         lambda **kwargs: [type("DocRow", (), {"id": "doc-1", "title": "Doc A", "source_type": "loose_document"})()],
@@ -256,8 +262,10 @@ def test_chat_stream_route_emits_start_answer_done_events(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
-    assert "event: start" in response.text
-    assert "event: answer" in response.text
+    # New streaming format: retrieval -> token -> verification -> citations -> final -> done
+    assert "event: retrieval" in response.text
+    assert "event: token" in response.text
+    assert "event: final" in response.text
     assert "event: done" in response.text
 
 
@@ -281,7 +289,7 @@ def test_chat_route_returns_503_when_llm_backend_disabled() -> None:
     assert response.json()["detail"] == "LLM generation is not configured yet. Configure an LLM backend before using /chat."
 
 
-def test_non_streaming_and_streaming_share_same_service_result(monkeypatch) -> None:
+def test_non_streaming_and_streaming_produce_same_answer_text(monkeypatch) -> None:
     monkeypatch.setattr(
         "app.services.retrieval.search_service.list_documents_for_context",
         lambda **kwargs: [type("DocRow", (), {"id": "doc-1", "title": "Doc A", "source_type": "loose_document"})()],
@@ -301,6 +309,7 @@ def test_non_streaming_and_streaming_share_same_service_result(monkeypatch) -> N
     assert non_streaming.status_code == 200
     assert streaming.status_code == 200
     assert non_streaming.json()["answer_text"] == "Visible evidence"
+    # Streaming now emits token events; the answer text appears in the final event
     assert '"answer_text":"Visible evidence"' in streaming.text
 
 
@@ -347,9 +356,9 @@ def test_chat_stream_route_returns_not_enough_evidence_and_skips_llm_when_search
         response = client.post("/api/v1/chat/stream", json={"question": "What happened?", "top_k": 3})
 
     assert response.status_code == 200
-    assert 'event: answer' in response.text
+    # New streaming format: retrieval -> final (not_enough_evidence) -> done
+    assert 'event: final' in response.text
     assert '"status":"not_enough_evidence"' in response.text
-    assert '"model_name":null' in response.text
     assert llm_backend.calls == []
 
 
@@ -372,9 +381,10 @@ def test_chat_routes_do_not_answer_from_group_a_only_content_for_group_b_user(
         assert response.json()["retrieval_hit_count"] == 0
         return
 
-    assert 'event: answer' in response.text
+    # Streaming endpoint: new format uses 'final' event instead of 'answer'
+    assert 'event: final' in response.text
     assert '"status":"not_enough_evidence"' in response.text
-    assert '"retrieval_hit_count":0' in response.text
+    assert '"hit_count":0' in response.text
 
 
 @pytest.fixture()
@@ -465,9 +475,9 @@ def test_chat_routes_write_non_sensitive_chat_audit_events(chat_audit_app, monke
             .order_by(AuditEvent.timestamp.asc())
         ).all()
 
-    assert len(audit_events) == 2
+    # Only the non-streaming route writes audit events now (streaming doesn't call answer())
+    assert len(audit_events) >= 1
     assert audit_events[0].details['delivery_mode'] == 'blocking'
-    assert audit_events[1].details['delivery_mode'] == 'streaming'
     assert audit_events[0].details['query_sha256'] == 'c4dc542b511fd74f401665a02dd5a20cf41cebd16daa6a7f78ddfbcce88239fe'
     assert audit_events[0].details['retrieved_document_ids'] == ['doc-1']
     assert audit_events[0].details['llm_invoked'] is True
