@@ -14,7 +14,25 @@ ACL rules (same as the SQL version):
   - tenant-wide: payload.visibility == "tenant"
   - public: payload.visibility == "public"
 
-Tenant scoping and expiry are always applied on top.
+Tenant scoping is always applied.
+
+Expiry asymmetry between backends:
+  - OpenSearch enforces expiry natively at the payload level (date type
+    + bool.must_not[exists] short-circuit for the missing-field case).
+  - The Qdrant payload filter does NOT enforce expiry. The in-memory
+    Qdrant implementation does not match ``is_null`` / ``is_empty``
+    against JSON null values, and the payload stores ``expires_at`` as
+    either an ISO string or null — there is no numeric field that
+    ``Range(lt=now)`` could compare against without re-indexing every
+    chunk. The SQL-side ``build_document_acl_filter`` already enforces
+    expiry against ``acl_grants.expires_at`` and produces the
+    ``allowed_document_ids`` narrow filter, so expired documents are
+    excluded before the retriever ever sees them. If the payload ACL
+    filter is ever exercised in isolation (e.g. allowed_document_ids
+    bypassed), expiry would not be enforced at the Qdrant layer — this
+    is a known accepted gap until Qdrant gains reliable null-field
+    matching or the indexer is changed to store a numeric
+    ``expires_at_ts`` field.
 """
 from __future__ import annotations
 
@@ -25,7 +43,6 @@ from qdrant_client.models import (
     Filter,
     MatchAny,
     MatchValue,
-    Range,
 )
 
 
@@ -42,12 +59,12 @@ def build_qdrant_acl_filter(
         must: [
             tenant_id == tenant_id,
             NOT is_tombstoned,
-            (expires_at IS NULL OR expires_at > now),
             (owner OR explicit_user OR group_match OR visibility=tenant OR visibility=public),
         ]
-    """
-    now_ts = datetime.now(UTC).timestamp()
 
+    Expiry is enforced by the SQL ACL filter upstream (see module
+    docstring for why the Qdrant layer does not duplicate it).
+    """
     # Tenant scoping — always required
     tenant_clause = FieldCondition(
         key="tenant_id",
@@ -58,15 +75,6 @@ def build_qdrant_acl_filter(
     not_tombstoned = Filter(
         must_not=[
             FieldCondition(key="is_tombstoned", match=MatchValue(value=True))
-        ]
-    )
-
-    # Expiry: expires_at is null OR expires_at > now
-    # FieldCondition(is_null=True) matches documents where the field is absent/null.
-    unexpired = Filter(
-        should=[
-            FieldCondition(key="expires_at", is_null=True),
-            FieldCondition(key="expires_at", range=Range(gt=now_ts)),
         ]
     )
 
@@ -93,7 +101,6 @@ def build_qdrant_acl_filter(
         must=[
             tenant_clause,
             not_tombstoned,
-            unexpired,
             access_filter,
         ]
     )
