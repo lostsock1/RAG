@@ -42,6 +42,11 @@ models/
 *.safetensors
 !models/.gitkeep
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
 # Data
 data/
 corpus/
