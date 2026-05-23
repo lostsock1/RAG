@@ -35,6 +35,25 @@ class StorageStub:
     def put_object(self, *, object_key: str, content: bytes, content_type: str) -> None:
         self.objects[object_key] = content
 
+    def put_object_stream(self, *, object_key: str, fp, content_type: str, content_length: int) -> None:
+        self.objects[object_key] = fp.read()
+
+    def materialize_for_read(self, *, object_key: str):
+        from app.services.storage import MaterializedObject
+        from tempfile import NamedTemporaryFile as _NTF
+        from pathlib import Path as _Path
+
+        content = self.objects.get(object_key, b"")
+        with _NTF(delete=False) as tmp:
+            tmp_path = _Path(tmp.name)
+            tmp.write(content)
+
+        def _cleanup():
+            if tmp_path.exists():
+                tmp_path.unlink()
+
+        return MaterializedObject(local_path=tmp_path, cleanup=_cleanup)
+
 
 class FakeS3ClientWithDownload:
     """Fake S3 client that stores uploaded bytes and serves them back via download_file."""
@@ -46,6 +65,9 @@ class FakeS3ClientWithDownload:
         key = cast(str, kwargs["Key"])
         body = kwargs["Body"]
         self.objects[key] = body if isinstance(body, bytes) else b""
+
+    def upload_fileobj(self, fp, bucket: str, key: str, ExtraArgs: dict | None = None) -> None:
+        self.objects[key] = fp.read()
 
     def download_file(self, Bucket: str, Key: str, Filename: str) -> None:
         from pathlib import Path as _Path

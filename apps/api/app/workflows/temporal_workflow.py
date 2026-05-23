@@ -68,8 +68,11 @@ def build_ingestion_activity(runner):
 
     @activity.defn(name="run_ingestion_activity")
     async def run_ingestion_activity(run_id: str) -> None:
-        import asyncio
+        # anyio.to_thread.run_sync works under both asyncio and trio event loops.
+        # The Temporal SDK runs on asyncio in production; the test suite
+        # parametrises both backends via pytest-anyio.
+        from anyio.to_thread import run_sync
 
-        await asyncio.to_thread(runner.run, UUID(run_id))
+        await run_sync(runner.run, UUID(run_id))
 
     return run_ingestion_activity

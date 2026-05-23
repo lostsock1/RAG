@@ -37,6 +37,7 @@ class InProcessDispatcher:
         embedder: Embedder | None = None,
         vector_indexer: VectorIndexer | None = None,
         lexical_indexer: LexicalIndexer | None = None,
+        worker_id: UUID | None = None,
     ) -> None:
         self._runner = runner or PipelineRunner(
             parser=parser,
@@ -47,6 +48,7 @@ class InProcessDispatcher:
             embedder=embedder,
             vector_indexer=vector_indexer,
             lexical_indexer=lexical_indexer,
+            worker_id=worker_id,
         )
         # Retain direct attribute access for existing tests that inspect internals
         self._parser = parser

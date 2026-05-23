@@ -33,6 +33,9 @@ class StorageStub:
     def put_object(self, *, object_key: str, content: bytes, content_type: str) -> None:
         return None
 
+    def put_object_stream(self, *, object_key: str, fp, content_type: str, content_length: int) -> None:
+        fp.read()  # consume the stream; discard bytes
+
 
 @pytest.fixture(autouse=True)
 def reset_global_app_state() -> Generator[None, None, None]:
@@ -164,7 +167,7 @@ def test_get_ingestion_job_returns_status_payload(
 
     assert response.status_code == 200
     assert response.json()["id"] == upload.json()["ingestion_run_id"]
-    assert response.json()["workflow_backend"] == "scaffold"
+    assert response.json()["workflow_backend"] == "in_process"
 
     with session_factory() as session:
         audit_event = session.scalar(select(AuditEvent).where(AuditEvent.action == "ingestion.job.get"))

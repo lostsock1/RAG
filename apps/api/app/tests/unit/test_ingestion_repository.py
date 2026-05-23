@@ -20,6 +20,7 @@ from app.db.models.ingestion import IngestionRun, IngestionStage, ParsedArtifact
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.repositories.ingestion import (
+    create_ingestion_run,
     create_ingestion_stages,
     ensure_ingestion_stages,
     get_stages_for_run,
@@ -378,3 +379,258 @@ def test_recover_orphaned_runs_resets_running_to_queued(seeded_run: IngestionRun
         assert [stage.status for stage in refreshed_stages] == ["completed", "queued", "queued"]
         assert refreshed_stages[1].details["recovery_reset_reason"] == "startup_recovery"
         assert refreshed_stages[2].details["recovery_reset_reason"] == "startup_recovery"
+
+
+# ---------------------------------------------------------------------------
+# P0-7: workflow_backend column truthful
+# ---------------------------------------------------------------------------
+
+
+def test_create_ingestion_run_writes_workflow_backend(seeded_run: IngestionRun) -> None:
+    """P0-7: create_ingestion_run must persist the workflow_backend value passed in."""
+    # The seeded_run fixture creates a run without specifying workflow_backend,
+    # so it uses the default.  We create a fresh run with an explicit value.
+    with session_factory() as session:
+        existing_run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert existing_run is not None
+        document_id = existing_run.document_id
+        tenant_id = existing_run.tenant_id
+        source_hash = existing_run.source_hash
+
+    run_in_process = create_ingestion_run(
+        document_id=document_id,
+        tenant_id=tenant_id,
+        parser_backend="docling-local",
+        source_hash=source_hash,
+        workflow_backend="in_process",
+    )
+    assert run_in_process.workflow_backend == "in_process"
+
+    run_temporal = create_ingestion_run(
+        document_id=document_id,
+        tenant_id=tenant_id,
+        parser_backend="docling-local",
+        source_hash=source_hash,
+        workflow_backend="temporal",
+    )
+    assert run_temporal.workflow_backend == "temporal"
+
+    # Verify persisted values via a fresh session.
+    with session_factory() as session:
+        r1 = session.scalar(select(IngestionRun).where(IngestionRun.id == run_in_process.id))
+        r2 = session.scalar(select(IngestionRun).where(IngestionRun.id == run_temporal.id))
+        assert r1 is not None and r1.workflow_backend == "in_process"
+        assert r2 is not None and r2.workflow_backend == "temporal"
+
+
+def test_retry_preserves_original_workflow_backend(seeded_run: IngestionRun) -> None:
+    """P0-7: retrying a run must not overwrite its original workflow_backend."""
+    # Set the run to a known backend and status.
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert run is not None
+        run.workflow_backend = "temporal"
+        run.status = "failed"
+        session.commit()
+
+    retried = prepare_ingestion_run_for_retry(run_id=seeded_run.id)
+    assert retried.workflow_backend == "temporal", (
+        "Retry must preserve the original workflow_backend, not overwrite it"
+    )
+
+
+# ---------------------------------------------------------------------------
+# P0-6: worker_id orphan guard
+# ---------------------------------------------------------------------------
+
+
+def _make_seeded_run_in_engine(engine, *, status: str = "running", worker_id=None):
+    """Helper: seed a tenant/user/document/run in the given engine and return the run."""
+    tenant_id = uuid4()
+    user_id = uuid4()
+
+    with session_factory() as session:
+        session.add(Tenant(id=tenant_id, name="Tenant", slug=f"tenant-{tenant_id}"))
+        session.add(
+            User(
+                id=user_id,
+                tenant_id=tenant_id,
+                email=f"user-{user_id}@example.com",
+                display_name="User",
+                roles=["editor"],
+            )
+        )
+        document = Document(
+            tenant_id=tenant_id,
+            owner_user_id=user_id,
+            title="Worker ID Test",
+            source_type="loose_document",
+            source_hash=f"hash-{uuid4()}",
+            file_name="test.txt",
+            file_size_bytes=1,
+            object_key="documents/test.txt",
+            ingestion_status="uploaded",
+        )
+        session.add(document)
+        session.flush()
+        acl_grant = AclGrant(
+            document_id=document.id,
+            owner_user_id=user_id,
+            tenant_id=tenant_id,
+            visibility="private",
+            sensitivity="internal",
+        )
+        session.add(acl_grant)
+        session.flush()
+        session.add(AclAllowedUser(acl_grant_id=acl_grant.id, user_id=user_id))
+
+        run = IngestionRun(
+            document_id=document.id,
+            tenant_id=tenant_id,
+            parser_backend="docling-local",
+            source_hash=document.source_hash,
+            status=status,
+            worker_id=worker_id,
+        )
+        session.add(run)
+        session.commit()
+        session.refresh(run)
+        return run
+
+
+def test_recover_orphaned_runs_skips_current_worker_runs(seeded_run: IngestionRun) -> None:
+    """P0-6: runs owned by the current worker must NOT be reset, even if running."""
+    current_worker = uuid4()
+
+    # Mark the seeded run as running and owned by the current worker.
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert run is not None
+        run.status = "running"
+        run.worker_id = current_worker
+        session.commit()
+
+    count = recover_orphaned_runs(
+        current_worker_id=current_worker,
+        stale_threshold_seconds=0,  # treat everything as stale
+    )
+
+    # The run belongs to the current worker — must not be reset.
+    assert count == 0
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert run is not None
+        assert run.status == "running", "Current-worker run must remain running"
+
+
+def test_recover_orphaned_runs_resets_other_worker_stale_runs(seeded_run: IngestionRun) -> None:
+    """P0-6: stale runs owned by a *different* worker must be reset."""
+    other_worker = uuid4()
+    current_worker = uuid4()
+
+    # Mark the seeded run as running and owned by a different worker.
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert run is not None
+        run.status = "running"
+        run.worker_id = other_worker
+        session.commit()
+
+    count = recover_orphaned_runs(
+        current_worker_id=current_worker,
+        stale_threshold_seconds=0,  # treat everything as stale
+    )
+
+    assert count == 1
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert run is not None
+        assert run.status == "queued", "Other-worker stale run must be reset to queued"
+
+
+def test_recover_orphaned_runs_skips_fresh_other_worker_runs(seeded_run: IngestionRun) -> None:
+    """P0-6: a run owned by another worker that is NOT stale must not be reset."""
+    other_worker = uuid4()
+    current_worker = uuid4()
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert run is not None
+        run.status = "running"
+        run.worker_id = other_worker
+        session.commit()
+
+    # Use a very large stale threshold so the run is considered fresh.
+    count = recover_orphaned_runs(
+        current_worker_id=current_worker,
+        stale_threshold_seconds=999_999,
+    )
+
+    assert count == 0
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert run is not None
+        assert run.status == "running", "Fresh other-worker run must not be reset"
+
+
+def test_try_claim_ingestion_run_sets_worker_id(seeded_run: IngestionRun) -> None:
+    """P0-6: try_claim_ingestion_run must stamp the worker_id on the claimed run."""
+    worker = uuid4()
+    claimed = try_claim_ingestion_run(run_id=seeded_run.id, worker_id=worker)
+
+    assert claimed is not None
+    assert claimed.status == "running"
+    assert claimed.worker_id == worker
+
+
+def test_two_runners_do_not_reclaim_each_others_in_flight_runs() -> None:
+    """P0-6 ACL-adjacent leakage test: an in-flight run claimed by worker A must
+    not be reclaimed by worker B's orphan recovery when the run is still fresh."""
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'two-runners.db'}"
+        engine = create_engine(database_url)
+        alembic_ini_path = Path("infra/migrations/alembic.ini")
+        config = Config(str(alembic_ini_path))
+        config.set_main_option("sqlalchemy.url", database_url)
+
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+
+        session_factory.configure(bind=engine)
+
+        try:
+            worker_a = uuid4()
+            worker_b = uuid4()
+
+            run = _make_seeded_run_in_engine(engine, status="queued")
+
+            # Worker A claims the run.
+            claimed = try_claim_ingestion_run(run_id=run.id, worker_id=worker_a)
+            assert claimed is not None
+            assert claimed.status == "running"
+            assert claimed.worker_id == worker_a
+
+            # Worker B starts up and runs orphan recovery with a large stale threshold
+            # (simulating a fresh run that is still in-flight).
+            recovered = recover_orphaned_runs(
+                current_worker_id=worker_b,
+                stale_threshold_seconds=999_999,
+            )
+
+            # Worker B must NOT have reset Worker A's in-flight run.
+            assert recovered == 0
+
+            with session_factory() as session:
+                refreshed = session.scalar(select(IngestionRun).where(IngestionRun.id == run.id))
+                assert refreshed is not None
+                assert refreshed.status == "running", (
+                    "Worker B must not reclaim Worker A's in-flight run"
+                )
+                assert refreshed.worker_id == worker_a
+        finally:
+            session_factory.configure(bind=None)
+            engine.dispose()

@@ -177,6 +177,68 @@ def test_dev_header_auth_rejects_non_loopback_runtime_requests(monkeypatch) -> N
             reloaded_main.app.dependency_overrides.clear()
 
 
+def test_dev_header_auth_rejects_when_x_forwarded_for_present(monkeypatch) -> None:
+    """P1-6: even from loopback, dev-auth must reject when X-Forwarded-For is
+    present. A reverse proxy that loopbacks to 127.0.0.1 would otherwise
+    expose dev-auth to the public internet."""
+    tenant_id = uuid4()
+    user_id = uuid4()
+
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'runtime-auth-xff.db'}"
+        storage_dir = Path(tmp_dir) / "storage"
+        engine = create_engine(database_url)
+        alembic_ini_path = Path("infra/migrations/alembic.ini")
+        config = Config(str(alembic_ini_path))
+        config.set_main_option("sqlalchemy.url", database_url)
+
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+
+        session_factory.configure(bind=engine)
+        with session_factory() as session:
+            session.add(Tenant(id=tenant_id, name="Tenant", slug="runtime-auth-xff-tenant"))
+            session.add(
+                User(
+                    id=user_id,
+                    tenant_id=tenant_id,
+                    email="xff@example.com",
+                    display_name="XFF User",
+                    roles=["editor"],
+                )
+            )
+            session.commit()
+
+        monkeypatch.setenv("AUTH_MODE", "dev")
+        monkeypatch.setenv("DATABASE_URL", database_url)
+        monkeypatch.setenv("LOCAL_STORAGE_DIR", str(storage_dir))
+        reloaded_main = _reload_app_module()
+
+        try:
+            with TestClient(reloaded_main.app, client=("127.0.0.1", 50000)) as client:
+                response = client.get(
+                    "/api/v1/documents",
+                    headers={
+                        **_dev_auth_headers(
+                            tenant_id=str(tenant_id),
+                            user_id=str(user_id),
+                            scopes=["documents:read"],
+                        ),
+                        "X-Forwarded-For": "1.2.3.4",
+                    },
+                )
+
+            assert response.status_code == 403
+            assert response.json() == {
+                "detail": "Development authentication is not available when X-Forwarded-For is present. Do not run AUTH_MODE=dev behind a reverse proxy.",
+            }
+        finally:
+            session_factory.configure(bind=None)
+            engine.dispose()
+            reloaded_main.app.dependency_overrides.clear()
+
+
 def test_dev_headers_do_not_authenticate_oidc_runtime(monkeypatch) -> None:
     tenant_id = uuid4()
     user_id = uuid4()

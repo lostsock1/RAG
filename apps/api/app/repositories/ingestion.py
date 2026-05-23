@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
 from typing import cast
@@ -20,14 +21,21 @@ from app.services.quality_report import build_quality_report
 from app.services.acl_service import build_document_acl_filter
 
 
-def create_ingestion_run(*, document_id: UUID, tenant_id: UUID, parser_backend: str, source_hash: str) -> IngestionRun:
+def create_ingestion_run(
+    *,
+    document_id: UUID,
+    tenant_id: UUID,
+    parser_backend: str,
+    source_hash: str,
+    workflow_backend: str = "in_process",
+) -> IngestionRun:
     run = IngestionRun(
         document_id=document_id,
         tenant_id=tenant_id,
         parser_backend=parser_backend,
         source_hash=source_hash,
         status="queued",
-        workflow_backend="scaffold",
+        workflow_backend=workflow_backend,
     )
 
     with session_factory() as session:
@@ -437,12 +445,16 @@ def update_run_status(*, run_id: UUID, status: str) -> None:
         session.commit()
 
 
-def try_claim_ingestion_run(*, run_id: UUID) -> IngestionRun | None:
+def try_claim_ingestion_run(*, run_id: UUID, worker_id: UUID | None = None) -> IngestionRun | None:
     with session_factory() as session:
         if session.bind is None:
             raise RuntimeError(
                 "Ingestion persistence is not configured: session_factory has no database bind."
             )
+
+        values: dict = {"status": "running"}
+        if worker_id is not None:
+            values["worker_id"] = worker_id
 
         result = cast(CursorResult, session.execute(
             sa_update(IngestionRun)
@@ -450,7 +462,7 @@ def try_claim_ingestion_run(*, run_id: UUID) -> IngestionRun | None:
                 IngestionRun.id == run_id,
                 IngestionRun.status == "queued",
             )
-            .values(status="running")
+            .values(**values)
         ))
         if result.rowcount == 0:
             session.rollback()
@@ -489,10 +501,24 @@ def prepare_ingestion_run_for_retry(*, run_id: UUID) -> IngestionRun:
         return run
 
 
-def recover_orphaned_runs() -> int:
-    """Reset all IngestionRun records with status ``"running"`` back to ``"queued"``.
+def recover_orphaned_runs(
+    *,
+    current_worker_id: UUID | None = None,
+    stale_threshold_seconds: int = 300,
+) -> int:
+    """Reset stale IngestionRun records with status ``"running"`` back to ``"queued"``.
 
-    Returns the count of reset rows.
+    A run is considered orphaned only when BOTH conditions hold:
+      1. Its ``worker_id`` differs from ``current_worker_id`` (or is NULL when
+         ``current_worker_id`` is provided, meaning it was created before the
+         worker-id column existed).
+      2. Its ``updated_at`` is older than ``stale_threshold_seconds`` ago.
+
+    When ``current_worker_id`` is ``None`` (legacy / opt-in mode), all running
+    rows are reset regardless of worker ownership — preserving the original
+    single-instance behaviour.
+
+    Returns the count of reset IngestionRun rows.
     """
     with session_factory() as session:
         if session.bind is None:
@@ -500,8 +526,25 @@ def recover_orphaned_runs() -> int:
                 "Ingestion persistence is not configured: session_factory has no database bind."
             )
 
-        runs = session.scalars(select(IngestionRun).where(IngestionRun.status == "running")).all()
-        running_stages = session.scalars(select(IngestionStage).where(IngestionStage.status == "running")).all()
+        stale_cutoff = datetime.now(tz=timezone.utc) - timedelta(seconds=stale_threshold_seconds)
+
+        run_query = select(IngestionRun).where(IngestionRun.status == "running")
+        stage_query = select(IngestionStage).where(IngestionStage.status == "running")
+
+        if current_worker_id is not None:
+            # Only reset runs that belong to a *different* worker (or have no
+            # worker_id) AND have not been updated recently.
+            run_query = run_query.where(
+                (IngestionRun.worker_id != current_worker_id) | (IngestionRun.worker_id.is_(None)),
+                IngestionRun.updated_at < stale_cutoff,
+            )
+            stage_query = stage_query.where(
+                (IngestionStage.worker_id != current_worker_id) | (IngestionStage.worker_id.is_(None)),
+                IngestionStage.updated_at < stale_cutoff,
+            )
+
+        runs = session.scalars(run_query).all()
+        running_stages = session.scalars(stage_query).all()
 
         for run in runs:
             run.status = "queued"

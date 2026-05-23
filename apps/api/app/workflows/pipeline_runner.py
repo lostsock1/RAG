@@ -67,6 +67,7 @@ class PipelineRunner:
         embedder: Embedder | None = None,
         vector_indexer: VectorIndexer | None = None,
         lexical_indexer: LexicalIndexer | None = None,
+        worker_id: UUID | None = None,
     ) -> None:
         self._parser = parser
         self._parser_backend = parser_backend
@@ -76,6 +77,7 @@ class PipelineRunner:
         self._embedder = embedder or StubEmbedder()
         self._vector_indexer = vector_indexer or StubVectorIndexer()
         self._lexical_indexer = lexical_indexer or StubLexicalIndexer()
+        self._worker_id = worker_id
 
     def run(self, run_id: UUID) -> None:
         """Execute the full ingestion pipeline for a single run.
@@ -83,7 +85,7 @@ class PipelineRunner:
         This method is synchronous/thread-friendly so both in-process dispatch
         and Temporal activity execution can call the same code.
         """
-        claimed_run = try_claim_ingestion_run(run_id=run_id)
+        claimed_run = try_claim_ingestion_run(run_id=run_id, worker_id=self._worker_id)
         if claimed_run is None:
             logger.info("Run %s could not be claimed; skipping duplicate dispatch.", run_id)
             return

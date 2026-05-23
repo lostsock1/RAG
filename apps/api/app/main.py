@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
 from fastapi import FastAPI
 
@@ -19,6 +20,11 @@ async def lifespan(app: FastAPI):
     settings = getattr(app.state, "settings", None) or get_settings()
     engine = None
 
+    # Per-process worker identity — set once at startup, used by the orphan
+    # guard to avoid resetting in-flight runs owned by this process.
+    worker_id = getattr(app.state, "worker_id", None) or uuid4()
+    app.state.worker_id = worker_id
+
     app.state.settings = settings
     app.state.search_source_context_window = max(settings.search_source_context_window, 0)
 
@@ -27,22 +33,26 @@ async def lifespan(app: FastAPI):
         session_factory.configure(bind=engine)
         app.state.db_engine = engine
 
-        from app.repositories.ingestion import recover_orphaned_runs
+        if settings.ingestion_recover_orphaned:
+            from app.repositories.ingestion import recover_orphaned_runs
 
-        try:
-            recovered = recover_orphaned_runs()
-            if recovered > 0:
+            try:
+                recovered = recover_orphaned_runs(
+                    current_worker_id=worker_id,
+                    stale_threshold_seconds=settings.ingestion_stale_threshold_seconds,
+                )
+                if recovered > 0:
+                    import logging
+
+                    logging.getLogger(__name__).info(
+                        "Recovered %d orphaned ingestion run(s) on startup.", recovered
+                    )
+            except Exception:
                 import logging
 
-                logging.getLogger(__name__).info(
-                    "Recovered %d orphaned ingestion run(s) on startup.", recovered
+                logging.getLogger(__name__).debug(
+                    "Orphaned-run recovery skipped (table may not exist yet).", exc_info=True
                 )
-        except Exception:
-            import logging
-
-            logging.getLogger(__name__).debug(
-                "Orphaned-run recovery skipped (table may not exist yet).", exc_info=True
-            )
 
     storage = build_storage_adapter(settings)
     if storage is not None:
@@ -52,6 +62,8 @@ async def lifespan(app: FastAPI):
         from app.workflows.dispatcher import InProcessDispatcher
 
         parser, parser_backend, parser_profile = build_document_parser(settings)
+        # Keep a reference so we can close the parser's connection pool at shutdown.
+        app.state.document_parser = parser
 
         if settings.workflow_backend == "temporal":
             from app.workflows.temporal_dispatcher import build_temporal_dispatcher
@@ -64,6 +76,7 @@ async def lifespan(app: FastAPI):
                 parser_profile=parser_profile,
                 ocr_service=build_ocr_service(settings),
                 storage=storage,
+                worker_id=worker_id,
             )
 
     search_retriever = build_search_retriever(settings=settings, state=app.state)
@@ -97,9 +110,25 @@ async def lifespan(app: FastAPI):
     if hasattr(app.state, "search_retriever"):
         delattr(app.state, "search_retriever")
 
+    # Close the remote parser's httpx connection pool if one was lazily created.
+    if hasattr(app.state, "document_parser"):
+        parser = app.state.document_parser
+        if hasattr(parser, "close"):
+            try:
+                parser.close()
+            except Exception:
+                pass
+        delattr(app.state, "document_parser")
+
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     active_settings = settings or get_settings()
+
+    # Fail fast: dev-auth must not be exposed on a non-loopback bind address.
+    if active_settings.auth_mode == "dev":
+        from app.core.security import assert_dev_auth_bind_is_loopback
+        assert_dev_auth_bind_is_loopback(active_settings.server_host)
+
     app = FastAPI(
         title=active_settings.app_name,
         version=active_settings.app_version,
