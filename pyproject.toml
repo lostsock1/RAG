@@ -21,6 +21,13 @@ dev = [
     "pytest>=8.3,<9",
     "httpx>=0.28,<1",
     "pyyaml>=6.0,<7",
+    # `app.main` imports both modules at top level via
+    # `app.services.retrieval.runtime` (opensearchpy) and the retrievers
+    # (qdrant-client). Anyone who runs `pytest` against the API needs
+    # them on PATH — they belong in dev, not [ingestion]. Heavy ML
+    # weights live in [ml]; these two packages are small (<50 MB combined).
+    "qdrant-client>=1.12,<2",
+    "opensearch-py>=2.7,<3",
 ]
 temporal = [
     "temporalio>=1.27,<2",
