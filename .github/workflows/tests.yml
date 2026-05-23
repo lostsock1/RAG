@@ -1,0 +1,122 @@
+name: tests
+
+# Bootstrap CI for Uber-RAG. Two jobs:
+#
+#   tests-sqlite — the existing local pytest flow. Fast (~2 minutes after
+#                  cache), covers everything that fixtures wire up against
+#                  in-tree SQLite databases.
+#
+#   tests-postgres — runs the alembic migration chain end-to-end against a
+#                    real Postgres 17 service, and runs the targeted
+#                    `test_chunks_columns_use_uuid_on_postgres` test that
+#                    is `pytest.skip()`-ed locally. Catches the dialect-
+#                    specific bugs that SQLite-only CI sleeps through (see
+#                    PROJECT_STATE.md 2026-05-23 row for the five bugs that
+#                    escaped detection until VPS deploy day).
+#
+# The `tests/eval/` suite and the live-Temporal integration test are not
+# run in CI: the former needs PPQ_API_KEY + ML wheel downloads (torch,
+# FlagEmbedding) too heavy for free runners; the latter needs a running
+# Temporal server.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests-sqlite:
+    name: pytest (sqlite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies (dev + temporal extras)
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev,temporal]"
+
+      - name: Run backend pytest
+        # Excludes the live-Temporal integration test (needs a real Temporal
+        # server) and the tests/eval suite (needs PPQ_API_KEY + ML wheels).
+        run: |
+          PYTHONPATH=apps/api:. pytest apps/api/app/tests/ \
+            --ignore=apps/api/app/tests/integration/test_temporal_live_ingestion.py \
+            -q --tb=short
+
+  tests-postgres:
+    name: alembic + Postgres migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: uber_rag
+          POSTGRES_PASSWORD: uber_rag
+          POSTGRES_DB: uber_rag
+        ports:
+          - 5432:5432
+        # Wait for Postgres to be ready before steps start.
+        options: >-
+          --health-cmd "pg_isready -U uber_rag -d uber_rag"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install dependencies (dev + temporal extras)
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev,temporal]"
+
+      - name: Apply alembic migrations against Postgres
+        # This is the central anti-regression step. The 5 bugs that
+        # escaped to deploy day in 2026-05-23 were all caught right here
+        # when the chain finally ran on Postgres for the first time:
+        #   - 0006 invalid BOOLEAN DEFAULT '0'
+        #   - 0007 sa.table() reflection missing 3 columns
+        #   - 0008 column-type fixes (would never run on SQLite)
+        env:
+          DATABASE_URL: postgresql+psycopg://uber_rag:uber_rag@localhost:5432/uber_rag
+        run: |
+          PYTHONPATH=apps/api alembic -c infra/migrations/alembic.ini upgrade head
+          # Smoke-check: head reached the expected revision.
+          CURRENT=$(PYTHONPATH=apps/api alembic -c infra/migrations/alembic.ini current 2>&1 | tail -1)
+          echo "alembic current: $CURRENT"
+          echo "$CURRENT" | grep -q "(head)" || { echo "alembic did not reach head"; exit 1; }
+
+      - name: Run Postgres-only migration verification test
+        # This test is skipped locally (no POSTGRES_TEST_URL); here it
+        # asserts that chunks.id/document_id/parent_id are real UUID
+        # columns on Postgres after the full chain.
+        env:
+          POSTGRES_TEST_URL: postgresql+psycopg://uber_rag:uber_rag@localhost:5432/uber_rag
+        run: |
+          PYTHONPATH=apps/api:. pytest \
+            apps/api/app/tests/integration/test_migrations.py::test_chunks_columns_use_uuid_on_postgres \
+            -v --tb=short
