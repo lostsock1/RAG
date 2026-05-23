@@ -6,6 +6,12 @@ from uuid import UUID, uuid4
 
 import pytest
 
+# Skip the whole module on environments without the heavy ML stack (CI
+# lightweight runners, fresh clones without `pip install -e .[ingestion]`).
+# BgeM3Embedder.embed lazily imports FlagEmbedding inside `_ensure_model`,
+# so the module imports but tests cannot execute without the dep.
+pytest.importorskip("FlagEmbedding", reason="ML stack not installed (install [ingestion] extras to run)")
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from app.schemas.embeddings import DenseVector, EmbeddingResult, SparseVector

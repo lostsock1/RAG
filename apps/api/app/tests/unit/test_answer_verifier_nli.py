@@ -12,6 +12,12 @@ import sys
 
 import pytest
 
+# Skip the whole module on environments without the heavy ML stack (CI
+# lightweight runners, fresh clones without `pip install -e .[eval]` or
+# `[ingestion]`). NliAnswerVerifier loads `cross-encoder/nli-deberta-v3-base`
+# via sentence-transformers; without it the test cannot run.
+pytest.importorskip("sentence_transformers", reason="ML stack not installed (install [eval] or [ingestion] extras to run)")
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from app.schemas.context import ContextBlock, ContextPayload

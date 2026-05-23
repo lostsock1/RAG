@@ -70,8 +70,16 @@ async def test_jwks_cache_expires_on_ttl(monkeypatch) -> None:
     await verifier._resolve_jwk_for_kid("key-1")
     assert fetch_count == 1
 
-    # Expire the cache by setting fetched_at far in the past
-    verifier._jwks_fetched_at = 0.0
+    # Expire the cache. `_is_cache_expired` compares time.monotonic() to
+    # `_jwks_fetched_at`, and `monotonic()` returns process-relative seconds,
+    # not Unix epoch. Setting `_jwks_fetched_at = 0.0` only "expires" if the
+    # process has been running longer than the TTL — true on long-lived dev
+    # machines, false on fresh CI runners (process is seconds old).
+    # Force expiry by setting fetched_at one full TTL window in the past
+    # of monotonic-now.
+    import time
+    from app.core.config import get_settings
+    verifier._jwks_fetched_at = time.monotonic() - get_settings().oidc_jwks_ttl_seconds - 1.0
 
     # Second call should re-fetch
     key = await verifier._resolve_jwk_for_kid("key-1")
