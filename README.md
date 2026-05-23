@@ -1,7 +1,8 @@
 # Uber-RAG
 
-**API-first, ACL-aware RAG platform for textbooks and loose documents — early
-stage, core ingestion pipeline working, retrieval and answering not yet built.**
+**API-first, ACL-aware RAG platform for textbooks and loose documents — backend
+pipeline, hybrid retrieval, chat, verification, and eval harness implemented;
+Phase 4 closeout still needs fresh post-streaming-fix measurements.**
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
@@ -9,15 +10,17 @@ stage, core ingestion pipeline working, retrieval and answering not yet built.**
 ![Qdrant](https://img.shields.io/badge/Qdrant-vector-DC244C)
 ![OpenSearch](https://img.shields.io/badge/OpenSearch-lexical-005EB8)
 ![Keycloak](https://img.shields.io/badge/Keycloak-OIDC-4D4D4D)
-![Status](https://img.shields.io/badge/status-ingestion%20working%2C%20retrieval%20stub-yellow)
+![Status](https://img.shields.io/badge/status-backend%20MVP%20implemented%2C%20Phase%204%20evidence%20refresh%20needed-yellow)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 ---
 
-> **⚠️ This project is not ready for use.** The ingestion pipeline (upload →
-> parse → chunk → embed → index) is fully implemented and tested. Retrieval
-> is a thin stub. Answer generation, reranking, evaluation, and the full
-> query pipeline have not been built. See [What's Missing](#whats-missing).
+> **⚠️ This project is not production-ready.** The backend MVP is substantial:
+> upload → parse → chunk → embed → index, hybrid retrieval, reranking, chat,
+> citation resolution, sentence verification, ACL leakage tests, and an eval
+> harness exist. Honest Phase 4 closeout still requires fresh load/eval evidence
+> after the evidence-safe streaming change and clearer metric wording around
+> `not_contradicted` faithfulness. See [What's Missing](#whats-missing).
 
 ---
 
@@ -63,7 +66,29 @@ a local Temporal dev server.
 | `GET /api/v1/documents/{id}/acl` | ✅ |
 | `POST /api/v1/ingestion/jobs/{id}/retry` | ✅ |
 | `GET /api/v1/ingestion/jobs` | ✅ |
-| `POST /api/v1/search` | ⚠️ Thin stub — ACL-safe route with pre/post filtering, but no hybrid retrieval or reranking |
+| `POST /api/v1/search` | ✅ Hybrid retrieval path behind explicit config; truthful `503` when unavailable |
+| `GET /api/v1/search/sources/{chunk_id}` | ✅ ACL-rechecked source viewer |
+| `POST /api/v1/chat` | ✅ Blocking chat with retrieval, context, LLM, verification, citations |
+| `POST /api/v1/chat/stream` | ✅ Evidence-safe SSE: generated tokens are buffered until verification passes |
+| `POST /api/v1/citations/resolve` | ✅ ACL-safe citation resolution |
+| `POST /api/v1/answers/verify` | ✅ Sentence-level answer verification |
+
+### Retrieval, Answering, and Evaluation ⚠️
+
+Implemented backend slices:
+
+- Query router, OpenSearch lexical retrieval, Qdrant dense/sparse retrieval, reciprocal-rank fusion, and source viewer.
+- BGE-M3 embedder and BGE-reranker-v2-m3 adapter behind explicit runtime config.
+- Context builder, LLM backend seam with deterministic stub and ppq/OpenAI-compatible adapter.
+- Blocking chat and SSE chat endpoints share the same ACL-safe search path.
+- Streaming chat is now evidence-safe: unsupported generated text is never emitted as token events.
+- Eval harness exists with fixture corpus, negative-answer tests, NLI verifier tests, and load-test scaffolding.
+
+Honest caveats:
+
+- The current headline “faithfulness” number is measured with ADR-0016 `not_contradicted` mode. That is a contradiction guardrail, not a true source-support metric.
+- Streaming latency numbers need to be re-run after the token-buffering fix because “first token” now means “first verified token,” not raw LLM token.
+- Qdrant payload-side ACL filtering intentionally does not enforce expiry; SQL-side ACL filtering and OpenSearch payload filtering do. A numeric `expires_at_ts` payload is the likely future fix.
 
 ### Storage ✅
 
@@ -82,25 +107,24 @@ a local Temporal dev server.
 
 ## What's Missing
 
-### Not Yet Implemented
+### Not Yet Complete / Honest Closeout Required
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Answer generation / LLM** | ❌ Not started | ADR-0004 designed (ppq.ai + Llama 3.3 70B), not wired |
-| **Full retrieval pipeline** | ❌ Not started | Hybrid retrieval, fusion, reranking, context building all pending |
-| **Reranking** | ❌ Not started | BGE reranker selected but not integrated |
-| **Evaluation harness** | ❌ Not started | Design doc complete, 170-question heldout set drafted, no code |
-| **Frontend E2E verification** | ❌ Not done | Next.js toolchain builds, pages exist, never tested against running API |
+| **Phase 4 load evidence** | ⚠️ Refresh needed | Re-run streaming load test after evidence-safe token buffering; old first-token numbers are stale |
+| **Faithfulness metric wording** | ⚠️ Needs honesty pass | ADR-0016 `not_contradicted` is non-contradiction, not true source-support verification |
+| **Phase 4 docs reconciliation** | ⚠️ Needed | `PROJECT_STATE.md`, `TASKS.md`, eval reports, and README should agree before declaring closeout |
+| **Eval report artifacts** | ⚠️ Needs cleanup | Decide which generated eval reports/logs are canonical and commit or ignore them intentionally |
+| **Frontend E2E verification** | ❌ Not done | Next.js pages exist; current local build was not re-verified because dependencies were not installed |
 | **Book profile chunking** | ❌ Not started | Only `LooseDocumentChunker` implemented |
-| **Sentence-level verification** | ❌ Not started | Architecture only |
 | **Graph RAG** | ❌ Not started | Deferred until hybrid retrieval core is proven |
 
 ### Partially Implemented
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Search** | ⚠️ Kickoff only | Thin `/search` route with ACL filtering; returns `503` when no retriever configured |
-| **Frontend** | ⚠️ Scaffold only | Login, upload, documents pages exist; `next build` succeeds; not tested E2E |
+| **Search** | ⚠️ Config-gated | Hybrid retriever implemented; returns `503` when runtime dependencies/config are unavailable |
+| **Frontend** | ⚠️ Scaffold only | Login, upload, documents pages exist; not tested E2E |
 | **TS client** | ⚠️ Minimal | 1 test passing (`vitest`) |
 
 ---
@@ -139,9 +163,9 @@ a local Temporal dev server.
    └──────────┘  └──────────┘  └─────────────┘  └──────────────┘
 ```
 
-Grayed-out sections above (`/retrieve`, `/chat`, `/answers/verify`, `/eval`)
-are planned but not implemented. Only the ingestion path (upload → vector
-store) and thin search route are functional.
+The ingestion path and the main query/answer path are implemented as backend
+slices. `/retrieve`, `/eval`, admin/audit listing, and production-grade frontend
+flows remain incomplete.
 
 ---
 
@@ -158,10 +182,10 @@ store) and thin search route are functional.
 | Parsing | Docling (local CPU) / HTTP adapter (remote) | ✅ Active |
 | Embedding | BGE-M3 (1024-dim + sparse) | ✅ Active |
 | Orchestration | Temporal (optional, opt-in) | ✅ Working |
-| Frontend | Next.js 15 + Tailwind v4 | ⚠️ Scaffold only |
-| LLM Answering | ppq.ai + Llama 3.3 70B (planned) | ❌ Not wired |
-| Reranking | BGE reranker (planned) | ❌ Not wired |
-| Tests | pytest + httpx | ✅ 203/203 green |
+| Frontend | Next.js 15 + React 19 | ⚠️ Scaffold only |
+| LLM Answering | ppq.ai + Llama 3.3 70B via internal adapter | ✅ Wired behind config |
+| Reranking | BGE-reranker-v2-m3 | ✅ Wired behind config |
+| Tests | pytest + httpx | ✅ 417 passed, 1 skipped locally after streaming fix |
 
 ---
 
@@ -234,7 +258,7 @@ RAG/
 │   │       ├── services/       # document, ingestion, chunking, embedding, indexing
 │   │       ├── db/             # SQLAlchemy models, repositories, migrations
 │   │       ├── core/           # config, security, ACL, OIDC verifier
-│   │       └── tests/          # 203 passing (unit + integration)
+│   │       └── tests/          # 417 passing locally (unit + integration, excluding live Temporal)
 │   └── web/                    # Next.js frontend (scaffold)
 ├── infra/
 │   ├── docker/                 # Compose stack, Keycloak realm import
