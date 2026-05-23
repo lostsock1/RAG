@@ -23,9 +23,28 @@ class RemoteDocumentParser(DocumentParser):
     ) -> None:
         self._invoke_remote_parser = invoke_remote_parser
         self._endpoint_url = endpoint_url
-        self._transport = transport or httpx.Client()
+        # If a transport is explicitly injected (e.g. in tests), use it directly.
+        # Otherwise, defer httpx.Client() construction until the first parse call
+        # so that importing this module does not open a connection pool.
+        self._injected_transport = transport
+        self._lazy_transport: object | None = None
         self._timeout_seconds = timeout_seconds
         self._api_key = api_key
+
+    @property
+    def _transport(self) -> object:
+        """Return the transport, constructing a default httpx.Client lazily."""
+        if self._injected_transport is not None:
+            return self._injected_transport
+        if self._lazy_transport is None:
+            self._lazy_transport = httpx.Client()
+        return self._lazy_transport
+
+    def close(self) -> None:
+        """Close the underlying httpx.Client if one was lazily created."""
+        if self._lazy_transport is not None and hasattr(self._lazy_transport, "close"):
+            self._lazy_transport.close()
+            self._lazy_transport = None
 
     def parse(self, request: ParseRequest) -> ParsedArtifact:
         artifact = (

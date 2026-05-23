@@ -23,6 +23,12 @@ class DoclingDocumentParser(DocumentParser):
     ) -> None:
         self._converter = converter
         self._storage_root = storage_root
+        # Cached DocumentConverter instance — created once on first parse() call.
+        # DocumentConverter loads multi-hundred-MB models; re-creating it per call
+        # pays the full cold-start cost every time.
+        # NOTE: this instance is NOT thread-safe across processes; keep the
+        # existing one-per-FastAPI-process pattern.
+        self._document_converter: Any | None = None
 
     def parse(self, request: ParseRequest) -> ParsedArtifact:
         parser_backend = request.parser_backend or self.backend_name
@@ -57,8 +63,11 @@ class DoclingDocumentParser(DocumentParser):
             ) from exc
 
         try:
-            converter = document_converter_module.DocumentConverter()
-            conversion_result = converter.convert(source_path)
+            # Lazy-init: create DocumentConverter once and reuse across calls.
+            # This avoids paying the multi-second cold-start cost on every parse.
+            if self._document_converter is None:
+                self._document_converter = document_converter_module.DocumentConverter()
+            conversion_result = self._document_converter.convert(source_path)
             return _normalize_docling_result(
                 request=request,
                 conversion_result=conversion_result,

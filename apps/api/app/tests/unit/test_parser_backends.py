@@ -323,6 +323,96 @@ def test_build_document_parser_rejects_unknown_backend() -> None:
     assert "mystery-backend" in str(exc_info.value)
 
 
+def test_docling_parser_reuses_converter(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """P1-5: DoclingDocumentParser must call DocumentConverter() exactly once
+    across multiple parse() calls (lazy-init, cached on instance)."""
+    source_file = tmp_path / "documents" / "sample.pdf"
+    source_file.parent.mkdir(parents=True, exist_ok=True)
+    source_file.write_bytes(b"%PDF-1.4")
+
+    converter_construction_count = 0
+
+    class FakePage:
+        def __init__(self) -> None:
+            self.page_no = 1
+
+        def export_to_markdown(self) -> str:
+            return "page text"
+
+    class FakeDocument:
+        def __init__(self) -> None:
+            self.pages = {1: FakePage()}
+            self.tables = []
+
+    class FakeDocumentConverter:
+        def __init__(self) -> None:
+            nonlocal converter_construction_count
+            converter_construction_count += 1
+
+        def convert(self, _source: Path):
+            from types import SimpleNamespace
+            return SimpleNamespace(document=FakeDocument())
+
+    monkeypatch.setattr(
+        docling_backend,
+        "import_module",
+        lambda _module_name: SimpleNamespace(DocumentConverter=FakeDocumentConverter),
+    )
+
+    parser = DoclingDocumentParser(storage_root=tmp_path)
+
+    request = ParseRequest(
+        document_id="11111111-1111-1111-1111-111111111111",
+        object_key="documents/sample.pdf",
+        content_type="application/pdf",
+        profile="local-cpu",
+        parser_backend="docling-local",
+    )
+
+    parser.parse(request)
+    parser.parse(request)
+
+    assert converter_construction_count == 1, (
+        f"DocumentConverter() was called {converter_construction_count} times across "
+        "two parse() calls — it must be cached on the parser instance."
+    )
+
+
+def test_remote_parser_does_not_construct_client_eagerly(monkeypatch: pytest.MonkeyPatch) -> None:
+    """P1-4: RemoteDocumentParser() must not call httpx.Client() at construction
+    time.  The client must only be created when parse() is actually called."""
+    import app.services.parsers.remote_backend as remote_mod
+
+    client_construction_count = 0
+
+    class _TrackingClient:
+        def __init__(self) -> None:
+            nonlocal client_construction_count
+            client_construction_count += 1
+
+    monkeypatch.setattr(remote_mod.httpx, "Client", _TrackingClient)
+
+    # Construction must not touch httpx.Client
+    parser = RemoteDocumentParser(
+        endpoint_url="https://parser.internal/parse",
+        timeout_seconds=5.0,
+    )
+    assert client_construction_count == 0, (
+        f"httpx.Client was constructed {client_construction_count} time(s) during "
+        "RemoteDocumentParser.__init__ — it must be lazy."
+    )
+
+    # Accessing _transport (which triggers lazy init) must create exactly one client
+    _ = parser._transport
+    assert client_construction_count == 1
+
+    # Accessing again must reuse the same instance
+    _ = parser._transport
+    assert client_construction_count == 1
+
+
 def test_docling_document_parser_requires_configured_converter() -> None:
     parser = DoclingDocumentParser()
 
