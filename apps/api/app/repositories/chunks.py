@@ -15,78 +15,91 @@ def persist_chunks(
     document_id: UUID,
     chunks: list[Chunk],
 ) -> list[ChunkModel]:
-    """Persist chunks to the database. Idempotent: deletes existing chunks for the document first."""
+    """Persist chunks to the database. Idempotent: deletes existing chunks for the document first.
+
+    Atomic: the delete + all inserts run in a single transaction. If any insert
+    fails (e.g. unique violation on ``(document_id, chunk_index)``), the
+    transaction rolls back and the prior chunks are preserved.
+    """
+    parent_chunks = [c for c in chunks if c.parent_id is None]
+    child_chunks = [c for c in chunks if c.parent_id is not None]
+
+    # The single-parent mapping below only works for loose documents that
+    # produce exactly one parent. Book-profile chunking (multi-parent) will
+    # need a different mapping strategy when it lands.
+    if child_chunks and len(parent_chunks) != 1:
+        raise RuntimeError(
+            f"persist_chunks currently supports single-parent documents only "
+            f"(got {len(parent_chunks)} parents and {len(child_chunks)} children). "
+            f"Multi-parent documents require updating the parent_id resolution logic."
+        )
+
     with session_factory() as session:
         if session.bind is None:
             raise RuntimeError(
                 "Chunk persistence is not configured: session_factory has no database bind."
             )
 
-        # Delete existing chunks for this document (idempotent re-chunking)
-        session.execute(
-            delete(ChunkModel).where(ChunkModel.document_id == document_id)
-        )
-
-        # Separate parents and children
-        parent_chunks = [c for c in chunks if c.parent_id is None]
-        child_chunks = [c for c in chunks if c.parent_id is not None]
-
-        # Map schema parent UUID -> DB row UUID for child resolution
-        schema_to_db_id: dict[UUID | int, UUID] = {}
-        db_rows: list[ChunkModel] = []
-
-        # First pass: create parent chunks
-        for chunk in parent_chunks:
-            row = ChunkModel(
-                document_id=chunk.document_id,
-                unit_type=chunk.unit_type,
-                heading_path=chunk.heading_path,
-                page_start=chunk.page_start,
-                page_end=chunk.page_end,
-                text=chunk.text,
-                parent_id=None,
-                chunk_index=chunk.chunk_index,
+        try:
+            # Delete existing chunks for this document (idempotent re-chunking).
+            session.execute(
+                delete(ChunkModel).where(ChunkModel.document_id == document_id)
             )
-            session.add(row)
-            session.flush()
-            # Map the parent's chunk_index as a synthetic key (parents have parent_id=None)
-            # Children reference the parent by the UUID the chunker assigned to the parent's
-            # chunk_index position. Since parents don't carry their own UUID in the schema,
-            # we use chunk_index as the lookup key for single-parent documents.
-            schema_to_db_id[chunk.chunk_index] = row.id
-            db_rows.append(row)
 
-        # For single-parent documents (loose docs), all children reference the same parent.
-        # Build a reverse map: chunker-generated parent_id -> DB UUID.
-        # The chunker sets child.parent_id to the UUID it generated for the parent.
-        # We need to map that UUID to the DB-assigned UUID.
-        if len(parent_chunks) == 1:
-            # All children reference the same parent — use any child's parent_id as the key
-            parent_db_id = schema_to_db_id[parent_chunks[0].chunk_index]
-            for child in child_chunks:
-                assert child.parent_id is not None
-                schema_to_db_id[child.parent_id] = parent_db_id
+            schema_to_db_id: dict[UUID | int, UUID] = {}
+            db_rows: list[ChunkModel] = []
 
-        # Second pass: create child chunks with resolved parent_id
-        for chunk in child_chunks:
-            assert chunk.parent_id is not None
-            resolved_parent_id = schema_to_db_id.get(chunk.parent_id, chunk.parent_id)
+            # First pass: stage all parents in the session, then a single flush
+            # assigns their UUIDs in one round-trip.
+            for chunk in parent_chunks:
+                row = ChunkModel(
+                    document_id=chunk.document_id,
+                    unit_type=chunk.unit_type,
+                    heading_path=chunk.heading_path,
+                    page_start=chunk.page_start,
+                    page_end=chunk.page_end,
+                    text=chunk.text,
+                    parent_id=None,
+                    chunk_index=chunk.chunk_index,
+                )
+                session.add(row)
+                db_rows.append(row)
 
-            row = ChunkModel(
-                document_id=chunk.document_id,
-                unit_type=chunk.unit_type,
-                heading_path=chunk.heading_path,
-                page_start=chunk.page_start,
-                page_end=chunk.page_end,
-                text=chunk.text,
-                parent_id=resolved_parent_id,
-                chunk_index=chunk.chunk_index,
-            )
-            session.add(row)
-            db_rows.append(row)
+            if parent_chunks:
+                session.flush()
+                for parent_schema, parent_row in zip(parent_chunks, db_rows[: len(parent_chunks)]):
+                    schema_to_db_id[parent_schema.chunk_index] = parent_row.id
 
-        session.commit()
-        return db_rows
+            # Map chunker-generated parent UUIDs to DB-assigned UUIDs.
+            if parent_chunks:
+                parent_db_id = schema_to_db_id[parent_chunks[0].chunk_index]
+                for child in child_chunks:
+                    assert child.parent_id is not None
+                    schema_to_db_id[child.parent_id] = parent_db_id
+
+            # Second pass: stage children with resolved parent_id.
+            for chunk in child_chunks:
+                assert chunk.parent_id is not None
+                resolved_parent_id = schema_to_db_id.get(chunk.parent_id, chunk.parent_id)
+
+                row = ChunkModel(
+                    document_id=chunk.document_id,
+                    unit_type=chunk.unit_type,
+                    heading_path=chunk.heading_path,
+                    page_start=chunk.page_start,
+                    page_end=chunk.page_end,
+                    text=chunk.text,
+                    parent_id=resolved_parent_id,
+                    chunk_index=chunk.chunk_index,
+                )
+                session.add(row)
+                db_rows.append(row)
+
+            session.commit()
+            return db_rows
+        except Exception:
+            session.rollback()
+            raise
 
 
 def get_chunks_for_document(*, document_id: UUID) -> list[ChunkModel]:

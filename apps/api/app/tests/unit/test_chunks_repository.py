@@ -165,3 +165,99 @@ def test_get_chunks_for_document_empty(seeded_db):
     doc_id = seeded_db["document_id"]
     result = get_chunks_for_document(document_id=doc_id)
     assert result == []
+
+
+def test_persist_chunks_rolls_back_on_child_insert_failure(seeded_db):
+    """P1-7: if a child insert fails (e.g. unique violation on
+    ``(document_id, chunk_index)``), the entire transaction rolls back and
+    the previously-persisted chunks are preserved.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    doc_id = seeded_db["document_id"]
+    run_id = seeded_db["run_id"]
+
+    # First persist: seed three chunks (one parent, two leaves).
+    parent_id = uuid4()
+    initial = [
+        Chunk(
+            document_id=doc_id,
+            unit_type="document",
+            heading_path=[],
+            page_start=1,
+            page_end=2,
+            text="Original parent",
+            parent_id=None,
+            chunk_index=0,
+        ),
+        Chunk(
+            document_id=doc_id,
+            unit_type="paragraph",
+            heading_path=[],
+            page_start=1,
+            page_end=1,
+            text="Original leaf A",
+            parent_id=parent_id,
+            chunk_index=1,
+        ),
+        Chunk(
+            document_id=doc_id,
+            unit_type="paragraph",
+            heading_path=[],
+            page_start=2,
+            page_end=2,
+            text="Original leaf B",
+            parent_id=parent_id,
+            chunk_index=2,
+        ),
+    ]
+    persist_chunks(run_id=run_id, document_id=doc_id, chunks=initial)
+    assert len(get_chunks_for_document(document_id=doc_id)) == 3
+
+    # Second persist: payload with two children at the same chunk_index, which
+    # violates the uq_chunks_document_chunk_index unique constraint at commit.
+    bad_parent_id = uuid4()
+    bad_payload = [
+        Chunk(
+            document_id=doc_id,
+            unit_type="document",
+            heading_path=[],
+            page_start=1,
+            page_end=2,
+            text="New parent",
+            parent_id=None,
+            chunk_index=0,
+        ),
+        Chunk(
+            document_id=doc_id,
+            unit_type="paragraph",
+            heading_path=[],
+            page_start=1,
+            page_end=1,
+            text="New leaf at conflicting index",
+            parent_id=bad_parent_id,
+            chunk_index=1,
+        ),
+        Chunk(
+            document_id=doc_id,
+            unit_type="paragraph",
+            heading_path=[],
+            page_start=2,
+            page_end=2,
+            text="Another leaf at the SAME chunk_index",
+            parent_id=bad_parent_id,
+            chunk_index=1,  # duplicate — triggers IntegrityError
+        ),
+    ]
+    with pytest.raises(IntegrityError):
+        persist_chunks(run_id=run_id, document_id=doc_id, chunks=bad_payload)
+
+    # Rollback must have restored the original three rows. If the delete was
+    # not rolled back with the failed inserts, we would see 0 rows here.
+    survivors = get_chunks_for_document(document_id=doc_id)
+    assert len(survivors) == 3
+    assert {row.text for row in survivors} == {
+        "Original parent",
+        "Original leaf A",
+        "Original leaf B",
+    }
