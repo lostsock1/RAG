@@ -34,13 +34,14 @@ Thumbs.db
 # Docker
 docker-compose.override.yml
 
-# Models
-models/
+# ML model weight files (intent: binary weight artefacts; NOT Python
+# SQLAlchemy `models/` modules — anchored to repo root only).
+/models/
 *.gguf
 *.bin
 *.pt
 *.safetensors
-!models/.gitkeep
+!/models/.gitkeep
 
 # Database files
 *.db
