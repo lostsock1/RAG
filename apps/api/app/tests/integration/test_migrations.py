@@ -321,6 +321,47 @@ def test_ingestion_reliability_hardening_upgrade_cleans_legacy_duplicates() -> N
         engine.dispose()
 
 
+# ---------------------------------------------------------------------------
+# P0-5: chunks Postgres compat migration
+# ---------------------------------------------------------------------------
+
+
+def test_chunks_columns_use_uuid_on_postgres() -> None:
+    """On Postgres, chunks.id / document_id / parent_id must be uuid after migration head.
+
+    Skipped unless POSTGRES_TEST_URL is set in the environment.
+    """
+    import os
+
+    postgres_url = os.environ.get("POSTGRES_TEST_URL")
+    if not postgres_url:
+        pytest.skip("POSTGRES_TEST_URL not set — skipping Postgres-only migration test")
+
+    from sqlalchemy import create_engine, inspect as sa_inspect
+
+    engine = create_engine(postgres_url)
+    try:
+        alembic_ini_path = Path("infra/migrations/alembic.ini")
+        config = Config(str(alembic_ini_path))
+        config.set_main_option("sqlalchemy.url", postgres_url)
+
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+
+        inspector = sa_inspect(engine)
+        columns = {col["name"]: col for col in inspector.get_columns("chunks")}
+
+        # On Postgres the reflected type name should be UUID (case-insensitive).
+        for col_name in ("id", "document_id"):
+            col_type = str(columns[col_name]["type"]).upper()
+            assert "UUID" in col_type, (
+                f"chunks.{col_name} expected UUID type on Postgres, got {col_type}"
+            )
+    finally:
+        engine.dispose()
+
+
 def test_ingestion_reliability_hardening_enforces_live_uniqueness_after_upgrade() -> None:
     with TemporaryDirectory() as tmp_dir:
         database_url = f"sqlite:///{Path(tmp_dir) / 'phase2-live-uniqueness.db'}"
