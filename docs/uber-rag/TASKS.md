@@ -115,8 +115,9 @@ Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-an
 
 ### Out-of-scope tracking from this audit
 
-- [ ] Pre-existing trio failure: `apps/api/app/tests/unit/test_temporal_worker.py::test_ingestion_activity_bridge_calls_pipeline_runner[trio]` (`RuntimeError: no running event loop`). Predates this work; needs separate triage.
-- [ ] Exercise migration `20260523_0008` against a real Postgres on the VPS (it is no-op on SQLite where CI runs).
+- [x] Pre-existing trio failure: `apps/api/app/tests/unit/test_temporal_worker.py::test_ingestion_activity_bridge_calls_pipeline_runner[trio]` — closed by replacing `asyncio.to_thread` with `anyio.to_thread.run_sync` in `temporal_workflow.run_ingestion_activity`. Test suite reaches truly green (415 passed, 1 skipped).
+- [x] Exercise migration `20260523_0008` against a real Postgres on the VPS — done 2026-05-23. alembic head reached `20260523_0009`, chunks columns confirmed `uuid`/`boolean` types via `information_schema.columns`. Two follow-on bugs surfaced and fixed during the deploy: 0006 boolean default `'0'` (now dialect-aware) and 0007 `sa.table` reflection missing columns. All committed.
+- [ ] Add a Postgres-backed `test_migrations` job to CI so the next dialect-specific migration bug surfaces before deploy day.
 
 ## Phase 3: Indexing and retrieval
 

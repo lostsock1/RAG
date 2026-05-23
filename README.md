@@ -73,10 +73,10 @@ a local Temporal dev server.
 
 ### Deployment ✅
 
-- VPS deployed and verified (12-point check passed 2026-05-16)
+- VPS deployed and verified (12-point check passed 2026-05-23, against alembic head `20260523_0009`)
 - Docker Compose stack: Postgres, MinIO, Keycloak, Temporal
-- 12-point end-to-end verification passed (2026-05-16)
-- 203/203 backend tests green
+- 12-point end-to-end verification passed (2026-05-23 — earliest re-verified after Phase 1+2 hardening landed)
+- 415 backend tests green (was 203 at Phase 1; +212 from Phase 2/3/4/audit work)
 
 ---
 
@@ -208,7 +208,8 @@ curl -X POST http://localhost:8080/realms/uber-rag/protocol/openid-connect/token
 ### VPS deployment
 
 Deployed on a Debian VPS. Full 12-point verification
-passed (2026-05-16).
+passed (2026-05-23 against alembic head `20260523_0009` after the Phase 1+2
+hardening pass).
 
 ```bash
 ssh rag
