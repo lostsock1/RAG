@@ -90,6 +90,24 @@ class _PassThroughVerifier:
         )
 
 
+class _UnsupportedVerifier:
+    """Verifier that always returns unsupported — used to prove no tokens are emitted."""
+
+    def verify(self, *, answer_text, context_payload):
+        return VerificationSummary(
+            status="unsupported",
+            sentence_count=1,
+            supported_sentence_count=0,
+            unsupported_sentence_count=1,
+            insufficient_evidence_sentence_count=0,
+            sentences=[
+                VerificationSentenceResult(
+                    sentence=answer_text, status="unsupported", citation_ids=[]
+                )
+            ],
+        )
+
+
 class TestChatStreamFirstToken:
     """Verify first token arrives before LLM finishes generating all tokens."""
 
@@ -99,7 +117,7 @@ class TestChatStreamFirstToken:
 
     @pytest.mark.anyio
     async def test_first_token_arrives_before_completion(self):
-        """First token event must arrive before the LLM has finished producing all tokens."""
+        """First token event must arrive before the done event (tokens are buffered until verification passes)."""
         chat_service = ChatService(
             search_service=_StubSearchWithHits(),
             context_builder=DefaultContextBuilder(),
@@ -140,7 +158,7 @@ class TestChatStreamFirstToken:
 
     @pytest.mark.anyio
     async def test_event_sequence_is_correct(self):
-        """Event sequence must be: retrieval -> token+ -> verification -> citations/final -> done."""
+        """Event sequence must be: retrieval -> verification(supported) -> token+ -> citations -> final -> done."""
         chat_service = ChatService(
             search_service=_StubSearchWithHits(),
             context_builder=DefaultContextBuilder(),
@@ -163,8 +181,14 @@ class TestChatStreamFirstToken:
         # Must start with retrieval
         assert event_types[0] == "retrieval"
 
-        # Must have tokens after retrieval
+        # Verification must come before any tokens
+        assert "verification" in event_types
         assert "token" in event_types
+        verification_idx = event_types.index("verification")
+        first_token_idx = event_types.index("token")
+        assert verification_idx < first_token_idx, (
+            f"verification at {verification_idx} must precede first token at {first_token_idx}"
+        )
 
         # Must end with done
         assert event_types[-1] == "done"
@@ -232,7 +256,7 @@ class TestChatStreamFirstToken:
 
     @pytest.mark.anyio
     async def test_verification_supported_includes_citations(self):
-        """When verification passes, citations event must appear before final."""
+        """When verification passes, citations event must appear after verification and before final."""
         chat_service = ChatService(
             search_service=_StubSearchWithHits(),
             context_builder=DefaultContextBuilder(),
@@ -265,3 +289,42 @@ class TestChatStreamFirstToken:
         # Verification must be supported
         verification_event = events[verification_idx]
         assert verification_event["data"]["status"] == "supported"
+
+    @pytest.mark.anyio
+    async def test_unsupported_answer_emits_no_tokens(self):
+        """When verification fails, zero token events must be emitted — evidence discipline."""
+        chat_service = ChatService(
+            search_service=_StubSearchWithHits(),
+            context_builder=DefaultContextBuilder(),
+            llm_backend=_StubStreamingLlm(),
+            citation_resolver=CitationResolver(),
+            answer_verifier=_UnsupportedVerifier(),
+            max_context_characters=4000,
+            max_context_blocks=None,
+        )
+
+        events = []
+        async for event in chat_service.answer_stream(
+            context=_make_context(),
+            payload=ChatRequest(question="What is the second law of thermodynamics?"),
+        ):
+            events.append(event)
+
+        event_types = [e["type"] for e in events]
+
+        # No token events must be emitted
+        token_events = [e for e in events if e["type"] == "token"]
+        assert token_events == [], (
+            f"Expected zero token events when verification fails, got {len(token_events)}"
+        )
+
+        # Sequence must be: retrieval -> verification(unsupported) -> final(not_enough_evidence) -> done
+        assert event_types[0] == "retrieval"
+        assert event_types[-1] == "done"
+        assert event_types[-2] == "final"
+        assert events[-2]["data"]["status"] == "not_enough_evidence"
+
+        # Verification must be present and unsupported
+        verification_events = [e for e in events if e["type"] == "verification"]
+        assert len(verification_events) == 1
+        assert verification_events[0]["data"]["status"] == "unsupported"

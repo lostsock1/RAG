@@ -197,7 +197,7 @@ Current request shape:
 }
 ```
 
-Current response shape (`POST /api/v1/chat` and the `answer` SSE event payload):
+Current response shape (`POST /api/v1/chat` and the `final` SSE event payload):
 
 ```json
 {
@@ -219,7 +219,7 @@ Truthful current semantics:
 - Evidence discipline is enforced before generation. If retrieval returns zero usable hits or context construction yields zero usable blocks, the service does **not** call the LLM and returns `status=not_enough_evidence` with the truthful not-enough-evidence message: `I do not have enough permitted source evidence to answer that yet.`
 - Post-generation verification is enforced after the LLM produces a draft answer. The `AnswerVerifier` checks each answer sentence against the authorized context blocks. If verification shows insufficient support, the service returns `status=not_enough_evidence` and omits the unsupported generated text.
 - When verification passes, the response includes `citations` (resolved from authorized retrieval hits) and a `verification` summary with per-sentence support status.
-- `POST /api/v1/chat/stream` currently emits a minimal SSE sequence: `start`, `answer`, `done`. The `answer` event contains the same JSON payload shape as the non-streaming endpoint, including citations and verification.
+- `POST /api/v1/chat/stream` emits an evidence-safe SSE sequence. After retrieval, generated tokens are buffered server-side until post-generation verification completes. Supported answers emit `retrieval` → `verification` (`supported`) → one or more `token` events → `citations` → `final` (`answered`) → `done`. Unsupported answers emit `retrieval` → `verification` (`unsupported`) → `final` (`not_enough_evidence`) → `done` and **must not emit any generated `token` events**.
 - Chat audit events are recorded as `chat.answer` with non-sensitive metadata only: query SHA-256, request size/`top_k`, delivery mode, ACL filter marker, retrieved document ids, retrieval/context counts, whether the LLM was invoked, selected model/provider when used, verification status, citation count, and the final outcome status. Raw question text, answer text, and source chunk text are not written to audit details.
 
 ## Current citation resolve slice

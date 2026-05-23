@@ -159,12 +159,16 @@ class ChatService:
         context: RequestContext,
         payload: ChatRequest,
     ) -> AsyncIterator[dict]:
-        """Stream answer generation with real token-level streaming.
+        """Stream answer generation with evidence-safe token emission.
+
+        Tokens are buffered until verification passes. Only verified answers
+        emit token events. This enforces the evidence discipline invariant:
+        unsupported generated text is never exposed to the client.
 
         Yields event dicts with 'type' and 'data' keys:
         - {"type": "retrieval", "data": {"hit_count": N, "block_count": M}}
-        - {"type": "token", "data": {"text": "..."}}
         - {"type": "verification", "data": {"status": "supported"|"unsupported"}}
+        - {"type": "token", "data": {"text": "..."}}  (only when verification=supported)
         - {"type": "citations", "data": {"citations": [...]}}
         - {"type": "final", "data": {"status": "answered"|"not_enough_evidence", "answer_text": "..."}}
         - {"type": "done", "data": {}}
@@ -209,17 +213,18 @@ class ChatService:
             yield {"type": "done", "data": {}}
             return
 
-        # 3. Stream LLM tokens
+        # 3. Stream LLM tokens (buffered — not emitted until verification passes)
         full_answer = ""
+        buffered_tokens: list[str] = []
         async for event in self._llm_backend.generate_stream(
             GenerateAnswerRequest(question=payload.question, context_payload=context_payload)
         ):
             if event.is_final:
                 break
             full_answer += event.text
-            yield {"type": "token", "data": {"text": event.text}}
+            buffered_tokens.append(event.text)
 
-        # 4. Verify
+        # 4. Verify before emitting any generated text
         verification = self._answer_verifier.verify(
             answer_text=full_answer,
             context_payload=context_payload,
@@ -234,9 +239,13 @@ class ChatService:
             yield {"type": "done", "data": {}}
             return
 
+        # 5. Emit verification result, then buffered tokens
         yield {"type": "verification", "data": {"status": "supported"}}
 
-        # 5. Citations
+        for token_text in buffered_tokens:
+            yield {"type": "token", "data": {"text": token_text}}
+
+        # 6. Citations
         citation_ids = list(dict.fromkeys(
             cid for s in verification.sentences for cid in s.citation_ids
         ))
