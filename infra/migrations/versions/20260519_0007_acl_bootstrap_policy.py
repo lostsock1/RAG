@@ -83,6 +83,13 @@ def upgrade() -> None:
         sa.column("id", _uuid_column()),
         sa.column("tenant_id", _uuid_column()),
         sa.column("sensitivity", sa.String()),
+        # Columns added earlier in this same migration via batch_alter_table.
+        # They must appear in this sa.table() reflection so the backfill
+        # UPDATE below can bind to them. SQLite was lenient; Postgres
+        # raises `Unconsumed column names` if these are missing.
+        sa.column("acl_policy_id", _uuid_column()),
+        sa.column("acl_policy_version", sa.Integer()),
+        sa.column("sensitivity_rank", sa.Integer()),
     )
     acl_policies = sa.table(
         "acl_policies",
