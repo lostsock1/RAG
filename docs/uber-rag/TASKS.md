@@ -77,6 +77,47 @@
 - [x] Add Temporal dispatch adapter and worker skeleton (explicit opt-in, in-process default preserved).
 - [x] Prove the Temporal worker/dispatcher path against a real local Temporal service.
 
+## Phase 1+2 hardening (audit 2026-05-23)
+
+Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-and-fixes.md`.
+
+### P0 — correctness and security (8/8 done)
+
+- [x] P0-1 — Remove dead `try/except` block in `_get_nested_claim` (`apps/api/app/core/security.py`).
+- [x] P0-2 — Delete committed `phase1.db`; add `*.db`/`*.sqlite`/`*.sqlite3` to `.gitignore`.
+- [x] P0-3 — UUID-validate `tenant_id` and `user_id` from claims and dev-auth headers before they reach `build_object_key`. (OIDC group names remain string-allowed per the existing `resolve_group_ids_for_context` path.)
+- [x] P0-4 — `OidcTokenVerifier.verify_bearer_token` is now async (`httpx.AsyncClient`), has a TTL cache (`oidc_jwks_ttl_seconds`, default 600), and uses `leeway=oidc_clock_skew_seconds` (default 30) for clock skew. `get_request_context` is `async def`.
+- [x] P0-5 — New migration `20260523_0008_chunks_postgres_compat.py` fixes the `chunks` FK type mismatch on Postgres (was `varchar` → `uuid`). No-op on SQLite. New `test_chunks_columns_use_uuid_on_postgres` (skips when not Postgres).
+- [x] P0-6 — New migration `20260523_0009_worker_id_ingestion.py` adds `worker_id` to `ingestion_runs` and `ingestion_stages`. `recover_orphaned_runs` only resets stale runs whose `worker_id != current_worker_id`. Two-runner leakage test in `test_ingestion_repository.py` proves no in-flight reclaim.
+- [x] P0-7 — `create_ingestion_run` takes a `workflow_backend` parameter; upload route passes `settings.workflow_backend`; retry path preserves the original value.
+- [x] P0-8 — Upload streams to `NamedTemporaryFile` in 256 KB chunks while updating a single-pass SHA-256 + byte counter; `StorageAdapter.put_object_stream` on both adapters; `UploadPayload` carries the temp path + pre-computed hash. `tracemalloc` regression test bounds peak heap delta.
+
+### P1 — correctness gaps (8/8 done)
+
+- [x] P1-1 — `StorageAdapter.delete_object`; `upload_document` best-effort cleanup on DB failure.
+- [x] P1-2 — **Payload-side ACL filter restored for Qdrant and OpenSearch.** New `apps/api/app/services/retrieval/acl_filter.py` mirrors `build_document_acl_filter`. Retrievers now apply the ACL filter first; `allowed_document_ids` is an opt-in narrow filter on top. New ACL leakage test in `test_acl_leakage_ci.py` proves a forbidden doc cannot return even when injected into `allowed_document_ids`.
+- [x] P1-3 — `LocalFilesystemStorageAdapter.materialize_for_read` copies to a `NamedTemporaryFile` (immutable source rule from `DEVELOPMENT_RULES.md`).
+- [x] P1-4 — `RemoteDocumentParser` lazy `httpx.Client`, explicit `close()`, lifespan shutdown wired.
+- [x] P1-5 — `DoclingDocumentParser` caches `DocumentConverter` on the instance (lazy-init).
+- [x] P1-6 — `assert_dev_auth_bind_is_loopback(server_host)` at app factory; dev-auth runtime rejects when `X-Forwarded-For` is present; loud warning log on every dev-auth request.
+- [x] P1-7 — `persist_chunks` atomicity: single flush after parents, single commit at end, explicit rollback on any exception. Asserts single-parent for current loose-doc shape. Rollback test induces a duplicate-`chunk_index` `IntegrityError` and proves prior chunks survive.
+- [x] P1-8 — Removed unused `oidc_username_claim` setting from `Settings`.
+
+### P2 — operability and performance (0/7 done — deferred)
+
+- [ ] P2-1 — `OpenSearchLexicalIndexer` honors `settings.opensearch_verify_certs` and `opensearch_use_ssl` (currently hard-coded `verify_certs=False`).
+- [ ] P2-2 — Add `reset_dependency_caches()` helper that clears `get_settings.cache_clear()` and `get_oidc_token_verifier.cache_clear()`; wire into conftest fixtures.
+- [ ] P2-3 — `get_or_create_document_by_source_hash` IntegrityError fallback adds a 3-attempt retry loop (50 ms apart) reopening a fresh session.
+- [ ] P2-4 — Narrow `recover_orphaned_runs` startup exception swallow in `main.py` to `sqlalchemy.exc.OperationalError`/`ProgrammingError`; re-raise others.
+- [ ] P2-5 — `TemporalDispatcher` caches the client across `dispatch` calls; `close()` in FastAPI lifespan shutdown.
+- [ ] P2-6 — `build_temporal_worker` detects real Temporal client by `isinstance(client, temporalio.client.Client)` inside `try/except ImportError` instead of the brittle `hasattr(client, "config")` check.
+- [ ] P2-7 — App startup fails fast when `parser_backend=docling` + `workflow_backend=in_process` but storage is `None`.
+
+### Out-of-scope tracking from this audit
+
+- [ ] Pre-existing trio failure: `apps/api/app/tests/unit/test_temporal_worker.py::test_ingestion_activity_bridge_calls_pipeline_runner[trio]` (`RuntimeError: no running event loop`). Predates this work; needs separate triage.
+- [ ] Exercise migration `20260523_0008` against a real Postgres on the VPS (it is no-op on SQLite where CI runs).
+
 ## Phase 3: Indexing and retrieval
 
 - [x] Create chunking interfaces.
