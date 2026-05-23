@@ -7,7 +7,7 @@ from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from qdrant_client.models import FieldCondition, Filter, MatchAny
+from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 
 from app.services.retrieval.base import RetrievalQuery
 from app.services.retrieval.qdrant_retriever import QdrantRetriever
@@ -22,14 +22,19 @@ class _FakeQdrantClient:
         return []
 
 
-def test_qdrant_retriever_includes_allowed_document_filter() -> None:
+def test_qdrant_retriever_uses_payload_acl_filter() -> None:
+    """P1-2: The retriever must use a payload-side ACL filter, not just a
+    document-id list.  The filter must include tenant scoping and access
+    clauses even when allowed_document_ids is empty."""
     client = _FakeQdrantClient()
     retriever = QdrantRetriever(client=client, collection_name="chunks-test")
 
     query = RetrievalQuery(
         query="acl filter",
         tenant_id="tenant-1",
-        allowed_document_ids=["doc-1", "doc-2"],
+        user_id="user-1",
+        group_ids=["group-a"],
+        allowed_document_ids=[],
         top_k=7,
     )
 
@@ -43,15 +48,49 @@ def test_qdrant_retriever_includes_allowed_document_filter() -> None:
     assert call["limit"] == 7
     assert call["with_payload"] is True
 
-    # Verify the filter is a proper Filter object with correct structure
+    # The filter must be a proper Filter object with ACL structure
     query_filter = call["query_filter"]
     assert isinstance(query_filter, Filter)
-    assert len(query_filter.must) == 1
-    condition = query_filter.must[0]
-    assert isinstance(condition, FieldCondition)
-    assert condition.key == "document_id"
-    assert isinstance(condition.match, MatchAny)
-    assert condition.match.any == ["doc-1", "doc-2"]
+    # must contains: tenant_clause, not_tombstoned, unexpired, access_filter
+    assert query_filter.must is not None
+    assert len(query_filter.must) == 4
+
+    # First clause: tenant_id == "tenant-1"
+    tenant_clause = query_filter.must[0]
+    assert isinstance(tenant_clause, FieldCondition)
+    assert tenant_clause.key == "tenant_id"
+    assert isinstance(tenant_clause.match, MatchValue)
+    assert tenant_clause.match.value == "tenant-1"
+
+
+def test_qdrant_retriever_adds_narrow_filter_when_allowed_document_ids_provided() -> None:
+    """P1-2: When allowed_document_ids is non-empty, it is applied as an
+    additional narrow filter on top of the ACL filter (opt-in)."""
+    client = _FakeQdrantClient()
+    retriever = QdrantRetriever(client=client, collection_name="chunks-test")
+
+    query = RetrievalQuery(
+        query="acl filter",
+        tenant_id="tenant-1",
+        user_id="user-1",
+        group_ids=[],
+        allowed_document_ids=["doc-1", "doc-2"],
+        top_k=7,
+    )
+
+    retriever.search_dense(query, [0.1, 0.2, 0.3])
+
+    call = client.query_points_calls[0]
+    query_filter = call["query_filter"]
+    assert isinstance(query_filter, Filter)
+    # When allowed_document_ids is set, the outer filter wraps ACL + narrow
+    assert query_filter.must is not None
+    assert len(query_filter.must) == 2  # [acl_filter, narrow_condition]
+    narrow = query_filter.must[1]
+    assert isinstance(narrow, FieldCondition)
+    assert narrow.key == "document_id"
+    assert isinstance(narrow.match, MatchAny)
+    assert narrow.match.any == ["doc-1", "doc-2"]
 
 
 def test_qdrant_retriever_uses_persisted_chunk_id_from_payload() -> None:

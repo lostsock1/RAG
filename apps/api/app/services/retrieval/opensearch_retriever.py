@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.services.retrieval.acl_filter import build_opensearch_acl_filter
 from app.services.retrieval.base import RetrievalHit, RetrievalQuery
 
 
@@ -9,8 +10,16 @@ class OpenSearchRetriever:
         self._index_name = index_name
 
     def search(self, query: RetrievalQuery) -> list[RetrievalHit]:
-        if not query.allowed_document_ids:
-            return []
+        acl_filter = build_opensearch_acl_filter(
+            tenant_id=query.tenant_id,
+            user_id=query.user_id,
+            group_ids=query.group_ids,
+        )
+
+        # Opt-in narrow filter: if caller supplied allowed_document_ids, add it
+        # on top of the ACL filter (intersection, not replacement).
+        if query.allowed_document_ids:
+            acl_filter = acl_filter + [{"terms": {"document_id": query.allowed_document_ids}}]
 
         response = self._client.search(
             index=self._index_name,
@@ -18,7 +27,7 @@ class OpenSearchRetriever:
                 "query": {
                     "bool": {
                         "must": [_build_text_clause(query.query)],
-                        "filter": [{"terms": {"document_id": query.allowed_document_ids}}],
+                        "filter": acl_filter,
                     }
                 },
                 "size": query.top_k,

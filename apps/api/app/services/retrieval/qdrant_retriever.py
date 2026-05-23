@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from qdrant_client.models import FieldCondition, Filter, MatchAny, SparseVector
 
+from app.services.retrieval.acl_filter import build_qdrant_acl_filter
 from app.services.retrieval.base import QueryEmbedding, RetrievalHit, RetrievalQuery
 
 
@@ -11,24 +12,18 @@ class QdrantRetriever:
         self._collection_name = collection_name
 
     def search_dense(self, query: RetrievalQuery, embedding: QueryEmbedding | list[float]) -> list[RetrievalHit]:
-        if not query.allowed_document_ids:
-            return []
-
         vector = embedding.dense if isinstance(embedding, QueryEmbedding) else embedding
         response = self._client.query_points(
             collection_name=self._collection_name,
             query=vector,
             using="dense",
             limit=query.top_k,
-            query_filter=_build_document_filter(query.allowed_document_ids),
+            query_filter=_build_acl_filter(query),
             with_payload=True,
         )
         return _map_qdrant_hits(response)
 
     def search_sparse(self, query: RetrievalQuery, embedding: QueryEmbedding | dict | None = None, *, indices: list[int] | None = None, values: list[float] | None = None) -> list[RetrievalHit]:
-        if not query.allowed_document_ids:
-            return []
-
         sparse_indices = indices or []
         sparse_values = values or []
         if isinstance(embedding, QueryEmbedding):
@@ -44,21 +39,34 @@ class QdrantRetriever:
             query=SparseVector(indices=sparse_indices, values=sparse_values),
             using="sparse",
             limit=query.top_k,
-            query_filter=_build_document_filter(query.allowed_document_ids),
+            query_filter=_build_acl_filter(query),
             with_payload=True,
         )
         return _map_qdrant_hits(response)
 
 
-def _build_document_filter(allowed_document_ids: list[str]) -> Filter:
-    return Filter(
-        must=[
-            FieldCondition(
-                key="document_id",
-                match=MatchAny(any=allowed_document_ids),
-            )
-        ]
+def _build_acl_filter(query: RetrievalQuery) -> Filter:
+    """Build a payload-side ACL filter from the query context.
+
+    The ACL filter enforces tenant scoping, tombstone guard, expiry, and
+    access-control predicates directly in Qdrant — no pre-fetched ID list
+    required.  If ``allowed_document_ids`` is non-empty it is applied as an
+    additional narrow filter on top (opt-in "search within these N docs").
+    """
+    acl = build_qdrant_acl_filter(
+        tenant_id=query.tenant_id,
+        user_id=query.user_id,
+        group_ids=query.group_ids,
     )
+    if not query.allowed_document_ids:
+        return acl
+
+    # Narrow to the caller-supplied document subset on top of ACL
+    narrow = FieldCondition(
+        key="document_id",
+        match=MatchAny(any=query.allowed_document_ids),
+    )
+    return Filter(must=[acl, narrow])
 
 
 def _map_qdrant_hits(response: object) -> list[RetrievalHit]:

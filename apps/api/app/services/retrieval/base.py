@@ -10,6 +10,8 @@ class RetrievalQuery:
     tenant_id: str
     allowed_document_ids: list[str]
     top_k: int
+    user_id: str = ""
+    group_ids: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)

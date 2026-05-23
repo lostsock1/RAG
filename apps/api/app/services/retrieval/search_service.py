@@ -49,6 +49,8 @@ class SearchService:
         query = RetrievalQuery(
             query=payload.query,
             tenant_id=context.tenant_id,
+            user_id=context.user_id,
+            group_ids=context.group_ids,
             allowed_document_ids=allowed_document_ids,
             top_k=payload.top_k,
         )
