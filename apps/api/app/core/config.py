@@ -14,10 +14,11 @@ class Settings(BaseSettings):
     oidc_issuer_url: str | None = None
     oidc_audience: str | None = None
     oidc_jwks_url: str | None = None
+    oidc_clock_skew_seconds: int = Field(default=30, ge=0)
+    oidc_jwks_ttl_seconds: int = Field(default=600, ge=0)
 
     # Deferred non-verifier OIDC settings retained for current claim-mapping/runtime compatibility.
     oidc_client_id: str | None = None
-    oidc_username_claim: str = "preferred_username"
     oidc_groups_claim: str = "groups"
     oidc_roles_claim: str = "realm_access.roles"
     oidc_scopes_claim: str = "scope"
@@ -77,6 +78,9 @@ class Settings(BaseSettings):
     keycloak_admin: str = "admin"
     keycloak_admin_password: str = "admin"
     keycloak_port: int = 8080
+    server_host: str = "127.0.0.1"
+    ingestion_recover_orphaned: bool = False
+    ingestion_stale_threshold_seconds: int = Field(default=300, ge=0)
     verifier_backend: Literal["substring", "nli", "disabled"] = "substring"
     nli_entailment_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     nli_scoring_mode: Literal["entailment", "not_contradicted"] = "not_contradicted"  # ADR-0016

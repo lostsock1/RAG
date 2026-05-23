@@ -40,10 +40,15 @@ def test_decode_and_validate_token_rejects_wrong_audience() -> None:
 
 
 def test_build_request_context_from_keycloak_claims() -> None:
+    tenant_id = "11111111-0000-0000-0000-000000000000"
+    user_id = "11111111-1111-1111-1111-111111111111"
+    group_a = "22222222-0000-0000-0000-000000000001"
+    group_b = "22222222-0000-0000-0000-000000000002"
+
     claims = {
-        "sub": "11111111-1111-1111-1111-111111111111",
-        "tenant_id": "tenant-1",
-        "groups": ["group-a", "group-b"],
+        "sub": user_id,
+        "tenant_id": tenant_id,
+        "groups": [group_a, group_b],
         "realm_access": {"roles": ["editor"]},
         "scope": "documents:read documents:write",
     }
@@ -51,6 +56,7 @@ def test_build_request_context_from_keycloak_claims() -> None:
     context = build_request_context_from_claims(claims)
 
     assert isinstance(context, RequestContext)
-    assert context.user_id == "11111111-1111-1111-1111-111111111111"
-    assert context.group_ids == ["group-a", "group-b"]
+    assert context.user_id == user_id
+    assert context.tenant_id == tenant_id
+    assert context.group_ids == [group_a, group_b]
     assert context.scopes == ["documents:read", "documents:write"]

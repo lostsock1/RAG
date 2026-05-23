@@ -1,14 +1,33 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping
 from ipaddress import ip_address
 from typing import Any
+from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.core.config import get_settings
 from app.core.oidc import get_oidc_token_verifier
 from app.core.request_context import RequestContext
+
+_log = logging.getLogger(__name__)
+
+
+class InvalidIdentityError(ValueError):
+    """Raised when a tenant_id, user_id, or group_id is not a valid UUID."""
+
+
+def _validate_uuid(value: str, field_name: str) -> str:
+    """Validate that *value* is a well-formed UUID string.
+
+    Returns the canonical string form on success, raises InvalidIdentityError otherwise.
+    """
+    try:
+        return str(UUID(value))
+    except (ValueError, AttributeError, TypeError):
+        raise InvalidIdentityError(f"{field_name} is not a valid UUID: {value!r}")
 
 
 def _parse_csv_header(value: str | None) -> list[str]:
@@ -39,10 +58,19 @@ def _get_nested_claim(claims: Mapping[str, Any], claim_path: str) -> Any:
         value = value[part]
     return value
 
-    try:
-        return ip_address(host).is_loopback
-    except ValueError:
-        return False
+
+def assert_dev_auth_bind_is_loopback(server_host: str) -> None:
+    """Raise RuntimeError if AUTH_MODE=dev and the bind address is not loopback.
+
+    Call this at app factory time to prevent dev-auth from being accidentally
+    exposed behind a public reverse proxy.
+    """
+    if not _is_loopback_client_host(server_host):
+        raise RuntimeError(
+            f"AUTH_MODE=dev is not allowed when the server bind address is '{server_host}'. "
+            "Dev authentication is only safe on loopback (127.0.0.1 / ::1 / localhost). "
+            "Set SERVER_HOST=127.0.0.1 or switch to AUTH_MODE=oidc for non-loopback deployments."
+        )
 
 
 def build_request_context_from_claims(claims: Mapping[str, Any]) -> RequestContext:
@@ -69,15 +97,15 @@ def build_request_context_from_claims(claims: Mapping[str, Any]) -> RequestConte
         scopes = sorted(inferred_scopes)
 
     return RequestContext(
-        tenant_id=claims["tenant_id"],
-        user_id=claims["sub"],
+        tenant_id=_validate_uuid(claims["tenant_id"], "tenant_id"),
+        user_id=_validate_uuid(claims["sub"], "user_id"),
         group_ids=groups,
         roles=roles,
         scopes=scopes,
     )
 
 
-def get_request_context(
+async def get_request_context(
     request: Request,
     authorization: str | None = Header(default=None),
     x_dev_auth_tenant_id: str | None = Header(default=None),
@@ -112,7 +140,7 @@ def get_request_context(
             )
 
         try:
-            claims = get_oidc_token_verifier().verify_bearer_token(token)
+            claims = await get_oidc_token_verifier().verify_bearer_token(token)
             return build_request_context_from_claims(claims)
         except (KeyError, TypeError, ValueError) as exc:
             raise HTTPException(
@@ -124,7 +152,8 @@ def get_request_context(
             ) from exc
 
     if settings.auth_mode == "dev":
-        if not _is_loopback_client_host(request.client.host if request.client else None):
+        client_host = request.client.host if request.client else None
+        if not _is_loopback_client_host(client_host):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
@@ -132,6 +161,24 @@ def get_request_context(
                     "Use localhost for local development or configure production authentication."
                 ),
             )
+
+        # Belt-and-suspenders: reject if a forwarding header is present.
+        # A reverse proxy that loopbacks to 127.0.0.1 would pass the host check
+        # above but still expose dev-auth to the public internet.
+        if request.headers.get("X-Forwarded-For") is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Development authentication is not available when X-Forwarded-For is present. "
+                    "Do not run AUTH_MODE=dev behind a reverse proxy."
+                ),
+            )
+
+        _log.warning(
+            "DEV AUTH: request from %s — development authentication is active. "
+            "Do NOT use AUTH_MODE=dev in production.",
+            client_host,
+        )
 
         if not x_dev_auth_tenant_id or not x_dev_auth_user_id:
             raise HTTPException(
@@ -142,10 +189,21 @@ def get_request_context(
                 ),
             )
 
+        try:
+            validated_tenant_id = _validate_uuid(x_dev_auth_tenant_id, "tenant_id")
+            validated_user_id = _validate_uuid(x_dev_auth_user_id, "user_id")
+            raw_groups = _parse_csv_header(x_dev_auth_groups)
+            validated_groups = [_validate_uuid(g, "group_id") for g in raw_groups]
+        except InvalidIdentityError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+
         return RequestContext(
-            tenant_id=x_dev_auth_tenant_id,
-            user_id=x_dev_auth_user_id,
-            group_ids=_parse_csv_header(x_dev_auth_groups),
+            tenant_id=validated_tenant_id,
+            user_id=validated_user_id,
+            group_ids=validated_groups,
             roles=_parse_csv_header(x_dev_auth_roles),
             scopes=_parse_csv_header(x_dev_auth_scopes),
         )

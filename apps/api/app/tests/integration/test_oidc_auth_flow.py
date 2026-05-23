@@ -18,6 +18,8 @@ from sqlalchemy import create_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
+import asyncio
+
 from app.core.config import get_settings
 from app.core.oidc import OidcTokenVerifier, get_oidc_token_verifier
 from app.db.base import session_factory
@@ -215,7 +217,12 @@ def _configure_oidc_runtime(monkeypatch, *, database_url: str, storage_dir: Path
     monkeypatch.setenv("OIDC_ISSUER_URL", "http://localhost:8080/realms/uber-rag")
     monkeypatch.setenv("OIDC_AUDIENCE", "uber-rag-api")
     monkeypatch.setenv("OIDC_JWKS_URL", "http://localhost:8080/realms/uber-rag/protocol/openid-connect/certs")
-    monkeypatch.setattr(OidcTokenVerifier, "_fetch_jwks", lambda self: {"keys": [dict(TEST_PUBLIC_JWK, kid=TEST_KEY_ID)]})
+    _fake_jwks = {"keys": [dict(TEST_PUBLIC_JWK, kid=TEST_KEY_ID)]}
+
+    async def _fake_fetch_jwks(self):
+        return _fake_jwks
+
+    monkeypatch.setattr(OidcTokenVerifier, "_fetch_jwks", _fake_fetch_jwks)
     return _reload_app_module()
 
 

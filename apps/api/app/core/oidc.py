@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
+import time
 from collections.abc import Mapping
 from functools import lru_cache
 from typing import Any
-from urllib.error import URLError
-from urllib.request import urlopen
 
+import httpx
 import jwt
 from jwt import InvalidTokenError
 
@@ -42,8 +42,9 @@ def select_jwk_by_kid(*, jwks: dict[str, Any], kid: str) -> dict[str, Any]:
 class OidcTokenVerifier:
     def __init__(self) -> None:
         self._jwks_cache: dict[str, Any] | None = None
+        self._jwks_fetched_at: float = 0.0
 
-    def verify_bearer_token(self, token: str) -> dict[str, Any]:
+    async def verify_bearer_token(self, token: str) -> dict[str, Any]:
         settings = get_settings()
         if not settings.oidc_issuer_url or not settings.oidc_audience:
             raise ValueError("OIDC issuer and audience must be configured")
@@ -59,7 +60,7 @@ class OidcTokenVerifier:
         if not kid:
             raise ValueError("token kid is missing")
 
-        jwk = self._resolve_jwk_for_kid(str(kid))
+        jwk = await self._resolve_jwk_for_kid(str(kid))
 
         try:
             public_key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(jwk))
@@ -69,6 +70,7 @@ class OidcTokenVerifier:
                 algorithms=[ACCEPTED_OIDC_SIGNING_ALGORITHM],
                 audience=settings.oidc_audience,
                 issuer=settings.oidc_issuer_url,
+                leeway=settings.oidc_clock_skew_seconds,
                 options={"require": ["exp", "iss", "sub", "aud"]},
             )
         except InvalidTokenError as exc:
@@ -91,15 +93,17 @@ class OidcTokenVerifier:
 
         return header
 
-    def _fetch_jwks(self) -> dict[str, Any]:
+    async def _fetch_jwks(self) -> dict[str, Any]:
         settings = get_settings()
         if not settings.oidc_jwks_url:
             raise ValueError("OIDC JWKS URL must be configured")
 
         try:
-            with urlopen(settings.oidc_jwks_url, timeout=OIDC_JWKS_FETCH_TIMEOUT_SECONDS) as response:
-                payload = json.load(response)
-        except URLError as exc:
+            async with httpx.AsyncClient(timeout=OIDC_JWKS_FETCH_TIMEOUT_SECONDS) as client:
+                response = await client.get(settings.oidc_jwks_url)
+                response.raise_for_status()
+                payload = response.json()
+        except httpx.HTTPError as exc:
             raise ValueError("OIDC JWKS fetch failed") from exc
         except json.JSONDecodeError as exc:
             raise ValueError("OIDC JWKS response was not valid JSON") from exc
@@ -109,14 +113,31 @@ class OidcTokenVerifier:
 
         return payload
 
-    def _resolve_jwk_for_kid(self, kid: str) -> dict[str, Any]:
+    def _is_cache_expired(self) -> bool:
         if self._jwks_cache is None:
-            self._jwks_cache = self._fetch_jwks()
+            return True
+        settings = get_settings()
+        ttl = settings.oidc_jwks_ttl_seconds
+        return (time.monotonic() - self._jwks_fetched_at) > ttl
+
+    async def _resolve_jwk_for_kid(self, kid: str) -> dict[str, Any]:
+        # Try cache first (if not expired)
+        if self._jwks_cache is not None and not self._is_cache_expired():
+            try:
+                return select_jwk_by_kid(jwks=self._jwks_cache, kid=kid)
+            except ValueError:
+                pass  # kid miss — fall through to refresh
+
+        # Fetch (or re-fetch on kid-miss)
+        self._jwks_cache = await self._fetch_jwks()
+        self._jwks_fetched_at = time.monotonic()
 
         try:
             return select_jwk_by_kid(jwks=self._jwks_cache, kid=kid)
         except ValueError:
-            self._jwks_cache = self._fetch_jwks()
+            # One more attempt: re-fetch in case of key rotation
+            self._jwks_cache = await self._fetch_jwks()
+            self._jwks_fetched_at = time.monotonic()
             return select_jwk_by_kid(jwks=self._jwks_cache, kid=kid)
 
 
