@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import io
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any
+from typing import Any, BinaryIO
 
 from fastapi import HTTPException, Request, status
 
@@ -13,6 +14,27 @@ from app.core.config import Settings
 
 class StorageAdapter:
     def put_object(self, *, object_key: str, content: bytes, content_type: str) -> None:
+        raise NotImplementedError
+
+    def put_object_stream(
+        self,
+        *,
+        object_key: str,
+        fp: BinaryIO,
+        content_type: str,
+        content_length: int,
+    ) -> None:
+        """Write a streaming source to storage.
+
+        Default implementation reads the stream into memory and delegates to
+        ``put_object``.  Subclasses should override for true streaming.
+        """
+        data = fp.read()
+        self.put_object(object_key=object_key, content=data, content_type=content_type)
+
+    def delete_object(self, *, object_key: str) -> None:
+        """Delete an object from storage.  Best-effort: implementations should
+        not raise if the object does not exist."""
         raise NotImplementedError
 
     def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
@@ -41,13 +63,49 @@ class LocalFilesystemStorageAdapter(StorageAdapter):
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
 
+    def put_object_stream(
+        self,
+        *,
+        object_key: str,
+        fp: BinaryIO,
+        content_type: str,
+        content_length: int,
+    ) -> None:
+        destination = self.root_dir / object_key
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        chunk_size = 256 * 1024  # 256 KB
+        with destination.open("wb") as out:
+            while True:
+                chunk = fp.read(chunk_size)
+                if not chunk:
+                    break
+                out.write(chunk)
+
+    def delete_object(self, *, object_key: str) -> None:
+        target = self.root_dir / object_key
+        try:
+            target.unlink(missing_ok=True)
+        except OSError:
+            pass  # best-effort
+
     def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
         source_path = self.root_dir / object_key
         if not source_path.is_file():
             raise RuntimeError(
                 f"Local storage could not find object for key '{object_key}'."
             )
-        return MaterializedObject(local_path=source_path, cleanup=None)
+        # Copy to a temp file so the original immutable source bytes are never
+        # exposed to callers that might write to the path (DEVELOPMENT_RULES.md:
+        # "Original file is immutable after upload.").
+        with NamedTemporaryFile(delete=False) as tmp_file:
+            temp_path = Path(tmp_file.name)
+            tmp_file.write(source_path.read_bytes())
+
+        def _cleanup() -> None:
+            if temp_path.exists():
+                temp_path.unlink()
+
+        return MaterializedObject(local_path=temp_path, cleanup=_cleanup)
 
 
 class S3CompatibleStorageAdapter(StorageAdapter):
@@ -95,6 +153,27 @@ class S3CompatibleStorageAdapter(StorageAdapter):
             Body=content,
             ContentType=content_type,
         )
+
+    def put_object_stream(
+        self,
+        *,
+        object_key: str,
+        fp: BinaryIO,
+        content_type: str,
+        content_length: int,
+    ) -> None:
+        self._get_client().upload_fileobj(
+            fp,
+            self.bucket,
+            object_key,
+            ExtraArgs={"ContentType": content_type},
+        )
+
+    def delete_object(self, *, object_key: str) -> None:
+        try:
+            self._get_client().delete_object(Bucket=self.bucket, Key=object_key)
+        except Exception:
+            pass  # best-effort
 
     def materialize_for_read(self, *, object_key: str) -> MaterializedObject:
         with NamedTemporaryFile(delete=False) as tmp_file:
