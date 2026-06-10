@@ -428,7 +428,15 @@ or left config-off — record either way.
 revisit triggers), confirm contextual-retrieval and late-chunking sources
 (Anthropic engineering post + cookbook = Tier 2; Jina late-chunking paper
 arXiv:2409.04701 = Tier 1), and current Qwen3-Embedding / Qwen3-Reranker model cards
-(Apache-2.0 expected — verify).
+(Apache-2.0 expected — verify). **Also survey the answering-LLM landscape for E5**
+(ADR-0004 reopen): current open-weight grounded-QA candidates in the ~20–120B
+class, verified against current model cards (Tier 1) for license (Apache-2.0
+preferred over Llama-license), multilingual coverage (German + Portuguese
+required), ppq.ai/OpenAI-compat availability, and local-serving footprint
+(GPU memory at int8/awq, expected TTFS). Candidate seeds to verify, not trust
+(architect's list is from a Jan-2026 cutoff and is stale by definition):
+Qwen3 32B-class, OpenAI gpt-oss MoE, Gemma 3 27B, Mistral Small 3.x, plus the
+incumbent Llama 3.3 70B and Hermes fallback as baselines.
 
 ### E1 — Parent-child expansion: audit and wire (M)
 - **Files**: `apps/api/app/services/retrieval/hybrid_retriever.py`, possibly new
@@ -495,9 +503,34 @@ arXiv:2409.04701 = Tier 1), and current Qwen3-Embedding / Qwen3-Reranker model c
 - **Accept**: reindex CLI proven by round-trip test (ingest → reindex → identical
   retrieval results); bake-offs (if run) recorded in ADRs with quality *and* latency.
 
+### E5 — Answering-LLM bake-off (ADR-0004 reopen, scheduled) (M)
+- **Files**: `docs/uber-rag/adr/0004-llm-adapter-and-provider.md` (reopen note or
+  superseding ADR), `tests/eval/reports/llm_bakeoff.json`, `.env`/config only —
+  **zero code expected** (the ppq adapter is OpenAI-compatible; each candidate is
+  `llm_model_name`/`llm_base_url` config)
+- **Why now and not earlier**: Llama 3.3 70B (Dec 2024) shows no measured
+  deficiency (faithfulness 1.000 not_contradicted, negative compliance 1.00) but
+  is a stale default with an air-gap liability: 70B dense needs ~2× H100-class to
+  serve locally, while the task — read-context, paraphrase, cite, refuse — is
+  grounded QA that a well-chosen 20–32B-class model likely matches at a fraction
+  of serving cost and TTFS (the only remaining ADR-0008 ~2s lever, Phase G).
+  Phases C+D make the comparison cheap and honest; running it earlier would be
+  vibes-based churn.
+- **Do**: for the incumbent + each entry-gate-verified candidate, run the Phase C
+  eval set (faithfulness via the Phase D verifier, negative-answer compliance,
+  multilingual DE/PT subset) plus per-candidate cost/latency (ppq TTFS, $/Mtok).
+  Decision rule, frozen before measuring: prefer the **smallest servable model**
+  whose faithfulness and negative-compliance are within 0.02 of the incumbent and
+  whose multilingual subset does not regress — smallest-that-wins buys the
+  air-gap path and Phase G latency simultaneously.
+- **Accept**: committed bake-off report; ADR-0004 reopened with the table and
+  either superseded (new default named, license cited) or reconfirmed with data;
+  production default flipped only via config after the ADR closes.
+
 **Phase E exit criteria**: every retrieval upgrade either measurably improved the
 committed baseline (and is config-default-on) or is documented as no-win and left
 off. Baseline JSONs updated; CI gate thresholds re-pinned to the new baseline.
+E5's ADR-0004 reopen is closed either way (superseded or reconfirmed with data).
 
 ---
 
