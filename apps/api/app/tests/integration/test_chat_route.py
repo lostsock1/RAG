@@ -226,7 +226,7 @@ def test_chat_route_returns_answer_payload(monkeypatch) -> None:
     monkeypatch.setattr("app.services.retrieval.search_service.write_audit_event", lambda **kwargs: None)
     monkeypatch.setattr("app.services.chat_service.write_audit_event", lambda **kwargs: None)
     app = _make_app(
-        settings=Settings(llm_backend="stub"),
+        settings=Settings(llm_backend="stub", parser_backend=""),
         retriever=_RetrieverStub(),
         llm_backend=_FixedLlmBackend(),
     )
@@ -252,7 +252,7 @@ def test_chat_stream_route_emits_real_streaming_events(monkeypatch) -> None:
     monkeypatch.setattr("app.services.retrieval.search_service.write_audit_event", lambda **kwargs: None)
     monkeypatch.setattr("app.services.chat_service.write_audit_event", lambda **kwargs: None)
     app = _make_app(
-        settings=Settings(llm_backend="stub"),
+        settings=Settings(llm_backend="stub", parser_backend=""),
         retriever=_RetrieverStub(),
         llm_backend=_FixedLlmBackend(),
     )
@@ -270,7 +270,7 @@ def test_chat_stream_route_emits_real_streaming_events(monkeypatch) -> None:
 
 
 def test_chat_route_returns_503_when_retriever_missing() -> None:
-    app = _make_app(settings=Settings(llm_backend="stub"), llm_backend=_FixedLlmBackend())
+    app = _make_app(settings=Settings(llm_backend="stub", parser_backend=""), llm_backend=_FixedLlmBackend())
 
     with TestClient(app) as client:
         response = client.post("/api/v1/chat", json={"question": "What happened?", "top_k": 3})
@@ -280,7 +280,7 @@ def test_chat_route_returns_503_when_retriever_missing() -> None:
 
 
 def test_chat_route_returns_503_when_llm_backend_disabled() -> None:
-    app = _make_app(settings=Settings(llm_backend="disabled"), retriever=_RetrieverStub())
+    app = _make_app(settings=Settings(llm_backend="disabled", parser_backend=""), retriever=_RetrieverStub())
 
     with TestClient(app) as client:
         response = client.post("/api/v1/chat", json={"question": "What happened?", "top_k": 3})
@@ -297,7 +297,7 @@ def test_non_streaming_and_streaming_produce_same_answer_text(monkeypatch) -> No
     monkeypatch.setattr("app.services.retrieval.search_service.write_audit_event", lambda **kwargs: None)
     monkeypatch.setattr("app.services.chat_service.write_audit_event", lambda **kwargs: None)
     app = _make_app(
-        settings=Settings(llm_backend="stub"),
+        settings=Settings(llm_backend="stub", parser_backend=""),
         retriever=_RetrieverStub(),
         llm_backend=_FixedLlmBackend(),
     )
@@ -319,7 +319,7 @@ def test_chat_route_returns_not_enough_evidence_and_skips_llm_when_search_has_no
     monkeypatch.setattr("app.services.chat_service.write_audit_event", lambda **kwargs: None)
     llm_backend = _FixedLlmBackend()
     app = _make_app(
-        settings=Settings(llm_backend="stub"),
+        settings=Settings(llm_backend="stub", parser_backend=""),
         retriever=_EmptyRetrieverStub(),
         llm_backend=llm_backend,
     )
@@ -347,7 +347,7 @@ def test_chat_stream_route_returns_not_enough_evidence_and_skips_llm_when_search
     monkeypatch.setattr("app.services.chat_service.write_audit_event", lambda **kwargs: None)
     llm_backend = _FixedLlmBackend()
     app = _make_app(
-        settings=Settings(llm_backend="stub"),
+        settings=Settings(llm_backend="stub", parser_backend=""),
         retriever=_EmptyRetrieverStub(),
         llm_backend=llm_backend,
     )

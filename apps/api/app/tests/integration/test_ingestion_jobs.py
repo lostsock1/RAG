@@ -41,7 +41,7 @@ class StorageStub:
 def reset_global_app_state() -> Generator[None, None, None]:
     get_settings.cache_clear()
     app.dependency_overrides.clear()
-    app.state.settings = Settings()
+    app.state.settings = Settings(parser_backend="")
 
     for attr in ("document_storage", "dispatcher", "db_engine"):
         if hasattr(app.state, attr):
@@ -51,7 +51,7 @@ def reset_global_app_state() -> Generator[None, None, None]:
 
     app.dependency_overrides.clear()
     get_settings.cache_clear()
-    app.state.settings = Settings()
+    app.state.settings = Settings(parser_backend="")
 
     for attr in ("document_storage", "dispatcher", "db_engine"):
         if hasattr(app.state, attr):

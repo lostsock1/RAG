@@ -34,6 +34,8 @@ async def lifespan(app: FastAPI):
         app.state.db_engine = engine
 
         if settings.ingestion_recover_orphaned:
+            from sqlalchemy.exc import OperationalError, ProgrammingError
+
             from app.repositories.ingestion import recover_orphaned_runs
 
             try:
@@ -47,7 +49,9 @@ async def lifespan(app: FastAPI):
                     logging.getLogger(__name__).info(
                         "Recovered %d orphaned ingestion run(s) on startup.", recovered
                     )
-            except Exception:
+            except (OperationalError, ProgrammingError):
+                # Only database-shape errors are tolerable here (e.g., fresh DB
+                # before migrations). Anything else is a bug and must fail startup.
                 import logging
 
                 logging.getLogger(__name__).debug(
@@ -57,6 +61,22 @@ async def lifespan(app: FastAPI):
     storage = build_storage_adapter(settings)
     if storage is not None:
         app.state.document_storage = storage
+
+    # Pre-injected storage (tests, embedders) counts as configured.
+    effective_storage = storage if storage is not None else getattr(app.state, "document_storage", None)
+    if (
+        effective_storage is None
+        and settings.workflow_backend == "in_process"
+        and settings.parser_backend
+        and settings.parser_backend.strip().lower() in {"docling", "docling-local"}
+    ):
+        raise RuntimeError(
+            "parser_backend=docling requires a configured storage backend for "
+            "in-process ingestion: set LOCAL_STORAGE_DIR (or the S3/SeaweedFS "
+            "settings), or set PARSER_BACKEND='' to run the API without "
+            "ingestion. Without storage, uploads return 503 and the parse "
+            "stage cannot materialize source files."
+        )
 
     if settings.parser_backend:
         from app.workflows.dispatcher import InProcessDispatcher
@@ -99,6 +119,16 @@ async def lifespan(app: FastAPI):
         delattr(app.state, "document_storage")
 
     if hasattr(app.state, "dispatcher"):
+        dispatcher_close = getattr(app.state.dispatcher, "close", None)
+        if dispatcher_close is not None:
+            try:
+                await dispatcher_close()
+            except Exception:
+                import logging
+
+                logging.getLogger(__name__).debug(
+                    "Dispatcher close failed at shutdown.", exc_info=True
+                )
         delattr(app.state, "dispatcher")
 
     if hasattr(app.state, "settings"):

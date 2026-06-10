@@ -492,6 +492,7 @@ def test_app_startup_wires_llm_backend_from_injected_settings() -> None:
     custom_app = main_module.create_app(
         Settings(
             auth_mode="dev",
+            parser_backend="",
             llm_backend="stub",
             llm_model_name="runtime-model",
             llm_temperature=0.2,
@@ -504,3 +505,85 @@ def test_app_startup_wires_llm_backend_from_injected_settings() -> None:
         assert custom_app.state.llm_backend._model_name == "runtime-model"
         assert custom_app.state.llm_backend._default_temperature == 0.2
         assert custom_app.state.llm_backend._default_max_output_tokens == 222
+
+
+def test_startup_recovery_swallows_only_database_errors(monkeypatch) -> None:
+    """P2-4: missing-table database errors during orphan recovery stay non-fatal."""
+    from sqlalchemy.exc import OperationalError
+
+    def raise_operational(**kwargs):
+        raise OperationalError("SELECT 1", {}, Exception("no such table"))
+
+    monkeypatch.setattr("app.repositories.ingestion.recover_orphaned_runs", raise_operational)
+
+    app = main_module.create_app(
+        Settings(
+            auth_mode="dev",
+            database_url="sqlite://",
+            ingestion_recover_orphaned=True,
+            parser_backend="",
+        )
+    )
+    try:
+        with TestClient(app, client=("127.0.0.1", 50020)):
+            pass
+    finally:
+        session_factory.configure(bind=None)
+
+
+def test_startup_recovery_reraises_unexpected_errors(monkeypatch) -> None:
+    """P2-4: non-database bugs in recovery must fail startup, not be swallowed."""
+
+    def raise_value_error(**kwargs):
+        raise ValueError("bug in recovery")
+
+    monkeypatch.setattr("app.repositories.ingestion.recover_orphaned_runs", raise_value_error)
+
+    app = main_module.create_app(
+        Settings(
+            auth_mode="dev",
+            database_url="sqlite://",
+            ingestion_recover_orphaned=True,
+            parser_backend="",
+        )
+    )
+    try:
+        with pytest.raises(ValueError, match="bug in recovery"):
+            with TestClient(app, client=("127.0.0.1", 50021)):
+                pass
+    finally:
+        session_factory.configure(bind=None)
+
+
+def test_startup_fails_fast_for_docling_in_process_without_storage() -> None:
+    """P2-7: parser_backend=docling + in-process ingestion + no storage is a
+    misconfiguration that must fail at startup, not at first upload."""
+    app = main_module.create_app(
+        Settings(
+            auth_mode="dev",
+            parser_backend="docling",
+            workflow_backend="in_process",
+            local_storage_dir=None,
+        )
+    )
+    with pytest.raises(RuntimeError, match="storage"):
+        with TestClient(app, client=("127.0.0.1", 50022)):
+            pass
+
+
+def test_shutdown_closes_dispatcher_with_close_method() -> None:
+    """P2-5: lifespan shutdown awaits dispatcher.close() when the dispatcher has one."""
+    closed: list[int] = []
+
+    class _ClosableDispatcher:
+        async def dispatch(self, run_id) -> None:
+            return None
+
+        async def close(self) -> None:
+            closed.append(1)
+
+    app = main_module.create_app(Settings(auth_mode="dev", parser_backend=""))
+    with TestClient(app, client=("127.0.0.1", 50023)):
+        app.state.dispatcher = _ClosableDispatcher()
+
+    assert closed == [1]
