@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
@@ -262,14 +263,20 @@ def get_or_create_document_by_source_hash(
             object_key=object_key,
         )
     except IntegrityError:
-        existing_document = get_live_document_by_source_hash(
-            tenant_id=tenant_id,
-            owner_user_id=owner_user_id,
-            source_hash=source_hash,
-        )
-        if existing_document is None:
-            raise
-        return existing_document
+        # Concurrent same-hash uploads race here: the other transaction's live
+        # document may not be visible to a fresh session immediately. Retry the
+        # lookup briefly (fresh session per attempt) before re-raising.
+        for attempt in range(3):
+            existing_document = get_live_document_by_source_hash(
+                tenant_id=tenant_id,
+                owner_user_id=owner_user_id,
+                source_hash=source_hash,
+            )
+            if existing_document is not None:
+                return existing_document
+            if attempt < 2:
+                time.sleep(0.05)
+        raise
 
 
 def get_live_document_by_source_hash(*, tenant_id: UUID, owner_user_id: UUID, source_hash: str) -> Document | None:
