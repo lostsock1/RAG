@@ -36,16 +36,19 @@ def build_temporal_worker(*, client, task_queue: str, runner) -> _WorkerSkeleton
 
     try:
         worker_module = import_module("temporalio.worker")
-        Worker = worker_module.Worker
-        if hasattr(client, "config"):
-            return Worker(
+        client_module = import_module("temporalio.client")
+    except ImportError:
+        logger.info("temporalio not installed; returning worker skeleton for task_queue=%s", task_queue)
+    else:
+        # isinstance, not hasattr(client, "config"): duck-typed stubs must not
+        # be handed to a real Worker (P2-6).
+        if isinstance(client, client_module.Client):
+            return worker_module.Worker(
                 client,
                 task_queue=task_queue,
                 workflows=[IngestionWorkflow],
                 activities=[activity_fn],
             )
-    except ImportError:
-        logger.info("temporalio not installed; returning worker skeleton for task_queue=%s", task_queue)
 
     return _WorkerSkeleton(
         task_queue=task_queue,

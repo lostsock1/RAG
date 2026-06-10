@@ -46,6 +46,77 @@ def test_temporal_worker_builds_with_registered_workflow_and_activity() -> None:
     assert worker._task_queue == "uber-rag-ingestion"
 
 
+def test_build_temporal_worker_fake_client_with_config_attr_gets_skeleton() -> None:
+    """P2-6: real-client detection must use isinstance(temporalio.client.Client),
+    not hasattr(client, 'config') — a stub carrying a config attribute is not a
+    real Temporal client and must get the skeleton, not a real Worker."""
+
+    class RunnerStub:
+        def run(self, run_id) -> None:
+            return None
+
+    class FakeClientWithConfig:
+        config = {"host": "stub"}
+
+    worker = build_temporal_worker(
+        client=FakeClientWithConfig(),
+        task_queue="uber-rag-ingestion",
+        runner=RunnerStub(),
+    )
+
+    assert worker._task_queue == "uber-rag-ingestion"
+    assert type(worker).__name__ == "_WorkerSkeleton"
+
+
+def test_build_temporal_worker_real_client_detection_uses_isinstance(monkeypatch) -> None:
+    """P2-6: detection uses isinstance(client, temporalio.client.Client), not
+    hasattr(client, 'config'). Fakes the temporalio modules so the logic is
+    exercised even where the package is not installed."""
+
+    class RunnerStub:
+        def run(self, run_id) -> None:
+            return None
+
+    class _RealClient:  # stands in for temporalio.client.Client
+        config = {"host": "real"}
+
+    built: dict = {}
+
+    class _FakeWorker:
+        def __init__(self, client, *, task_queue, workflows, activities):
+            built["client"] = client
+            self._task_queue = task_queue
+            self._workflows = workflows
+            self._activities = activities
+
+    class _FakeWorkerModule:
+        Worker = _FakeWorker
+
+    class _FakeClientModule:
+        Client = _RealClient
+
+    def fake_import_module(name: str):
+        if name == "temporalio.worker":
+            return _FakeWorkerModule
+        if name == "temporalio.client":
+            return _FakeClientModule
+        raise AssertionError(f"unexpected import {name}")
+
+    monkeypatch.setattr("app.workflows.temporal_worker.import_module", fake_import_module)
+
+    class FakeClientWithConfig:  # duck-typed impostor: has .config but wrong type
+        config = {"host": "stub"}
+
+    impostor_worker = build_temporal_worker(
+        client=FakeClientWithConfig(), task_queue="q", runner=RunnerStub()
+    )
+    assert type(impostor_worker).__name__ == "_WorkerSkeleton"
+
+    real_worker = build_temporal_worker(client=_RealClient(), task_queue="q", runner=RunnerStub())
+    assert isinstance(real_worker, _FakeWorker)
+    assert built["client"].config == {"host": "real"}
+
+
 def test_build_temporal_worker_from_settings_rejects_missing_host_port() -> None:
     with pytest.raises(RuntimeError) as exc_info:
         build_temporal_worker_from_settings(
