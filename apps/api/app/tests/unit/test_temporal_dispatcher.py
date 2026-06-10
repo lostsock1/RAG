@@ -96,3 +96,70 @@ def test_build_temporal_dispatcher_uses_settings_and_injected_client() -> None:
     assert dispatcher._namespace == "rag-prod"
     assert dispatcher._task_queue == "rag-q"
     assert dispatcher._client is client
+
+
+@pytest.mark.anyio
+async def test_temporal_dispatcher_caches_connected_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """P2-5: dispatch connects once and reuses the client across calls."""
+    connects: list[int] = []
+
+    class ClientStub:
+        async def start_workflow(self, workflow, *, id: str, task_queue: str, args: list) -> None:
+            return None
+
+    stub = ClientStub()
+
+    async def fake_connect(self):
+        connects.append(1)
+        return stub
+
+    monkeypatch.setattr(TemporalDispatcher, "_connect_client", fake_connect)
+
+    dispatcher = TemporalDispatcher(
+        host_port="temporal:7233", namespace="default", task_queue="uber-rag-ingestion"
+    )
+    await dispatcher.dispatch(uuid4())
+    await dispatcher.dispatch(uuid4())
+
+    assert connects == [1]
+    assert dispatcher._client is stub
+
+
+@pytest.mark.anyio
+async def test_temporal_dispatcher_close_closes_and_clears_cached_client() -> None:
+    """P2-5: close() releases the cached client and is idempotent."""
+    closed: list[int] = []
+
+    class ClientStub:
+        async def start_workflow(self, workflow, *, id: str, task_queue: str, args: list) -> None:
+            return None
+
+        async def close(self) -> None:
+            closed.append(1)
+
+    dispatcher = TemporalDispatcher(
+        host_port="temporal:7233",
+        namespace="default",
+        task_queue="uber-rag-ingestion",
+        client=ClientStub(),
+    )
+
+    await dispatcher.close()
+    assert closed == [1]
+    assert dispatcher._client is None
+
+    await dispatcher.close()
+    assert closed == [1]
+
+
+@pytest.mark.anyio
+async def test_temporal_dispatcher_close_tolerates_clients_without_close() -> None:
+    """P2-5: clients lacking close() (stubs, older SDKs) do not break shutdown."""
+    dispatcher = TemporalDispatcher(
+        host_port="temporal:7233",
+        namespace="default",
+        task_queue="uber-rag-ingestion",
+        client=object(),
+    )
+    await dispatcher.close()
+    assert dispatcher._client is None

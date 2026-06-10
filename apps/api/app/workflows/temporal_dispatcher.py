@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import logging
 from uuid import UUID
 
@@ -52,6 +53,9 @@ class TemporalDispatcher:
         client = self._client
         if client is None:
             client = await self._connect_client()
+            # Cache across dispatches — reconnecting per dispatch leaks gRPC
+            # channels and adds connect latency to every upload (P2-5).
+            self._client = client
 
         from app.workflows.temporal_workflow import IngestionWorkflow
 
@@ -61,6 +65,22 @@ class TemporalDispatcher:
             task_queue=self._task_queue,
             args=[str(run_id)],
         )
+
+    async def close(self) -> None:
+        """Release the cached client (called from FastAPI lifespan shutdown).
+
+        Idempotent; tolerates injected stubs and SDK clients without close().
+        """
+        client = self._client
+        self._client = None
+        if client is None:
+            return
+        close_fn = getattr(client, "close", None)
+        if close_fn is None:
+            return
+        result = close_fn()
+        if inspect.isawaitable(result):
+            await result
 
     async def _connect_client(self):
         try:
