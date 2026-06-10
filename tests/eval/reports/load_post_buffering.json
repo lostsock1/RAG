@@ -1,0 +1,80 @@
+{
+  "test": "test_streaming_load_concurrent",
+  "measured_at": "2026-06-10T21:38:53+00:00",
+  "first_token_semantics": "first VERIFIED token \u2014 generated tokens are buffered until post-generation verification passes (evidence-safe streaming, commit 1ce0d30); NOT raw LLM first token",
+  "llm": {
+    "backend": "ppq",
+    "model": "meta-llama/Llama-3.3-70B-Instruct"
+  },
+  "verifier": {
+    "backend": "nli",
+    "scoring_mode": "not_contradicted",
+    "unsupported_ratio": 0.2
+  },
+  "concurrency": 5,
+  "warmup": {
+    "question": "What is the second law of thermodynamics?",
+    "first_token_ms": 9405.686582998896,
+    "total_ms": 9405.86324999822,
+    "event_count": 67,
+    "status": "answered",
+    "error": null
+  },
+  "requests": [
+    {
+      "question": "What are the stages of grief according to K\u00fcbler-Ross?",
+      "first_token_ms": 3350.214166999649,
+      "total_ms": 3350.303208997502,
+      "event_count": 9,
+      "status": "answered",
+      "error": null
+    },
+    {
+      "question": "What is Le Chatelier's principle?",
+      "first_token_ms": 3874.527209001826,
+      "total_ms": 3874.5881670001836,
+      "event_count": 36,
+      "status": "answered",
+      "error": null
+    },
+    {
+      "question": "What are the main organelles in a eukaryotic cell?",
+      "first_token_ms": 5973.681708001095,
+      "total_ms": 5973.745625000447,
+      "event_count": 62,
+      "status": "answered",
+      "error": null
+    },
+    {
+      "question": "What is the second law of thermodynamics?",
+      "first_token_ms": 6552.042832998268,
+      "total_ms": 6552.104791000602,
+      "event_count": 67,
+      "status": "answered",
+      "error": null
+    },
+    {
+      "question": "What is the difference between supply and demand?",
+      "first_token_ms": 10751.527042000816,
+      "total_ms": 10751.59829200129,
+      "event_count": 66,
+      "status": "answered",
+      "error": null
+    }
+  ],
+  "percentiles_ms": {
+    "first_token_p50": 5973.7,
+    "first_token_p95": 10751.5,
+    "total_p50": 5973.7,
+    "total_p95": 10751.6
+  },
+  "sla": {
+    "source": "ADR-0017",
+    "first_token_p50_ceiling_ms": 5000,
+    "first_token_p95_ceiling_ms": 10000,
+    "p50_pass": false,
+    "p95_pass": false
+  },
+  "answered_count": 5,
+  "error_count": 0
+}

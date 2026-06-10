@@ -1,7 +1,9 @@
 # ADR-0017: Streaming First-Token SLA Under Load
 
-Status: Accepted
-Date: 2026-05-23
+Status: Accepted — **SLA currently FAILING by design** after the evidence-safe
+streaming change (see "Re-measurement 2026-06-10"); remediation is ADR-0018
+sentence-incremental verified streaming (master plan Phase B), not an SLA revision.
+Date: 2026-05-23 (re-measured 2026-06-10)
 
 ## Context
 
@@ -15,7 +17,40 @@ Measured results (commit `7d98148`, reconfirmed with Settings-wired verifier):
 | P95 first-token | ~3.5s | ~8.8s (ppq.ai queue delay) | — |
 | Error rate | 0% | — | — |
 
-The measured P50 exceeds ADR-0008's ~2s target. The primary cause is ppq.ai API latency: the LLM provider adds variable inference time that we cannot control until we add a local or fallback provider. The NLI verifier runs after answer generation (in the streaming path, it runs post-generation), so it does not affect first-token latency.
+The measured P50 exceeds ADR-0008's ~2s target. The primary cause is ppq.ai API latency: the LLM provider adds variable inference time that we cannot control until we add a local or fallback provider. The NLI verifier runs after answer generation (in the streaming path, it runs post-generation), so it does not affect first-token latency. *(Superseded by the 2026-06-10 re-measurement below: verification is now deliberately in the first-token path.)*
+
+## Re-measurement 2026-06-10 — after evidence-safe token buffering
+
+The 2026-05-23 streaming hardening (commit `1ce0d30`) buffers **all** generated
+tokens until post-generation verification passes, so no unsupported text is ever
+emitted. Consequence: "first token" now means "first **verified** token," and the
+revisit trigger *"the NLI verifier is moved into the first-token path"* has fired —
+deliberately, for evidence discipline, not as an accidental regression.
+
+Canonical re-measurement (`tests/eval/reports/load_post_buffering.json`, single
+pinned-asyncio run, 5 concurrent, real ppq + NLI not_contradicted):
+
+| Metric | 2026-05-23 (pre-buffering) | 2026-06-10 (post-buffering) | SLA | Verdict |
+|---|---|---|---|---|
+| P50 first-token | ~2.5s | **5.97s** | < 5s | **FAIL** |
+| P95 first-token | ~3.5s | **10.75s** | < 10s | **FAIL** |
+| Answered / errors | 5/5, 0 | 5/5, 0 | 0 errors | pass |
+
+Two additional samples from the same day (7.0s/14.6s and 4.7s/8.6s) show ppq.ai
+variance straddles the ceilings; the structural fact is that `first_token ≈ total`
+in every request — tokens arrive only after full generation plus verification.
+
+Resolution: **the SLA stands and the failure is accepted as known-and-tracked.**
+Reverting evidence safety to win back latency is not an option (architecture
+invariant #5). ADR-0018 (sentence-incremental verified streaming, master plan
+Phase B) restores first-verified-token latency to ~LLM-bound levels while keeping
+the invariant. The load test keeps its assertions and stays red until Phase B
+lands; it is excluded from CI (requires `PPQ_API_KEY`).
+
+Methodology note: the load test is now pinned to a single anyio backend
+(asyncio) — the anyio plugin otherwise runs it twice (asyncio + trio), doubling
+real-LLM cost and overwriting the report; the earlier "~2.5s" numbers were
+measured under the same per-run conditions, so the comparison holds.
 
 P95 is highly sensitive to ppq.ai API variability under concurrent load. With only 5 concurrent requests, P95 is essentially the maximum. A single slow ppq.ai request (e.g., queue delay) can inflate P95 from ~3.5s to ~9s. This is provider variability, not a system regression.
 

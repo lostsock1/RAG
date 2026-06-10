@@ -1,14 +1,29 @@
 """Step 9: Streaming load test — concurrent chat requests with latency measurement."""
 from __future__ import annotations
 
+import json
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 
 import anyio
 import pytest
 
 from tests.eval.conftest import EvalStack
+
+REPORT_PATH = Path(__file__).resolve().parents[1] / "reports" / "load_post_buffering.json"
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    # Pin to a single backend: the anyio plugin otherwise parametrizes over all
+    # installed backends (asyncio + trio), running this real-LLM load test twice —
+    # doubling API cost and letting the second run overwrite REPORT_PATH. Event-loop
+    # compatibility is covered by the chat stream integration tests; this test
+    # measures provider latency, which is backend-independent.
+    return "asyncio"
 
 # 6 questions that should return results from the fixture corpus
 LOAD_TEST_QUESTIONS = [
@@ -189,12 +204,52 @@ async def test_streaming_load_concurrent(eval_stack: EvalStack, monkeypatch):
 
     print(f"{'=' * 70}")
 
-    # Assertions
     errors = [r for r in results if r.error is not None]
+    answered = [r for r in results if r.status == "answered"]
+
+    # Persist the canonical JSON report BEFORE any assertion can abort the
+    # test — a failed SLA must still leave committed evidence (master plan A2,
+    # EVALUATION_HARNESS.md report artifact policy).
+    report = {
+        "test": "test_streaming_load_concurrent",
+        "measured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "first_token_semantics": (
+            "first VERIFIED token — generated tokens are buffered until "
+            "post-generation verification passes (evidence-safe streaming, "
+            "commit 1ce0d30); NOT raw LLM first token"
+        ),
+        "llm": {"backend": "ppq", "model": settings.llm_model_name},
+        "verifier": {
+            "backend": "nli",
+            "scoring_mode": settings.nli_scoring_mode,
+            "unsupported_ratio": settings.nli_unsupported_ratio,
+        },
+        "concurrency": num_concurrent,
+        "warmup": asdict(warmup_result),
+        "requests": [asdict(r) for r in results],
+        "percentiles_ms": {
+            "first_token_p50": round(p50_ft, 1),
+            "first_token_p95": round(p95_ft, 1),
+            "total_p50": round(p50_total, 1) if total_values else None,
+            "total_p95": round(p95_total, 1) if total_values else None,
+        },
+        "sla": {
+            "source": "ADR-0017",
+            "first_token_p50_ceiling_ms": 5000,
+            "first_token_p95_ceiling_ms": 10000,
+            "p50_pass": bool(first_token_values) and p50_ft < 5000,
+            "p95_pass": bool(first_token_values) and p95_ft < 10000,
+        },
+        "answered_count": len(answered),
+        "error_count": len(errors),
+    }
+    REPORT_PATH.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"Report written: {REPORT_PATH}")
+
+    # Assertions
     assert len(errors) == 0, f"{len(errors)} requests failed with errors"
 
     # At least some requests should return "answered"
-    answered = [r for r in results if r.status == "answered"]
     assert len(answered) >= 3, f"Expected >= 3 answered, got {len(answered)}"
 
     # Latency assertions per ADR-0017: P50 < 5s, P95 < 10s under 5 concurrent
