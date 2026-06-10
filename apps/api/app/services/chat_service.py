@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import functools
 import hashlib
 from typing import AsyncIterator, cast
 from uuid import UUID
+
+import anyio
 
 from app.core.request_context import RequestContext
 from app.repositories.audit import write_audit_event
@@ -11,6 +14,7 @@ from app.schemas.context import BuildContextRequest, ContextPayload
 from app.schemas.generation import GenerateAnswerRequest, GenerateAnswerResponse
 from app.schemas.search import SearchRequest, SearchResponse
 from app.services.retrieval.base import RetrievalHit
+from app.services.streaming_verifier import SentenceAssembler
 
 NOT_ENOUGH_EVIDENCE_MESSAGE = "I do not have enough permitted source evidence to answer that yet."
 
@@ -26,6 +30,7 @@ class ChatService:
         answer_verifier,
         max_context_characters: int,
         max_context_blocks: int | None,
+        stream_verification_policy: str = "retract",
     ) -> None:
         self._search_service = search_service
         self._context_builder = context_builder
@@ -34,6 +39,7 @@ class ChatService:
         self._answer_verifier = answer_verifier
         self._max_context_characters = max_context_characters
         self._max_context_blocks = max_context_blocks
+        self._stream_verification_policy = stream_verification_policy
 
     def answer(
         self,
@@ -159,18 +165,27 @@ class ChatService:
         context: RequestContext,
         payload: ChatRequest,
     ) -> AsyncIterator[dict]:
-        """Stream answer generation with evidence-safe token emission.
+        """Stream answer generation with sentence-incremental verification (ADR-0018).
 
-        Tokens are buffered until verification passes. Only verified answers
-        emit token events. This enforces the evidence discipline invariant:
-        unsupported generated text is never exposed to the client.
+        Tokens are assembled into sentences as they arrive; each completed
+        sentence is verified against the retrieved context before its text is
+        emitted. No unverified text ever reaches the client — the evidence
+        discipline invariant holds at sentence granularity, and first-token
+        latency is first-sentence latency instead of full-answer latency.
+
+        On an unsupported sentence the configured policy applies:
+        - "retract" (default): stop, emit a retraction (only if tokens were
+          already emitted), finalize as not_enough_evidence.
+        - "truncate": keep the verified prefix, finalize as answered with
+          truncated=true.
 
         Yields event dicts with 'type' and 'data' keys:
         - {"type": "retrieval", "data": {"hit_count": N, "block_count": M}}
-        - {"type": "verification", "data": {"status": "supported"|"unsupported"}}
-        - {"type": "token", "data": {"text": "..."}}  (only when verification=supported)
+        - {"type": "token", "data": {"text": "<one verified sentence>"}}
+        - {"type": "verification", "data": {"status": "supported"|"unsupported"}}  (aggregate, after tokens)
+        - {"type": "retraction", "data": {"reason": "verification_failed"}}  (retract policy, mid-stream failure only)
         - {"type": "citations", "data": {"citations": [...]}}
-        - {"type": "final", "data": {"status": "answered"|"not_enough_evidence", "answer_text": "..."}}
+        - {"type": "final", "data": {"status": "answered"|"not_enough_evidence", "answer_text": "...", ["truncated": true]}}
         - {"type": "done", "data": {}}
         """
         # 1. Search (blocking — fast)
@@ -213,24 +228,84 @@ class ChatService:
             yield {"type": "done", "data": {}}
             return
 
-        # 3. Stream LLM tokens (buffered — not emitted until verification passes)
-        full_answer = ""
-        buffered_tokens: list[str] = []
+        # 3. Stream LLM tokens through the sentence assembler; verify each
+        # completed sentence before emitting it (ADR-0018). Verification runs
+        # in a worker thread so NLI inference never stalls the event loop.
+        assembler = SentenceAssembler()
+        emitted: list[str] = []
+        citation_ids: list[str] = []
+        failed = False
+
+        async def _sentence_is_supported(sentence_text: str) -> bool:
+            stripped = sentence_text.strip()
+            if not stripped:
+                return True
+            summary = await anyio.to_thread.run_sync(
+                functools.partial(
+                    self._answer_verifier.verify,
+                    answer_text=stripped,
+                    context_payload=context_payload,
+                )
+            )
+            if summary.status != "supported":
+                return False
+            for sentence_result in summary.sentences:
+                citation_ids.extend(sentence_result.citation_ids)
+            return True
+
         async for event in self._llm_backend.generate_stream(
             GenerateAnswerRequest(question=payload.question, context_payload=context_payload)
         ):
             if event.is_final:
                 break
-            full_answer += event.text
-            buffered_tokens.append(event.text)
+            for sentence in assembler.feed(event.text):
+                if await _sentence_is_supported(sentence):
+                    emitted.append(sentence)
+                    yield {"type": "token", "data": {"text": sentence}}
+                else:
+                    failed = True
+                    break
+            if failed:
+                break
 
-        # 4. Verify before emitting any generated text
-        verification = self._answer_verifier.verify(
-            answer_text=full_answer,
-            context_payload=context_payload,
-        )
+        if not failed:
+            tail = assembler.flush()
+            if tail is not None:
+                if await _sentence_is_supported(tail):
+                    emitted.append(tail)
+                    yield {"type": "token", "data": {"text": tail}}
+                else:
+                    failed = True
 
-        if verification.status != "supported":
+        answer_text = "".join(emitted)
+
+        # 4. Failure path — apply the configured policy
+        if failed:
+            yield {"type": "verification", "data": {"status": "unsupported"}}
+            if self._stream_verification_policy == "truncate" and emitted:
+                unique_citation_ids = list(dict.fromkeys(citation_ids))
+                citations = self._citation_resolver.resolve(
+                    citation_ids=unique_citation_ids, hits=search_response.items
+                ).items
+                yield {"type": "citations", "data": {"citations": [c.model_dump() for c in citations]}}
+                yield {"type": "final", "data": {
+                    "status": "answered",
+                    "answer_text": answer_text,
+                    "truncated": True,
+                }}
+                yield {"type": "done", "data": {}}
+                return
+            if emitted:
+                yield {"type": "retraction", "data": {"reason": "verification_failed"}}
+            yield {"type": "final", "data": {
+                "status": "not_enough_evidence",
+                "answer_text": NOT_ENOUGH_EVIDENCE_MESSAGE,
+            }}
+            yield {"type": "done", "data": {}}
+            return
+
+        # 5. Empty generation — nothing was ever verifiable
+        if not emitted:
             yield {"type": "verification", "data": {"status": "unsupported"}}
             yield {"type": "final", "data": {
                 "status": "not_enough_evidence",
@@ -239,24 +314,18 @@ class ChatService:
             yield {"type": "done", "data": {}}
             return
 
-        # 5. Emit verification result, then buffered tokens
+        # 6. Aggregate verification + citations + final
         yield {"type": "verification", "data": {"status": "supported"}}
 
-        for token_text in buffered_tokens:
-            yield {"type": "token", "data": {"text": token_text}}
-
-        # 6. Citations
-        citation_ids = list(dict.fromkeys(
-            cid for s in verification.sentences for cid in s.citation_ids
-        ))
+        unique_citation_ids = list(dict.fromkeys(citation_ids))
         citations = self._citation_resolver.resolve(
-            citation_ids=citation_ids, hits=search_response.items
+            citation_ids=unique_citation_ids, hits=search_response.items
         ).items
 
         yield {"type": "citations", "data": {"citations": [c.model_dump() for c in citations]}}
         yield {"type": "final", "data": {
             "status": "answered",
-            "answer_text": full_answer,
+            "answer_text": answer_text,
         }}
         yield {"type": "done", "data": {}}
 

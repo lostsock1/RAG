@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -48,6 +49,22 @@ class _PassThroughVerifier:
         )
 
 
+@lru_cache(maxsize=8)
+def _cached_nli_verifier(
+    entailment_threshold: float, scoring_mode: str, unsupported_ratio: float
+) -> NliAnswerVerifier:
+    """Process-cached NLI verifier (ADR-0018 §6).
+
+    Constructing NliAnswerVerifier per request reloads cross-encoder model
+    weights on every chat call — several seconds of first-token latency.
+    """
+    return NliAnswerVerifier(
+        entailment_threshold=entailment_threshold,
+        scoring_mode=scoring_mode,
+        unsupported_ratio=unsupported_ratio,
+    )
+
+
 def _build_chat_service(request: Request) -> ChatService:
     retriever = getattr(request.app.state, "search_retriever", None)
     if retriever is None:
@@ -72,10 +89,10 @@ def _build_chat_service(request: Request) -> ChatService:
 
     # Select answer verifier backend based on configuration.
     if settings.verifier_backend == "nli":
-        answer_verifier = NliAnswerVerifier(
-            entailment_threshold=settings.nli_entailment_threshold,
-            scoring_mode=settings.nli_scoring_mode,
-            unsupported_ratio=settings.nli_unsupported_ratio,
+        answer_verifier = _cached_nli_verifier(
+            settings.nli_entailment_threshold,
+            settings.nli_scoring_mode,
+            settings.nli_unsupported_ratio,
         )
     elif settings.verifier_backend == "disabled":
         answer_verifier = _PassThroughVerifier()
@@ -90,6 +107,7 @@ def _build_chat_service(request: Request) -> ChatService:
         answer_verifier=answer_verifier,
         max_context_characters=settings.context_builder_max_characters,
         max_context_blocks=settings.context_builder_max_blocks,
+        stream_verification_policy=settings.stream_verification_policy,
     )
 
 
