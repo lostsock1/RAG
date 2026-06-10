@@ -103,15 +103,15 @@ Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-an
 - [x] P1-7 — `persist_chunks` atomicity: single flush after parents, single commit at end, explicit rollback on any exception. Asserts single-parent for current loose-doc shape. Rollback test induces a duplicate-`chunk_index` `IntegrityError` and proves prior chunks survive.
 - [x] P1-8 — Removed unused `oidc_username_claim` setting from `Settings`.
 
-### P2 — operability and performance (0/7 done — deferred)
+### P2 — operability and performance (7/7 done — closed 2026-06-10, master plan task A4)
 
-- [ ] P2-1 — `OpenSearchLexicalIndexer` honors `settings.opensearch_verify_certs` and `opensearch_use_ssl` (currently hard-coded `verify_certs=False`).
-- [ ] P2-2 — Add `reset_dependency_caches()` helper that clears `get_settings.cache_clear()` and `get_oidc_token_verifier.cache_clear()`; wire into conftest fixtures.
-- [ ] P2-3 — `get_or_create_document_by_source_hash` IntegrityError fallback adds a 3-attempt retry loop (50 ms apart) reopening a fresh session.
-- [ ] P2-4 — Narrow `recover_orphaned_runs` startup exception swallow in `main.py` to `sqlalchemy.exc.OperationalError`/`ProgrammingError`; re-raise others.
-- [ ] P2-5 — `TemporalDispatcher` caches the client across `dispatch` calls; `close()` in FastAPI lifespan shutdown.
-- [ ] P2-6 — `build_temporal_worker` detects real Temporal client by `isinstance(client, temporalio.client.Client)` inside `try/except ImportError` instead of the brittle `hasattr(client, "config")` check.
-- [ ] P2-7 — App startup fails fast when `parser_backend=docling` + `workflow_backend=in_process` but storage is `None`.
+- [x] P2-1 — `OpenSearchLexicalIndexer` honors `verify_certs`/`use_ssl` (constructor params, secure default `verify_certs=True`, warnings suppressed only when verification explicitly disabled).
+- [x] P2-2 — `reset_dependency_caches()` helper in `app/core/caches.py` clears both `get_settings` and `get_oidc_token_verifier` caches; named fixture in new `apps/api/app/tests/conftest.py`.
+- [x] P2-3 — `get_or_create_document_by_source_hash` IntegrityError fallback retries the live-document lookup 3 times, 50 ms apart (fresh session per attempt), before re-raising.
+- [x] P2-4 — `recover_orphaned_runs` startup swallow narrowed to `sqlalchemy.exc.OperationalError`/`ProgrammingError`; other exceptions fail startup.
+- [x] P2-5 — `TemporalDispatcher` caches the client across `dispatch` calls; idempotent `close()` awaited in FastAPI lifespan shutdown when the dispatcher has one.
+- [x] P2-6 — `build_temporal_worker` detects the real Temporal client by `isinstance(client, temporalio.client.Client)` inside the ImportError guard; duck-typed stubs with a `config` attribute get the skeleton.
+- [x] P2-7 — App startup fails fast when `parser_backend=docling` + `workflow_backend=in_process` and no storage is configured (pre-injected `app.state.document_storage` counts as configured; storage-less test apps opt out via `parser_backend=""`).
 
 ### Out-of-scope tracking from this audit
 
