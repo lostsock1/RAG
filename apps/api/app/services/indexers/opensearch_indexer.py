@@ -27,6 +27,7 @@ class OpenSearchLexicalIndexer:
         port: int = 9200,
         auth: tuple[str, str] | None = None,
         use_ssl: bool = False,
+        verify_certs: bool = True,
         _mock: bool = False,
     ) -> None:
         self._index_name = index_name
@@ -34,19 +35,24 @@ class OpenSearchLexicalIndexer:
         self._port = port
         self._auth = auth
         self._use_ssl = use_ssl
+        self._verify_certs = verify_certs
         self._mock = _mock
         self._client: OpenSearch | None = None
         self._last_bulk_body: list[dict] = []
 
     def _ensure_client(self) -> OpenSearch:
         if self._client is None:
-            self._client = OpenSearch(
-                hosts=[{"host": self._host, "port": self._port}],
-                http_auth=self._auth,
-                use_ssl=self._use_ssl,
-                verify_certs=False,
-                ssl_show_warn=False,
-            )
+            client_kwargs: dict = {
+                "hosts": [{"host": self._host, "port": self._port}],
+                "http_auth": self._auth,
+                "use_ssl": self._use_ssl,
+                "verify_certs": self._verify_certs,
+            }
+            # Mirror the search runtime: suppress urllib3 warnings only when
+            # verification is explicitly disabled (insecure local/dev override).
+            if not self._verify_certs:
+                client_kwargs["ssl_show_warn"] = False
+            self._client = OpenSearch(**client_kwargs)
             self._ensure_index()
         return self._client
 

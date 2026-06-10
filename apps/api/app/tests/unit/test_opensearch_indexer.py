@@ -79,3 +79,44 @@ def test_opensearch_indexer_doc_structure():
     assert source["document_id"] == str(doc_id)
     assert source["chunk_id"] == str(chunk_id)
     assert source["chunk_index"] == 0
+
+
+class _FakeIndices:
+    def exists(self, index):
+        return True
+
+
+class _FakeOpenSearch:
+    captured: dict = {}
+
+    def __init__(self, **kwargs):
+        _FakeOpenSearch.captured = dict(kwargs)
+        self.indices = _FakeIndices()
+
+
+def test_opensearch_indexer_client_honors_tls_settings(monkeypatch):
+    """P2-1: _ensure_client honors use_ssl/verify_certs instead of hard-coding verify_certs=False."""
+    monkeypatch.setattr(
+        "app.services.indexers.opensearch_indexer.OpenSearch", _FakeOpenSearch
+    )
+
+    secure = OpenSearchLexicalIndexer(index_name="tls_secure", use_ssl=True, verify_certs=True)
+    secure._ensure_client()
+    assert _FakeOpenSearch.captured["use_ssl"] is True
+    assert _FakeOpenSearch.captured["verify_certs"] is True
+    assert "ssl_show_warn" not in _FakeOpenSearch.captured
+
+    insecure = OpenSearchLexicalIndexer(index_name="tls_insecure", verify_certs=False)
+    insecure._ensure_client()
+    assert _FakeOpenSearch.captured["verify_certs"] is False
+    assert _FakeOpenSearch.captured["ssl_show_warn"] is False
+
+
+def test_opensearch_indexer_verifies_certs_by_default(monkeypatch):
+    """P2-1: secure by default — certificate verification on unless explicitly disabled."""
+    monkeypatch.setattr(
+        "app.services.indexers.opensearch_indexer.OpenSearch", _FakeOpenSearch
+    )
+
+    OpenSearchLexicalIndexer(index_name="tls_default")._ensure_client()
+    assert _FakeOpenSearch.captured["verify_certs"] is True
