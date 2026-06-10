@@ -1,8 +1,9 @@
 # Uber-RAG
 
 **API-first, ACL-aware RAG platform for textbooks and loose documents — backend
-pipeline, hybrid retrieval, chat, verification, and eval harness implemented;
-Phase 4 closeout still needs fresh post-streaming-fix measurements.**
+pipeline, hybrid retrieval, chat, verification, and eval harness implemented.
+Phases 0–4 closed with measured evidence; active roadmap in
+`docs/superpowers/plans/2026-06-10-sota-master-plan.md` (Phases A–H; A complete).**
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
@@ -10,7 +11,7 @@ Phase 4 closeout still needs fresh post-streaming-fix measurements.**
 ![Qdrant](https://img.shields.io/badge/Qdrant-vector-DC244C)
 ![OpenSearch](https://img.shields.io/badge/OpenSearch-lexical-005EB8)
 ![Keycloak](https://img.shields.io/badge/Keycloak-OIDC-4D4D4D)
-![Status](https://img.shields.io/badge/status-backend%20MVP%20implemented%2C%20Phase%204%20evidence%20refresh%20needed-yellow)
+![Status](https://img.shields.io/badge/status-backend%20MVP%20%2B%20Phase%20A%20hygiene%20done%2C%20streaming%20TTFT%20fix%20next-yellow)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 ---
@@ -18,9 +19,11 @@ Phase 4 closeout still needs fresh post-streaming-fix measurements.**
 > **⚠️ This project is not production-ready.** The backend MVP is substantial:
 > upload → parse → chunk → embed → index, hybrid retrieval, reranking, chat,
 > citation resolution, sentence verification, ACL leakage tests, and an eval
-> harness exist. Honest Phase 4 closeout still requires fresh load/eval evidence
-> after the evidence-safe streaming change and clearer metric wording around
-> `not_contradicted` faithfulness. See [What's Missing](#whats-missing).
+> harness exist. Known-and-tracked: the evidence-safe streaming change buffers
+> the whole answer before the first token, so the ADR-0017 latency SLA currently
+> **fails by design** (P50 first-verified-token 5.97s vs < 5s ceiling, measured
+> 2026-06-10) until sentence-incremental verified streaming lands (master plan
+> Phase B / ADR-0018). See [What's Missing](#whats-missing).
 
 ---
 
@@ -86,9 +89,9 @@ Implemented backend slices:
 
 Honest caveats:
 
-- The current headline “faithfulness” number is measured with ADR-0016 `not_contradicted` mode. That is a contradiction guardrail, not a true source-support metric.
-- Streaming latency numbers need to be re-run after the token-buffering fix because “first token” now means “first verified token,” not raw LLM token.
-- Qdrant payload-side ACL filtering intentionally does not enforce expiry; SQL-side ACL filtering and OpenSearch payload filtering do. A numeric `expires_at_ts` payload is the likely future fix.
+- The current headline “faithfulness” number is measured with ADR-0016 `not_contradicted` mode. That is a contradiction guardrail, not a true source-support metric. A grounding-specific verifier is master plan Phase D.
+- Streaming was re-measured 2026-06-10 after the token-buffering fix: P50 first-verified-token 5.97s / P95 10.75s — **fails the ADR-0017 SLA (5s/10s) by design**, because “first token” now means “first verified token.” Remediation is ADR-0018 sentence-incremental verified streaming (Phase B), not an SLA revision.
+- Qdrant payload ACL filtering now enforces expiry via a numeric `expires_at_ts` field (2026-06-10). Fail-closed: corpora indexed before that date (including the VPS) return no Qdrant results until re-ingested.
 
 ### Storage ✅
 
@@ -101,23 +104,28 @@ Honest caveats:
 - VPS deployed and verified (12-point check passed 2026-05-23, against alembic head `20260523_0009`)
 - Docker Compose stack: Postgres, MinIO, Keycloak, Temporal
 - 12-point end-to-end verification passed (2026-05-23 — earliest re-verified after Phase 1+2 hardening landed)
-- 415 backend tests green (was 203 at Phase 1; +212 from Phase 2/3/4/audit work)
+- 440 backend tests green, 3 skipped (was 203 at Phase 1; +237 from Phase 2/3/4/audit/Phase-A work)
+- Note: the VPS Qdrant corpus predates the 2026-06-10 `expires_at_ts` change and needs re-ingest before Qdrant retrieval returns results there
 
 ---
 
 ## What's Missing
 
-### Not Yet Complete / Honest Closeout Required
+### Not Yet Complete
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Phase 4 load evidence** | ⚠️ Refresh needed | Re-run streaming load test after evidence-safe token buffering; old first-token numbers are stale |
-| **Faithfulness metric wording** | ⚠️ Needs honesty pass | ADR-0016 `not_contradicted` is non-contradiction, not true source-support verification |
-| **Phase 4 docs reconciliation** | ⚠️ Needed | `PROJECT_STATE.md`, `TASKS.md`, eval reports, and README should agree before declaring closeout |
-| **Eval report artifacts** | ⚠️ Needs cleanup | Decide which generated eval reports/logs are canonical and commit or ignore them intentionally |
-| **Frontend E2E verification** | ❌ Not done | Next.js pages exist; current local build was not re-verified because dependencies were not installed |
-| **Book profile chunking** | ❌ Not started | Only `LooseDocumentChunker` implemented |
-| **Graph RAG** | ❌ Not started | Deferred until hybrid retrieval core is proven |
+| **Streaming TTFT** | ⚠️ SLA failing by design | P50 first-verified-token 5.97s vs ADR-0017's < 5s — full-answer buffering for evidence safety; fix = ADR-0018 incremental verified streaming (master plan Phase B) |
+| **Retrieval quality measurement** | ❌ Not started | No recall@k/nDCG yet; 155 of 170 heldout questions skeletal — master plan Phase C |
+| **True support-metric verifier** | ❌ Not started | `not_contradicted` is a guardrail; grounding verifier (MiniCheck-class) is master plan Phase D |
+| **Frontend E2E verification** | ❌ Not done | Next.js pages exist; current local build was not re-verified because dependencies were not installed — master plan Phase F |
+| **Book profile chunking** | ❌ Not started | Only `LooseDocumentChunker` implemented — master plan Phase F |
+| **Graph RAG / advanced retrieval** | ❌ Not started | Eval-gated menu — master plan Phase H |
+
+Resolved in the 2026-06-10 Phase A pass: load-evidence refresh (measured, failing,
+tracked), faithfulness metric wording (ADR-0016 re-measurement note), docs
+reconciliation, eval-artifact policy (canonical JSON committed, logs ignored),
+P2 operability items 7/7, Qdrant payload expiry enforcement (`expires_at_ts`).
 
 ### Partially Implemented
 
@@ -185,7 +193,7 @@ flows remain incomplete.
 | Frontend | Next.js 15 + React 19 | ⚠️ Scaffold only |
 | LLM Answering | ppq.ai + Llama 3.3 70B via internal adapter | ✅ Wired behind config |
 | Reranking | BGE-reranker-v2-m3 | ✅ Wired behind config |
-| Tests | pytest + httpx | ✅ 417 passed, 1 skipped locally after streaming fix |
+| Tests | pytest + httpx | ✅ 440 passed, 3 skipped locally (post Phase A) |
 
 ---
 

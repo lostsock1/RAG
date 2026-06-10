@@ -186,6 +186,14 @@ policy; the 7 deferred P2 items and the Qdrant expiry ACL gap are closed.
 **Phase A exit criteria**: working tree clean; docs agree; load number for current
 code committed; P2 0/7 → 7/7; Qdrant expiry leakage test green.
 
+**✅ PHASE A COMPLETE — 2026-06-10.** A1 `1ebec84`; A2 `c3de521` (canonical:
+P50 5.97s / P95 10.75s, SLA FAIL by design, ADR-0017 updated); A4 `7a8204c`..`935138e`
+(7/7, suite 435); A5 `1d57e06` (fail-closed `expires_at_ts`, suite 440, real-stack
+eval fixture verified); A3 doc reconciliation in the closing commit. Final suite:
+**440 passed, 3 skipped.** Note for B3: A2's methodology pinned the load test to one
+anyio backend; keep that. Note for E4/deploys: pre-A5 Qdrant corpora (VPS) need
+re-ingest before retrieval returns results there.
+
 ---
 
 ## Phase B — Streaming that actually streams (ADR-0018)

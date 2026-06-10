@@ -1,5 +1,16 @@
 # Uber-RAG Roadmap
 
+> **Active sequencing (2026-06-10):** the canonical forward plan is
+> `docs/superpowers/plans/2026-06-10-sota-master-plan.md` (Phases A–H).
+> Mapping: **A** = Phase 4 evidence refresh + hardening tail (✅ complete
+> 2026-06-10); **B** = sentence-incremental verified streaming (ADR-0018);
+> **C** = retrieval measurement foundation; **D** = grounding verifier;
+> **E** = eval-gated retrieval upgrades; **F** = this roadmap's Phase 5
+> (book profile + UI); **G** = Phase 6 (hardening); **H** = Phase 7
+> (advanced retrieval menu). The phase descriptions below remain the
+> reference for goals and exit criteria; the master plan carries the
+> task-level detail and ordering.
+
 The project is structured in phases. Each phase has:
 
 - **Entry gate** — mandatory re-evaluation of the stack against current evidence before the phase begins.
@@ -172,7 +183,7 @@ Exit criteria:
 
 ## Phase 4: Reranking, generation, verification
 
-Entry gate: re-evaluate BGE-Reranker-v2-m3 (check for newer rerankers), vLLM/llama.cpp release notes, the model winner from ADR-0004, citation/verification techniques on Awesome-AI-Memory. **Current status (2026-05-23): partially closed** — ADR-0014 reconfirms `bge-reranker-v2-m3`; ADR-0015 accepted for eval harness. All deliverables implemented. Exit criteria: negative-answer compliance ✅ (1.00/23), ACL leakage ✅, streaming ✅ (real token-level). Faithfulness measurement and load testing require full pipeline fixture + running stack — tracked in TASKS.md.
+Entry gate: re-evaluate BGE-Reranker-v2-m3 (check for newer rerankers), vLLM/llama.cpp release notes, the model winner from ADR-0004, citation/verification techniques on Awesome-AI-Memory. **Status (reconciled 2026-06-10): CLOSED.** ADR-0014 reconfirms `bge-reranker-v2-m3`; ADR-0015 (eval harness), ADR-0016 (faithfulness metric), ADR-0017 (streaming SLA) accepted. All four exit criteria met with measured numbers on 2026-05-23 (faithfulness 1.000 not_contradicted / 0.133 entailment-informational; negative compliance 1.00 on 23; ACL leakage 0; load P50 ~2.5s pre-buffering). Post-closeout: the evidence-safe streaming fix moved verification into the first-token path; re-measured 2026-06-10 at P50 5.97s / P95 10.75s — ADR-0017 SLA fails by design pending ADR-0018 (master plan Phase B).
 
 Goal: end-to-end answer with citations. Stage 1 evidence discipline (citation required per paragraph) and negative-answer behavior.
 

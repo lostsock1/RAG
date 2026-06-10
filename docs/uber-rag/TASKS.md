@@ -153,12 +153,12 @@ Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-an
 - [x] Measure negative-answer compliance (1.00 on 23/23 questions).
 - [x] Implement NLI-based answer verifier (`cross-encoder/nli-deberta-v3-base`).
 - [x] Create fixture corpus (8 documents, 15 ground-truth questions).
-- [ ] Wire full ingestion pipeline in test fixture (SQLite + Qdrant in-memory + OpenSearch mock + BGE-M3).
-- [ ] Run baseline faithfulness measurement against substring verifier.
-- [ ] Run NLI faithfulness measurement and iterate until ≥ 0.85 (or write ADR-0016).
-- [ ] Run streaming load test (5 concurrent users, 30 queries, P50/P95 first-token).
+- [x] Wire full ingestion pipeline in test fixture (SQLite + Qdrant in-memory + OpenSearch mock + BGE-M3) — done 2026-05-23 (`tests/eval/conftest.py` `eval_stack`).
+- [x] Run baseline faithfulness measurement against substring verifier — done 2026-05-23 (0.067).
+- [x] Run NLI faithfulness measurement and iterate until ≥ 0.85 (or write ADR-0016) — done 2026-05-23 (not_contradicted 1.000; entailment 0.113/0.133 non-functional; ADR-0016 revised).
+- [x] Run streaming load test (5 concurrent, P50/P95 first-token) — done 2026-05-23 (P50 ~2.5s pre-buffering); **re-measured 2026-06-10 post-evidence-safe-buffering: P50 5.97s / P95 10.75s — ADR-0017 SLA fails by design pending ADR-0018** (`tests/eval/reports/load_post_buffering.json`).
 
-**Phase 4 status (2026-05-23):** All deliverables implemented. Exit criteria: negative-answer compliance ✅ (1.00), ACL leakage ✅, streaming ✅ (real tokens). Faithfulness measurement and load testing require full pipeline fixture + running stack — tracked as remaining items above.
+**Phase 4 status (reconciled 2026-06-10):** CLOSED. All four exit criteria were met with measured numbers on 2026-05-23. The subsequent evidence-safe streaming fix (`1ce0d30`) deliberately moved verification into the first-token path; the refreshed load measurement fails the ADR-0017 SLA (known, tracked, remediation = master plan Phase B / ADR-0018). Forward work lives in `docs/superpowers/plans/2026-06-10-sota-master-plan.md`.
 
 ## Phase 5: Web UI
 
@@ -176,9 +176,9 @@ Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-an
 - [x] Create eval harness (loader, scorer, reporter, runner, CLI).
 - [x] Create negative tests (23 negative questions, compliance 1.00).
 - [x] Create ACL leakage tests (10 questions, group-separation verified).
-- [ ] Wire full pipeline ingestion fixture for faithfulness measurement.
-- [ ] Run baseline faithfulness measurement.
-- [ ] Run NLI faithfulness measurement and iterate.
+- [x] Wire full pipeline ingestion fixture for faithfulness measurement — done 2026-05-23 (duplicate of the Phase 4 item).
+- [x] Run baseline faithfulness measurement — done 2026-05-23 (0.067, substring verifier).
+- [x] Run NLI faithfulness measurement and iterate — done 2026-05-23 (ADR-0016; re-measured entailment 0.133 post-hardening).
 - [ ] Backfill remaining 155 heldout questions with ground-truth chunk IDs.
 - [ ] Add recall@k measurement to harness.
 - [ ] Run multilingual subset (German, Portuguese).
