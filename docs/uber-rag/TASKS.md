@@ -158,7 +158,7 @@ Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-an
 - [x] Run NLI faithfulness measurement and iterate until ≥ 0.85 (or write ADR-0016) — done 2026-05-23 (not_contradicted 1.000; entailment 0.113/0.133 non-functional; ADR-0016 revised).
 - [x] Run streaming load test (5 concurrent, P50/P95 first-token) — done 2026-05-23 (P50 ~2.5s pre-buffering); **re-measured 2026-06-10 post-evidence-safe-buffering: P50 5.97s / P95 10.75s — ADR-0017 SLA fails by design pending ADR-0018** (`tests/eval/reports/load_post_buffering.json`).
 
-**Phase 4 status (reconciled 2026-06-10):** CLOSED. All four exit criteria were met with measured numbers on 2026-05-23. The subsequent evidence-safe streaming fix (`1ce0d30`) deliberately moved verification into the first-token path; the refreshed load measurement fails the ADR-0017 SLA (known, tracked, remediation = master plan Phase B / ADR-0018). Forward work lives in `docs/superpowers/plans/2026-06-10-sota-master-plan.md`.
+**Phase 4 status (reconciled 2026-06-10):** CLOSED. All four exit criteria were met with measured numbers on 2026-05-23. The subsequent evidence-safe streaming fix (`1ce0d30`) deliberately moved verification into the first-token path and temporarily broke the ADR-0017 SLA; **resolved the same day by ADR-0018 sentence-incremental verified streaming (master plan Phase B): P50 first-verified-token 3.11s / P95 3.22s, SLA passing.** Forward work lives in `docs/superpowers/plans/2026-06-10-sota-master-plan.md`.
 
 ## Phase 5: Web UI
 

@@ -1,9 +1,9 @@
 # Uber-RAG
 
 **API-first, ACL-aware RAG platform for textbooks and loose documents — backend
-pipeline, hybrid retrieval, chat, verification, and eval harness implemented.
-Phases 0–4 closed with measured evidence; active roadmap in
-`docs/superpowers/plans/2026-06-10-sota-master-plan.md` (Phases A–H; A complete).**
+pipeline, hybrid retrieval, chat, sentence-incrementally verified streaming, and
+eval harness implemented. Phases 0–4 closed with measured evidence; active roadmap
+in `docs/superpowers/plans/2026-06-10-sota-master-plan.md` (Phases A–H; A+B complete).**
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
@@ -11,19 +11,19 @@ Phases 0–4 closed with measured evidence; active roadmap in
 ![Qdrant](https://img.shields.io/badge/Qdrant-vector-DC244C)
 ![OpenSearch](https://img.shields.io/badge/OpenSearch-lexical-005EB8)
 ![Keycloak](https://img.shields.io/badge/Keycloak-OIDC-4D4D4D)
-![Status](https://img.shields.io/badge/status-backend%20MVP%20%2B%20Phase%20A%20hygiene%20done%2C%20streaming%20TTFT%20fix%20next-yellow)
+![Status](https://img.shields.io/badge/status-backend%20MVP%20%2B%20verified%20streaming%20(ADR--0018)%2C%20retrieval%20measurement%20next-yellow)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen)
 
 ---
 
 > **⚠️ This project is not production-ready.** The backend MVP is substantial:
 > upload → parse → chunk → embed → index, hybrid retrieval, reranking, chat,
-> citation resolution, sentence verification, ACL leakage tests, and an eval
-> harness exist. Known-and-tracked: the evidence-safe streaming change buffers
-> the whole answer before the first token, so the ADR-0017 latency SLA currently
-> **fails by design** (P50 first-verified-token 5.97s vs < 5s ceiling, measured
-> 2026-06-10) until sentence-incremental verified streaming lands (master plan
-> Phase B / ADR-0018). See [What's Missing](#whats-missing).
+> citation resolution, sentence-incrementally verified streaming (ADR-0018:
+> every sentence verified before emission, P50 first-verified-token 3.1s under
+> 5-concurrent load, ADR-0017 SLA passing), ACL leakage tests, and an eval
+> harness. The big gaps are retrieval-quality measurement, a true support-metric
+> verifier, the book profile, and the frontend. See
+> [What's Missing](#whats-missing).
 
 ---
 
@@ -72,7 +72,7 @@ a local Temporal dev server.
 | `POST /api/v1/search` | ✅ Hybrid retrieval path behind explicit config; truthful `503` when unavailable |
 | `GET /api/v1/search/sources/{chunk_id}` | ✅ ACL-rechecked source viewer |
 | `POST /api/v1/chat` | ✅ Blocking chat with retrieval, context, LLM, verification, citations |
-| `POST /api/v1/chat/stream` | ✅ Evidence-safe SSE: generated tokens are buffered until verification passes |
+| `POST /api/v1/chat/stream` | ✅ Sentence-incrementally verified SSE (ADR-0018): each sentence verified before emission; retract/truncate policy on failure |
 | `POST /api/v1/citations/resolve` | ✅ ACL-safe citation resolution |
 | `POST /api/v1/answers/verify` | ✅ Sentence-level answer verification |
 
@@ -84,13 +84,14 @@ Implemented backend slices:
 - BGE-M3 embedder and BGE-reranker-v2-m3 adapter behind explicit runtime config.
 - Context builder, LLM backend seam with deterministic stub and ppq/OpenAI-compatible adapter.
 - Blocking chat and SSE chat endpoints share the same ACL-safe search path.
-- Streaming chat is now evidence-safe: unsupported generated text is never emitted as token events.
+- Streaming chat is evidence-safe and incremental (ADR-0018): every sentence is verified before its text is emitted; a mid-stream verification failure retracts (default) or truncates per `stream_verification_policy`.
 - Eval harness exists with fixture corpus, negative-answer tests, NLI verifier tests, and load-test scaffolding.
 
 Honest caveats:
 
 - The current headline “faithfulness” number is measured with ADR-0016 `not_contradicted` mode. That is a contradiction guardrail, not a true source-support metric. A grounding-specific verifier is master plan Phase D.
-- Streaming was re-measured 2026-06-10 after the token-buffering fix: P50 first-verified-token 5.97s / P95 10.75s — **fails the ADR-0017 SLA (5s/10s) by design**, because “first token” now means “first verified token.” Remediation is ADR-0018 sentence-incremental verified streaming (Phase B), not an SLA revision.
+- Streaming latency (5 concurrent, real ppq + NLI, 2026-06-10 after ADR-0018): **P50 first-verified-token 3.11s, P95 3.22s — ADR-0017 SLA (5s/10s) passing**, with every emitted sentence individually verified. “First token” means “first verified sentence.” The ADR-0008 ~2s ambition remains provider-bound (local LLM serving is master plan Phase G).
+- The streaming path is deliberately stricter than blocking `/chat`: it gates every sentence, while blocking tolerates up to `nli_unsupported_ratio` unsupported sentences (ADR-0016/0018).
 - Qdrant payload ACL filtering now enforces expiry via a numeric `expires_at_ts` field (2026-06-10). Fail-closed: corpora indexed before that date (including the VPS) return no Qdrant results until re-ingested.
 
 ### Storage ✅
@@ -115,17 +116,22 @@ Honest caveats:
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Streaming TTFT** | ⚠️ SLA failing by design | P50 first-verified-token 5.97s vs ADR-0017's < 5s — full-answer buffering for evidence safety; fix = ADR-0018 incremental verified streaming (master plan Phase B) |
 | **Retrieval quality measurement** | ❌ Not started | No recall@k/nDCG yet; 155 of 170 heldout questions skeletal — master plan Phase C |
 | **True support-metric verifier** | ❌ Not started | `not_contradicted` is a guardrail; grounding verifier (MiniCheck-class) is master plan Phase D |
 | **Frontend E2E verification** | ❌ Not done | Next.js pages exist; current local build was not re-verified because dependencies were not installed — master plan Phase F |
 | **Book profile chunking** | ❌ Not started | Only `LooseDocumentChunker` implemented — master plan Phase F |
 | **Graph RAG / advanced retrieval** | ❌ Not started | Eval-gated menu — master plan Phase H |
 
-Resolved in the 2026-06-10 Phase A pass: load-evidence refresh (measured, failing,
-tracked), faithfulness metric wording (ADR-0016 re-measurement note), docs
-reconciliation, eval-artifact policy (canonical JSON committed, logs ignored),
-P2 operability items 7/7, Qdrant payload expiry enforcement (`expires_at_ts`).
+Resolved in the 2026-06-10 Phase A pass: load-evidence refresh, faithfulness
+metric wording (ADR-0016 re-measurement note), docs reconciliation, eval-artifact
+policy (canonical JSON committed, logs ignored), P2 operability items 7/7, Qdrant
+payload expiry enforcement (`expires_at_ts`).
+
+Resolved in the 2026-06-10 Phase B pass: streaming TTFT — sentence-incremental
+verified streaming (ADR-0018) + process-wide NLI verification gate restored the
+ADR-0017 SLA (P50 3.11s / P95 3.22s first-verified-token at 5 concurrent) with
+per-sentence evidence discipline, and fixed per-request NLI model reloading in
+production.
 
 ### Partially Implemented
 

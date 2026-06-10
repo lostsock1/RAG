@@ -673,7 +673,24 @@ paths:
 
   /chat/stream:
     post:
-      summary: Stream an answer result over SSE
+      summary: Stream an answer with sentence-incremental verification over SSE
+      description: |
+        Evidence-safe SSE stream (ADR-0018). Generated tokens are assembled
+        into sentences; each sentence is verified against the authorized
+        context before its text is emitted as a `token` event (token events
+        carry one verified sentence each). No unverified text is ever emitted.
+
+        Event grammar by outcome (`stream_verification_policy`, default `retract`):
+        - answered: `retrieval`, `token`+, `verification` (supported),
+          `citations`, `final` (answered), `done`
+        - no evidence: `retrieval`, `final` (not_enough_evidence), `done`
+        - first sentence unsupported: `retrieval`, `verification` (unsupported),
+          `final` (not_enough_evidence), `done`
+        - mid-stream failure (retract): `retrieval`, `token`+, `verification`
+          (unsupported), `retraction`, `final` (not_enough_evidence), `done` —
+          clients must replace displayed partial text on `retraction`
+        - mid-stream failure (truncate): `retrieval`, `token`+, `verification`
+          (unsupported), `citations`, `final` (answered, truncated=true), `done`
       operationId: chatStream
       tags: [Chat]
       requestBody:
@@ -684,7 +701,7 @@ paths:
               $ref: "#/components/schemas/ChatRequest"
       responses:
         "200":
-          description: Minimal SSE sequence (`start`, `answer`, `done`)
+          description: SSE event stream per the ADR-0018 grammar
           content:
             text/event-stream:
               schema:

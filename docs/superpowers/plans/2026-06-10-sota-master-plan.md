@@ -268,6 +268,19 @@ discipline: no token is ever emitted before its sentence is verified.
 **Phase B exit criteria**: P50 first-verified-token < 5s at 5 concurrent (ADR-0017),
 with the buffered-everything path gone and evidence-safety tests intact.
 
+**✅ PHASE B COMPLETE — 2026-06-10.** B1 `b0aefb8` (ADR-0018 Accepted; amended
+pipelining → inline-v1); B2 `d777e54` (assembler + incremental verify in worker
+thread + retract/truncate + per-request NLI model-reload fix; suite 458); B3 in the
+closing commit. Measurement story: ungated incremental was *worse* than buffered
+(P50 8.0s — concurrent per-sentence predicts thrash torch's intra-op threads);
+process-wide verification gate fixed it. **Final: P50 3107ms / P95 3221ms
+first-verified-token, totals 5.2s/7.7s, SLA PASSING, load test green.** Notes for
+later phases: (1) Phase D's grounding verifier must keep the verification-gate
+pattern (any CPU cross-encoder thrashes the same way); (2) the ADR-0008 ~2s gap is
+now purely provider TTFS — Phase G local serving is the lever; (3) the SSE grammar
+in API_CONTRACT.md is the contract for Phase F's chat UI (retraction handling
+required).
+
 ---
 
 ## Phase C — Retrieval measurement foundation

@@ -87,6 +87,18 @@ Revisit trigger for pipelining: if the B3 load re-measurement misses the
 ADR-0017 SLA and per-sentence verification (not provider latency) is the
 dominant term, implement the ordered-pipeline variant.
 
+**B3 measurement follow-up (2026-06-10):** the first re-measurement fired this
+trigger in an unexpected direction — not pipelining, but **contention**. Five
+concurrent streams running per-sentence `CrossEncoder.predict` in parallel
+worker threads oversubscribed the CPU (torch spawns its full intra-op thread
+pool per predict): P50 first-token 8.0s, totals ~13.5s. The fix is a
+process-wide verification gate (`threading.Semaphore(1)` taken inside the
+worker thread — loop-agnostic): one predict at a time at full core count.
+Result: **P50 first-token 3.11s, P95 3.22s, SLA passing** (see ADR-0017).
+Pipelining remains unnecessary; it would also have to respect the same gate,
+so its headroom is the inter-sentence verify latency (~0.3s), not worth the
+asyncgen/task-group complexity at current scale.
+
 ### 4. Failure policy: `stream_verification_policy` (config, default `retract`)
 
 - **`retract`** (default): on the first unsupported sentence, stop generation,

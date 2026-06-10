@@ -1,9 +1,9 @@
 # ADR-0017: Streaming First-Token SLA Under Load
 
-Status: Accepted — **SLA currently FAILING by design** after the evidence-safe
-streaming change (see "Re-measurement 2026-06-10"); remediation is ADR-0018
-sentence-incremental verified streaming (master plan Phase B), not an SLA revision.
-Date: 2026-05-23 (re-measured 2026-06-10)
+Status: Accepted — **SLA PASSING again as of 2026-06-10** after ADR-0018
+sentence-incremental verified streaming landed (master plan Phase B). The interim
+failing-by-design window (evidence-safe full-answer buffering) is documented below.
+Date: 2026-05-23 (re-measured 2026-06-10, twice)
 
 ## Context
 
@@ -46,6 +46,30 @@ invariant #5). ADR-0018 (sentence-incremental verified streaming, master plan
 Phase B) restores first-verified-token latency to ~LLM-bound levels while keeping
 the invariant. The load test keeps its assertions and stays red until Phase B
 lands; it is excluded from CI (requires `PPQ_API_KEY`).
+
+## Re-measurement 2026-06-10 (second) — after ADR-0018 incremental streaming
+
+ADR-0018 landed the same day in two steps, both measured:
+
+| Variant | P50 first-token | P95 first-token | P50 total | P95 total | SLA |
+|---|---|---|---|---|---|
+| Buffered (baseline above) | 5.97s | 10.75s | ≈ first-token | ≈ first-token | FAIL |
+| Incremental, ungated verification | 8.01s | 13.60s | 13.52s | 14.86s | FAIL |
+| **Incremental + process-wide verification gate** | **3.11s** | **3.22s** | 5.23s | 7.70s | **PASS** |
+
+The ungated variant exposed a second bottleneck: five concurrent streams each
+running per-sentence `CrossEncoder.predict` in worker threads oversubscribe the
+CPU (torch spawns its full intra-op thread count per predict) and thrash —
+totals nearly doubled versus buffered. A process-wide gate (one NLI predict at
+a time, full core count each, `threading.Semaphore` taken inside the worker
+thread) restored throughput. Note the buffered implementation had accidentally
+serialized verification by calling it on the event loop; the gate keeps that
+serialization while keeping the loop free.
+
+**SLA verdict: PASSING.** P50 3.11s < 5s, P95 3.22s < 10s, 5/5 answered,
+0 errors — with strictly stronger evidence discipline than the ~2.5s
+pre-buffering baseline (which verified nothing before emission). The ADR-0008
+~2s ambition remains open and provider-bound (see revisit triggers).
 
 Methodology note: the load test is now pinned to a single anyio backend
 (asyncio) — the anyio plugin otherwise runs it twice (asyncio + trio), doubling

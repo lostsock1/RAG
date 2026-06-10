@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import threading
 from typing import AsyncIterator, cast
 from uuid import UUID
 
@@ -17,6 +18,14 @@ from app.services.retrieval.base import RetrievalHit
 from app.services.streaming_verifier import SentenceAssembler
 
 NOT_ENOUGH_EVIDENCE_MESSAGE = "I do not have enough permitted source evidence to answer that yet."
+
+# Process-wide verification gate (ADR-0018 §3 measurement follow-up): one NLI
+# predict at a time, each using torch's full intra-op thread count. Concurrent
+# per-sentence predicts from parallel streams oversubscribe the CPU and thrash —
+# measured 2026-06-10: P50 first-token 8.0s / totals ~13.5s at 5 concurrent
+# without the gate vs the same verifier being fast solo (request 0: 2.6s).
+# Taken inside the worker thread, so it is event-loop-agnostic (asyncio/trio).
+_VERIFICATION_GATE = threading.Semaphore(1)
 
 
 class ChatService:
@@ -236,16 +245,19 @@ class ChatService:
         citation_ids: list[str] = []
         failed = False
 
+        def _verify_gated(stripped_sentence: str):
+            with _VERIFICATION_GATE:
+                return self._answer_verifier.verify(
+                    answer_text=stripped_sentence,
+                    context_payload=context_payload,
+                )
+
         async def _sentence_is_supported(sentence_text: str) -> bool:
             stripped = sentence_text.strip()
             if not stripped:
                 return True
             summary = await anyio.to_thread.run_sync(
-                functools.partial(
-                    self._answer_verifier.verify,
-                    answer_text=stripped,
-                    context_payload=context_payload,
-                )
+                functools.partial(_verify_gated, stripped)
             )
             if summary.status != "supported":
                 return False
