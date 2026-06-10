@@ -2,7 +2,7 @@
   "entailment": {
     "scoring_mode": "entailment",
     "unsupported_ratio": 0.0,
-    "faithfulness": 0.1133,
+    "faithfulness": 0.1333,
     "total_questions": 15,
     "per_question": [
       {
@@ -108,12 +108,12 @@
       {
         "question_id": "n03",
         "type": "needle",
-        "faithfulness": 0.5,
-        "contains_rate": 0.0,
+        "faithfulness": 1.0,
+        "contains_rate": 1.0,
         "absent_fail": false,
-        "status_match": false,
-        "response_status": "not_enough_evidence",
-        "answer_preview": "I do not have enough permitted source evidence to answer that yet."
+        "status_match": true,
+        "response_status": "answered",
+        "answer_preview": "The exact population figure given for Liechtenstein is 39,584."
       },
       {
         "question_id": "n06",
@@ -128,7 +128,7 @@
       {
         "question_id": "n12",
         "type": "needle",
-        "faithfulness": 0.2,
+        "faithfulness": 0.0,
         "contains_rate": 0.0,
         "absent_fail": false,
         "status_match": false,
@@ -201,7 +201,7 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "According to the economics textbook, inflation is defined as \"a general increase in the level of prices across an economy over a period of time.\" This means that when the overall price level rises, ea"
+        "answer_preview": "According to the economics textbook, inflation is defined as a \"general increase in the level of prices across an economy over a period of time.\" This means that when the overall price level rises, ea"
       },
       {
         "question_id": "h13",
@@ -211,7 +211,7 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "According to the textbook, a covalent bond is a chemical bond formed when two atoms share one or more pairs of electrons to achieve a stable electron configuration. This is stated in the text of rank="
+        "answer_preview": "According to the provided evidence, a covalent bond is a chemical bond formed when two atoms share one or more pairs of electrons to achieve a stable electron configuration, typically an octet. This i"
       },
       {
         "question_id": "h16",
@@ -221,7 +221,7 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "The value of the gravitational constant G stated in the textbook is 6.67430(15) \u00d7 10\u207b\u00b9\u00b9 N m\u00b2/kg\u00b2, with a relative standard uncertainty of 2.2 \u00d7 10\u207b\u2075, as of 2018, according to the CODATA recommended va"
+        "answer_preview": "The value of the gravitational constant G is stated in two evidence blocks.   In evidence block 1, the value of G is given as 6.67430(15) \u00d7 10\u207b\u00b9\u00b9 N m\u00b2/kg\u00b2, with a relative standard uncertainty of 2.2 "
       },
       {
         "question_id": "h19",
@@ -241,17 +241,17 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "The provided evidence blocks do not explicitly list the five stages of grief in a single block. However, based on the information provided, we can infer the stages from different blocks:  1. Block 1 m"
+        "answer_preview": "The provided evidence blocks do not explicitly list all five stages of grief together in one place. However, evidence block 1 mentions the five stages as \"denial, anger, bargaining, depression, and ac"
       },
       {
         "question_id": "h29",
         "type": "formula",
         "faithfulness": 1.0,
-        "contains_rate": 0.25,
+        "contains_rate": 1.0,
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "The equation for the ideal gas law is not explicitly stated in the provided evidence blocks as being from a chemistry textbook, but it is mentioned in the context of a physics textbook. According to t"
+        "answer_preview": "The equation for the ideal gas law is not explicitly stated in the provided evidence blocks as being from a chemistry textbook, but rather from a physics textbook. However, according to the evidence b"
       },
       {
         "question_id": "h31",
@@ -261,7 +261,7 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "According to the provided evidence, Ohm's law is stated as: V = IR, which describes the linear relationship between **voltage (V)**, **current (I)**, and **resistance (R)** in an electrical circuit."
+        "answer_preview": "According to the provided evidence, Ohm's law is stated as:  V = IR  where: - V is the voltage - I is the current - R is the resistance  This formulation is mentioned in evidence block rank=4. Evidenc"
       },
       {
         "question_id": "n03",
@@ -271,7 +271,7 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "The exact population figure given for Liechtenstein is 39,584."
+        "answer_preview": "The exact population figure given for Liechtenstein is 39,584. This figure is mentioned in two evidence blocks: rank=1 and rank=5."
       },
       {
         "question_id": "n06",
@@ -281,7 +281,7 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "The specific temperature anomaly recorded in the textbook's climate data table for the year 1883 is -0.21\u00b0C. This information is found in the evidence blocks with ranks 1, 2, and 3. Rank 2 provides a "
+        "answer_preview": "The specific temperature anomaly recorded in the textbook's climate data table for the year 1883 is -0.21\u00b0C. This information is found in evidence blocks rank=1 and rank=2."
       },
       {
         "question_id": "n12",
@@ -291,7 +291,7 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "The provided evidence blocks do not explicitly mention a specific rare mineral as an example of a crystal structure with 8-fold symmetry. However, they do mention \"grossular garnet\" and its apparent 8"
+        "answer_preview": "The provided sources do not contain enough evidence to identify a specific rare mineral as an example of a crystal structure with 8-fold symmetry. The sources mention grossular garnet, but it is descr"
       },
       {
         "question_id": "n15",
@@ -301,7 +301,7 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "The treaty that was signed but never ratified, as mentioned in the evidence blocks, is the Treaty of Lausanne. This is stated in evidence blocks 1 and 2."
+        "answer_preview": "The treaty that was signed but never ratified is the Treaty of Lausanne, as mentioned in evidence blocks rank=1 and rank=2. According to the text, the Treaty of Lausanne was \"signed by all parties, bu"
       },
       {
         "question_id": "n19",
@@ -311,10 +311,10 @@
         "absent_fail": false,
         "status_match": true,
         "response_status": "answered",
-        "answer_preview": "The provided evidence blocks do not contain information about the textbook's index entry for 'Zeno'. They do mention that Zeno's paradoxes, including the famous paradox of Achilles and the tortoise, a"
+        "answer_preview": "The provided evidence blocks do not contain information about the textbook's index entry for 'Zeno'. However, based on the text, it can be inferred that page 312 is related to Zeno's paradoxes, specif"
       }
     ]
   },
-  "production_default": "entailment",
+  "production_default": "not_contradicted",
   "adr": "0016-faithfulness-metric-selection"
 }

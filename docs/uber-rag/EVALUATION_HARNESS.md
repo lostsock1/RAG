@@ -25,6 +25,14 @@ tests/
       sample_corpus/     # Small synthetic corpus for harness CI smoke tests
 ```
 
+## Report artifact policy
+
+Canonical evaluation results are **committed JSON files** under `tests/eval/reports/`.
+Raw pytest run logs are never tracked (`tests/eval/reports/*.log` is gitignored).
+Any measurement cited by an ADR, a phase-exit claim, or `PROJECT_STATE.md` must
+reference a committed JSON report in that directory; numbers without a committed
+report are not citable.
+
 ## Ground-truth question format
 
 Each dataset is a YAML file. Every question has:

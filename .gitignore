@@ -59,3 +59,9 @@ minio-data/
 
 # Local Temporal proof artifacts
 .temporal/
+
+# Eval artifacts: canonical JSON reports are committed; raw pytest run logs are not
+tests/eval/reports/*.log
+
+# Local agent tooling (book-derived skills etc.), not project source
+.agents/

@@ -59,6 +59,13 @@ Both modes measured on the 15-question answered subset of `heldout-v1.yaml`:
 | Entailment (strict) | `entailment` | 0.0 | **0.113** |
 | Not contradicted (lenient) | `not_contradicted` | 0.2 | **1.000** |
 
+Re-measured 2026-05-23 after the Phase 1+2 retrieval hardening pass (payload-side
+ACL filters restored, Qdrant expiry clause dropped): entailment **0.133**,
+not_contradicted **1.000** (15/15 answered). Same conclusion — entailment mode
+remains non-functional; the per-question deltas (e.g., n03 now answered) come from
+the retriever changes, not the verifier. The committed
+`tests/eval/reports/nli_both_modes.json` reflects this re-run.
+
 Full per-question data: `tests/eval/reports/nli_both_modes.json`
 
 ## Consequences
