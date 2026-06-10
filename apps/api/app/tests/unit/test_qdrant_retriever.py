@@ -51,11 +51,10 @@ def test_qdrant_retriever_uses_payload_acl_filter() -> None:
     # The filter must be a proper Filter object with ACL structure
     query_filter = call["query_filter"]
     assert isinstance(query_filter, Filter)
-    # must contains: tenant_clause, not_tombstoned, access_filter.
-    # Expiry is enforced by the SQL ACL filter, not duplicated here —
-    # see acl_filter module docstring for the asymmetry vs OpenSearch.
+    # must contains: tenant_clause, not_tombstoned, unexpired (numeric
+    # expires_at_ts Range, A5), access_filter.
     assert query_filter.must is not None
-    assert len(query_filter.must) == 3
+    assert len(query_filter.must) == 4
 
     # First clause: tenant_id == "tenant-1"
     tenant_clause = query_filter.must[0]

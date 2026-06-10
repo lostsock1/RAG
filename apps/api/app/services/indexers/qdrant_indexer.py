@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from uuid import UUID
 
 from qdrant_client import QdrantClient
@@ -16,8 +17,26 @@ from qdrant_client.models import (
 from app.schemas.chunks import Chunk
 from app.schemas.embeddings import EmbeddingResult
 from app.services.indexers.base import VectorIndexer
+from app.services.retrieval.acl_filter import NO_EXPIRY_TS
 
 logger = logging.getLogger(__name__)
+
+
+def _expires_at_ts(expires_at: object) -> int:
+    """Numeric expiry for the payload ACL filter (epoch seconds).
+
+    ``NO_EXPIRY_TS`` sentinel when unset — the filter uses an unconditional
+    ``Range(gt=now)``, so every point must carry a comparable number.
+    """
+    if expires_at is None:
+        return NO_EXPIRY_TS
+    if isinstance(expires_at, datetime):
+        value = expires_at
+    else:
+        value = datetime.fromisoformat(str(expires_at))
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    return int(value.timestamp())
 
 _DENSE_VECTOR_NAME = "dense"
 _SPARSE_VECTOR_NAME = "sparse"
@@ -123,6 +142,7 @@ class QdrantVectorIndexer:
                     "sensitivity": acl_metadata.get("sensitivity", "internal"),
                     "sensitivity_rank": acl_metadata.get("sensitivity_rank", 200),
                     "expires_at": acl_metadata.get("expires_at"),
+                    "expires_at_ts": _expires_at_ts(acl_metadata.get("expires_at")),
                     "acl_policy_id": acl_metadata.get("acl_policy_id", ""),
                     "acl_policy_version": acl_metadata.get("acl_policy_version", 1),
                     "allowed_role_ids": acl_metadata.get("allowed_role_ids", []),

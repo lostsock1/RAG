@@ -55,6 +55,7 @@ Each tenant now has one bootstrap ACL policy that is intended to be configured b
   "sensitivity": "public|internal|confidential|restricted",
   "sensitivity_rank": 200,
   "expires_at": "timestamp|null",
+  "expires_at_ts": "int epoch seconds — Qdrant payload only; sentinel 4102444800 (2100-01-01Z) when no expiry",
   "acl_policy_id": "string",
   "acl_policy_version": 1,
   "allowed_role_ids": [],
@@ -62,6 +63,20 @@ Each tenant now has one bootstrap ACL policy that is intended to be configured b
   "allowed_project_ids": []
 }
 ```
+
+### Expiry enforcement by layer
+
+- **SQL** (`build_document_acl_filter`): enforces `acl_grants.expires_at` — primary gate.
+- **OpenSearch**: native `date`-type range clause with missing-field short-circuit.
+- **Qdrant** (since 2026-06-10, master plan A5): unconditional `Range(gt=now)` on the
+  numeric `expires_at_ts` payload field. No-expiry documents carry the far-future
+  sentinel rather than null, because the in-memory Qdrant backend does not reliably
+  match `is_null`/`is_empty` against JSON-null payloads. **Fail-closed:** points
+  indexed before this change lack `expires_at_ts` and stop matching the dense/sparse
+  payload filter until their corpus is re-ingested (or reindexed once the reindex CLI
+  from master plan task E4 exists). Leakage tests:
+  `test_qdrant_payload_acl_blocks_expired_doc_even_for_owner_in_allowed_list`,
+  `test_qdrant_acl_filter_fails_closed_for_points_missing_expires_at_ts`.
 
 ## Gate A explicit ACL test cases
 

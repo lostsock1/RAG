@@ -99,3 +99,68 @@ def test_qdrant_indexer_point_structure():
     assert p.payload["chunk_id"] == str(embedding.chunk_id)
     assert p.payload["chunk_index"] == 0
     assert p.payload["text"] == "test chunk text for qdrant indexing"
+
+
+def test_qdrant_indexer_payload_carries_numeric_expiry_timestamp():
+    """A5: expires_at (ISO string) is mirrored as numeric expires_at_ts (epoch
+    seconds) so the payload ACL filter can enforce expiry with a Range clause."""
+    from datetime import UTC, datetime
+
+    indexer = QdrantVectorIndexer(collection_name="test_expiry_ts", _in_memory=True)
+    chunk = _make_chunk(uuid4(), 0, uuid4())
+    embedding = _make_embedding(chunk.id)
+    expires = datetime(2026, 7, 1, 12, 0, 0, tzinfo=UTC)
+    acl = {
+        "tenant_id": str(uuid4()),
+        "owner_user_id": str(uuid4()),
+        "allowed_user_ids": [],
+        "group_ids": [],
+        "allowed_group_ids": [],
+        "visibility": "private",
+        "sensitivity": "internal",
+        "sensitivity_rank": 200,
+        "expires_at": expires.isoformat(),
+        "acl_policy_id": str(uuid4()),
+        "acl_policy_version": 1,
+        "allowed_role_ids": [],
+        "allowed_org_unit_ids": [],
+        "allowed_project_ids": [],
+    }
+
+    indexer.upsert(chunks=[chunk], embeddings=[embedding], acl_metadata=acl)
+
+    payload = indexer._last_upserted_points[0].payload
+    assert payload["expires_at_ts"] == int(expires.timestamp())
+    assert payload["expires_at"] == expires.isoformat()
+
+
+def test_qdrant_indexer_payload_uses_no_expiry_sentinel_when_unset():
+    """A5: documents without expiry get the far-future sentinel so a single
+    unconditional Range(gt=now) clause works in every Qdrant mode (the
+    in-memory backend does not reliably match null/missing payload values)."""
+    from app.services.retrieval.acl_filter import NO_EXPIRY_TS
+
+    indexer = QdrantVectorIndexer(collection_name="test_expiry_sentinel", _in_memory=True)
+    chunk = _make_chunk(uuid4(), 0, uuid4())
+    embedding = _make_embedding(chunk.id)
+    acl = {
+        "tenant_id": str(uuid4()),
+        "owner_user_id": str(uuid4()),
+        "allowed_user_ids": [],
+        "group_ids": [],
+        "allowed_group_ids": [],
+        "visibility": "private",
+        "sensitivity": "internal",
+        "sensitivity_rank": 200,
+        "expires_at": None,
+        "acl_policy_id": str(uuid4()),
+        "acl_policy_version": 1,
+        "allowed_role_ids": [],
+        "allowed_org_unit_ids": [],
+        "allowed_project_ids": [],
+    }
+
+    indexer.upsert(chunks=[chunk], embeddings=[embedding], acl_metadata=acl)
+
+    payload = indexer._last_upserted_points[0].payload
+    assert payload["expires_at_ts"] == NO_EXPIRY_TS

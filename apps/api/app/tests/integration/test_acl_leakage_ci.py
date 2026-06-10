@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from app.services.retrieval.acl_filter import (
+    NO_EXPIRY_TS,
     build_opensearch_acl_filter,
     build_qdrant_acl_filter,
 )
@@ -31,7 +32,14 @@ from app.services.retrieval.qdrant_retriever import QdrantRetriever
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_qdrant_point(*, document_id: str, tenant_id: str, owner_user_id: str, visibility: str = "private") -> SimpleNamespace:
+def _make_qdrant_point(
+    *,
+    document_id: str,
+    tenant_id: str,
+    owner_user_id: str,
+    visibility: str = "private",
+    expires_at_ts: int = NO_EXPIRY_TS,
+) -> SimpleNamespace:
     """Simulate a Qdrant point with ACL payload fields."""
     return SimpleNamespace(
         score=0.9,
@@ -46,6 +54,7 @@ def _make_qdrant_point(*, document_id: str, tenant_id: str, owner_user_id: str, 
             "visibility": visibility,
             "is_tombstoned": False,
             "expires_at": None,
+            "expires_at_ts": expires_at_ts,
         },
     )
 
@@ -203,6 +212,7 @@ def test_qdrant_acl_filter_allows_tenant_wide_visibility() -> None:
             "visibility": "tenant",
             "is_tombstoned": False,
             "expires_at": None,
+            "expires_at_ts": NO_EXPIRY_TS,
         },
     )
 
@@ -246,6 +256,7 @@ def test_qdrant_acl_filter_blocks_cross_tenant_access() -> None:
             "visibility": "public",
             "is_tombstoned": False,
             "expires_at": None,
+            "expires_at_ts": NO_EXPIRY_TS,
         },
     )
 
@@ -268,6 +279,107 @@ def test_qdrant_acl_filter_blocks_cross_tenant_access() -> None:
         f"Cross-tenant document {doc_id} was returned to a user in {tenant_b} — "
         "tenant isolation violated!"
     )
+
+
+def test_qdrant_payload_acl_blocks_expired_doc_even_for_owner_in_allowed_list() -> None:
+    """A5 acceptance criterion: an expired document must not be returned from
+    Qdrant retrieval even when (a) the caller OWNS the document and (b) its ID
+    was injected into ``allowed_document_ids`` — i.e., even when every upstream
+    SQL-side check is bypassed, the payload-side expiry filter holds."""
+    tenant_id = "tenant-exp"
+    alice_id = str(uuid4())
+    doc_live_id = str(uuid4())
+    doc_expired_id = str(uuid4())
+
+    live_point = _make_qdrant_point(
+        document_id=doc_live_id,
+        tenant_id=tenant_id,
+        owner_user_id=alice_id,
+        expires_at_ts=NO_EXPIRY_TS,
+    )
+    expired_point = _make_qdrant_point(
+        document_id=doc_expired_id,
+        tenant_id=tenant_id,
+        owner_user_id=alice_id,
+        expires_at_ts=946684800,  # 2000-01-01T00:00:00Z — long expired
+    )
+
+    client = _FilteringQdrantClient([live_point, expired_point])
+    retriever = QdrantRetriever(client=client, collection_name="test-collection")
+
+    query = RetrievalQuery(
+        query="expired doc",
+        tenant_id=tenant_id,
+        user_id=alice_id,
+        group_ids=[],
+        allowed_document_ids=[doc_live_id, doc_expired_id],  # expired doc injected!
+        top_k=10,
+    )
+
+    hits = retriever.search_dense(query, [0.1])
+
+    returned_doc_ids = {hit.document_id for hit in hits}
+    assert doc_expired_id not in returned_doc_ids, (
+        f"Expired document {doc_expired_id} was returned — Qdrant expiry leakage!"
+    )
+    assert doc_live_id in returned_doc_ids, (
+        "Unexpired document was not returned — expiry filter over-filtering."
+    )
+
+
+def test_qdrant_acl_filter_fails_closed_for_points_missing_expires_at_ts() -> None:
+    """A5: points indexed before the numeric-expiry change lack
+    ``expires_at_ts``; the Range clause does not match missing fields, so such
+    points are invisible until reindexed. Fail-closed is the intended security
+    posture — this test documents the reindex requirement."""
+    tenant_id = "tenant-legacy"
+    alice_id = str(uuid4())
+    doc_id = str(uuid4())
+
+    legacy_point = _make_qdrant_point(
+        document_id=doc_id,
+        tenant_id=tenant_id,
+        owner_user_id=alice_id,
+    )
+    del legacy_point.payload["expires_at_ts"]  # simulate pre-A5 index
+
+    client = _FilteringQdrantClient([legacy_point])
+    retriever = QdrantRetriever(client=client, collection_name="test-collection")
+
+    query = RetrievalQuery(
+        query="legacy point",
+        tenant_id=tenant_id,
+        user_id=alice_id,
+        group_ids=[],
+        allowed_document_ids=[doc_id],
+        top_k=5,
+    )
+
+    assert retriever.search_dense(query, [0.1]) == []
+
+
+def test_qdrant_acl_filter_structure_includes_expiry_range() -> None:
+    """A5: the Qdrant ACL filter must carry an unconditional
+    ``expires_at_ts > now`` Range clause in its ``must`` list."""
+    import time as _time
+
+    built = build_qdrant_acl_filter(
+        tenant_id="tenant-x",
+        user_id=str(uuid4()),
+        group_ids=[],
+    )
+
+    range_clauses = [
+        clause
+        for clause in built.must
+        if isinstance(clause, FieldCondition)
+        and clause.key == "expires_at_ts"
+        and clause.range is not None
+    ]
+    assert len(range_clauses) == 1, "Expected exactly one expires_at_ts Range clause"
+    gt = range_clauses[0].range.gt
+    assert gt is not None
+    assert abs(gt - int(_time.time())) < 60, "Range.gt must be ~now (epoch seconds)"
 
 
 def test_opensearch_acl_filter_structure_includes_required_clauses() -> None:

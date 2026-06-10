@@ -16,23 +16,23 @@ ACL rules (same as the SQL version):
 
 Tenant scoping is always applied.
 
-Expiry asymmetry between backends:
+Expiry enforcement (both backends, since master plan task A5):
   - OpenSearch enforces expiry natively at the payload level (date type
     + bool.must_not[exists] short-circuit for the missing-field case).
-  - The Qdrant payload filter does NOT enforce expiry. The in-memory
-    Qdrant implementation does not match ``is_null`` / ``is_empty``
-    against JSON null values, and the payload stores ``expires_at`` as
-    either an ISO string or null — there is no numeric field that
-    ``Range(lt=now)`` could compare against without re-indexing every
-    chunk. The SQL-side ``build_document_acl_filter`` already enforces
-    expiry against ``acl_grants.expires_at`` and produces the
-    ``allowed_document_ids`` narrow filter, so expired documents are
-    excluded before the retriever ever sees them. If the payload ACL
-    filter is ever exercised in isolation (e.g. allowed_document_ids
-    bypassed), expiry would not be enforced at the Qdrant layer — this
-    is a known accepted gap until Qdrant gains reliable null-field
-    matching or the indexer is changed to store a numeric
-    ``expires_at_ts`` field.
+  - Qdrant enforces expiry through the numeric ``expires_at_ts`` payload
+    field (Unix epoch seconds) with an unconditional ``Range(gt=now)``
+    clause. Documents without expiry are indexed with the far-future
+    sentinel ``NO_EXPIRY_TS`` instead of null/missing, because the
+    in-memory Qdrant backend does not reliably match ``is_null`` /
+    ``is_empty`` against JSON-null payload values (the bug that forced
+    the 2026-05-23 removal of the original ISO-string expiry clause).
+    Consequence: the filter is FAIL-CLOSED — points indexed before this
+    change lack ``expires_at_ts`` and will not match until their corpus
+    is re-ingested or reindexed. The SQL-side
+    ``build_document_acl_filter`` independently enforces expiry against
+    ``acl_grants.expires_at`` upstream; this clause is the
+    defense-in-depth layer for when ``allowed_document_ids`` is wrong
+    or bypassed.
 """
 from __future__ import annotations
 
@@ -43,7 +43,13 @@ from qdrant_client.models import (
     Filter,
     MatchAny,
     MatchValue,
+    Range,
 )
+
+# Sentinel epoch for "no expiry": 2100-01-01T00:00:00Z. Stored by the Qdrant
+# indexer when a document has no expires_at so a single unconditional
+# Range(gt=now) clause enforces expiry in every Qdrant mode.
+NO_EXPIRY_TS = 4_102_444_800
 
 
 def build_qdrant_acl_filter(
@@ -59,16 +65,25 @@ def build_qdrant_acl_filter(
         must: [
             tenant_id == tenant_id,
             NOT is_tombstoned,
+            expires_at_ts > now,
             (owner OR explicit_user OR group_match OR visibility=tenant OR visibility=public),
         ]
 
-    Expiry is enforced by the SQL ACL filter upstream (see module
-    docstring for why the Qdrant layer does not duplicate it).
+    Expiry uses the numeric ``expires_at_ts`` field (sentinel
+    ``NO_EXPIRY_TS`` when the document has no expiry). Points without
+    the field — indexed before A5 — do not match (fail-closed; reindex
+    required). See the module docstring.
     """
     # Tenant scoping — always required
     tenant_clause = FieldCondition(
         key="tenant_id",
         match=MatchValue(value=tenant_id),
+    )
+
+    # Expiry — unconditional numeric range; missing field fails closed.
+    unexpired_clause = FieldCondition(
+        key="expires_at_ts",
+        range=Range(gt=int(datetime.now(UTC).timestamp())),
     )
 
     # Tombstone guard
@@ -101,6 +116,7 @@ def build_qdrant_acl_filter(
         must=[
             tenant_clause,
             not_tombstoned,
+            unexpired_clause,
             access_filter,
         ]
     )
