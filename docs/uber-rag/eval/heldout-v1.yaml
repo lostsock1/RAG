@@ -75,6 +75,9 @@ questions:
       expected_recall_k: 3
     acl:
       user_context: default
+    evidence:
+      - doc: physics_textbook_ch3_thermodynamics
+        span: "entropy either increases or, in the idealized case of a reversible process, remains constant"
 
   - id: "h02"
     type: definition
@@ -112,6 +115,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: chemistry_textbook_ch4_reactions
+        span: "Catalysts work by providing an alternative reaction pathway with a lower"
 
   - id: "h05"
     type: definition
@@ -184,6 +190,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: biology_textbook_ch5_cells
+        span: "stored in the bonds of organic molecules, primarily glucose"
 
   - id: "h11"
     type: definition
@@ -208,6 +217,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: economics_textbook_ch2_markets
+        span: "across an economy over a period of time"
 
   - id: "h13"
     type: definition
@@ -220,6 +232,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: chemistry_textbook_ch4_reactions
+        span: "covalent bonding involves the mutual sharing of electrons between atoms to achieve a stable electron configuration"
 
   - id: "h14"
     type: definition
@@ -257,6 +272,9 @@ questions:
       page_range: null
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: physics_textbook_ch3_thermodynamics
+        span: "6.674 × 10⁻¹¹ N m²/kg²"
 
   - id: "h17"
     type: exact_lookup
@@ -293,6 +311,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: physics_textbook_ch3_thermodynamics
+        span: "All known interactions in the universe can be described by four fundamental forces"
 
   - id: "h20"
     type: exact_lookup
@@ -367,6 +388,9 @@ questions:
       expected_recall_k: 1
 
   # ── Formula Questions (8) ─────────────────────────────────────
+    evidence:
+      - doc: psychology_textbook_ch8_grief
+        span: "The model proposes five stages of grief"
   - id: "h26"
     type: formula
     category: textbook
@@ -414,6 +438,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: physics_textbook_ch3_thermodynamics
+        span: "PV = nRT"
 
   - id: "h30"
     type: formula
@@ -438,6 +465,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: physics_textbook_ch3_thermodynamics
+        span: "Ohm's law describes the linear relationship between"
 
   - id: "h32"
     type: formula
@@ -1314,6 +1344,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: geography_demographics_table
+        span: "39,584"
 
   - id: "n04"
     type: needle
@@ -1350,6 +1383,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: physics_textbook_ch3_thermodynamics
+        span: "coincides with the eruption of Krakatoa"
 
   - id: "n07"
     type: needle
@@ -1422,6 +1458,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: mineralogy_textbook_appendix
+        span: "Grossular garnet"
 
   - id: "n13"
     type: needle
@@ -1458,6 +1497,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: history_textbook_ch12_treaties
+        span: "the Treaty of Lausanne occupies a unique and somewhat ambiguous position"
 
   - id: "n16"
     type: needle
@@ -1506,6 +1548,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: history_textbook_ch12_treaties
+        span: "races a tortoise that has been given a head start"
 
   - id: "n20"
     type: needle

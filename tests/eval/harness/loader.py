@@ -21,6 +21,18 @@ class ExpectedResult:
 
 
 @dataclass
+class EvidenceSpan:
+    """Span-anchored ground truth: a verbatim quote from a fixture document.
+
+    Relevant chunk IDs are resolved at eval time by exact substring match
+    against the ingested chunks of ``doc`` (content-anchored — survives
+    re-chunking; index-anchored chunk IDs would rot silently)."""
+
+    doc: str   # fixture document slug (file stem, e.g. "physics_textbook_ch3_thermodynamics")
+    span: str  # verbatim substring of that document
+
+
+@dataclass
 class RetrievalExpectation:
     expected_recall_k: int | None = None
 
@@ -40,6 +52,7 @@ class EvalQuestion:
     expected: ExpectedResult
     retrieval: RetrievalExpectation = field(default_factory=RetrievalExpectation)
     acl: AclExpectation = field(default_factory=AclExpectation)
+    evidence: list[EvidenceSpan] = field(default_factory=list)
 
 
 @dataclass
@@ -167,6 +180,23 @@ def _parse_question(raw: dict) -> EvalQuestion:
         user_context=acl_raw.get("user_context", "default") if isinstance(acl_raw, dict) else "default",
     )
 
+    evidence_raw = raw.get("evidence", [])
+    if evidence_raw is None:
+        evidence_raw = []
+    if not isinstance(evidence_raw, list):
+        raise ValueError(f"Question '{raw['id']}' has non-list 'evidence' section")
+    evidence: list[EvidenceSpan] = []
+    for entry in evidence_raw:
+        if not isinstance(entry, dict):
+            raise ValueError(f"Question '{raw['id']}' has a non-mapping evidence entry")
+        doc = entry.get("doc")
+        span = entry.get("span")
+        if not doc or not isinstance(doc, str) or not doc.strip():
+            raise ValueError(f"Question '{raw['id']}' evidence entry is missing a non-empty 'doc'")
+        if not span or not isinstance(span, str) or not span.strip():
+            raise ValueError(f"Question '{raw['id']}' evidence entry is missing a non-empty 'span'")
+        evidence.append(EvidenceSpan(doc=doc.strip(), span=span))
+
     return EvalQuestion(
         id=raw["id"],
         type=raw["type"],
@@ -176,4 +206,5 @@ def _parse_question(raw: dict) -> EvalQuestion:
         expected=expected,
         retrieval=retrieval,
         acl=acl,
+        evidence=evidence,
     )

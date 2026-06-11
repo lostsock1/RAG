@@ -293,3 +293,72 @@ class TestFilterQuestions:
     def test_filter_limit_zero_returns_empty(self, questions: list[EvalQuestion]):
         result = filter_questions(questions, limit=0)
         assert result == []
+
+
+class TestEvidenceSpans:
+    """C1: span-anchored ground truth parsing."""
+
+    def test_evidence_spans_parse(self, tmp_path: Path):
+        yaml_content = MINIMAL_YAML + (
+            '  - id: "q04"\n'
+            "    type: definition\n"
+            "    category: textbook\n"
+            "    language: en\n"
+            '    query: "What is W?"\n'
+            "    expected:\n"
+            "      status: answered\n"
+            "    evidence:\n"
+            "      - doc: physics_textbook\n"
+            '        span: "W is a fundamental quantity"\n'
+            "      - doc: chemistry_textbook\n"
+            '        span: "W also appears in reactions"\n'
+        )
+        ds = load_dataset(_write_yaml(tmp_path, yaml_content))
+        q4 = next(q for q in ds.questions if q.id == "q04")
+        assert len(q4.evidence) == 2
+        assert q4.evidence[0].doc == "physics_textbook"
+        assert q4.evidence[0].span == "W is a fundamental quantity"
+
+    def test_questions_without_evidence_stay_loadable(self, tmp_path: Path):
+        ds = load_dataset(_write_yaml(tmp_path, MINIMAL_YAML))
+        assert all(q.evidence == [] for q in ds.questions)
+
+    def test_evidence_entry_missing_span_is_rejected(self, tmp_path: Path):
+        yaml_content = MINIMAL_YAML + (
+            '  - id: "q05"\n'
+            "    type: definition\n"
+            "    category: textbook\n"
+            "    language: en\n"
+            '    query: "What is V?"\n'
+            "    expected:\n"
+            "      status: answered\n"
+            "    evidence:\n"
+            "      - doc: physics_textbook\n"
+        )
+        with pytest.raises(ValueError, match="q05.*span"):
+            load_dataset(_write_yaml(tmp_path, yaml_content))
+
+    def test_evidence_entry_blank_doc_is_rejected(self, tmp_path: Path):
+        yaml_content = MINIMAL_YAML + (
+            '  - id: "q06"\n'
+            "    type: definition\n"
+            "    category: textbook\n"
+            "    language: en\n"
+            '    query: "What is U?"\n'
+            "    expected:\n"
+            "      status: answered\n"
+            "    evidence:\n"
+            '      - doc: "  "\n'
+            '        span: "some span"\n'
+        )
+        with pytest.raises(ValueError, match="q06.*doc"):
+            load_dataset(_write_yaml(tmp_path, yaml_content))
+
+    def test_real_heldout_has_fifteen_evidence_backed_questions(self):
+        ds = load_dataset(Path("docs/uber-rag/eval/heldout-v1.yaml"))
+        with_evidence = {q.id for q in ds.questions if q.evidence}
+        assert with_evidence == {
+            "h01", "h04", "h10", "h12", "h13",
+            "h16", "h19", "h25", "h29", "h31",
+            "n03", "n06", "n12", "n15", "n19",
+        }

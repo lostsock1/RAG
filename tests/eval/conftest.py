@@ -34,6 +34,8 @@ class EvalStack:
     document_ids: list[UUID]
     tenant_id: UUID
     user_id: UUID
+    search_service: object = None  # SearchService (retrieval-only eval, C3)
+    document_ids_by_slug: dict[str, UUID] | None = None  # fixture slug -> doc id (span resolution, C1)
 
 
 class _MarkdownParser(DocumentParser):
@@ -72,6 +74,7 @@ def _ingest_corpus_documents(
     from app.repositories.documents import create_document_with_owner_acl
 
     document_ids: list[UUID] = []
+    document_ids_by_slug: dict[str, UUID] = {}
     for md_file in sorted(CORPUS_DIR.glob("*.md")):
         content = md_file.read_bytes()
         title = md_file.stem.replace("_", " ").title()
@@ -119,8 +122,9 @@ def _ingest_corpus_documents(
         # Run pipeline synchronously
         dispatcher._execute_pipeline(run.id)
         document_ids.append(doc_id)
+        document_ids_by_slug[md_file.stem] = doc_id
 
-    return document_ids
+    return document_ids, document_ids_by_slug
 
 
 @pytest.fixture(scope="session")
@@ -205,7 +209,7 @@ def eval_stack():
         )
 
         # 7. Ingest corpus
-        document_ids = _ingest_corpus_documents(
+        document_ids, document_ids_by_slug = _ingest_corpus_documents(
             dispatcher=dispatcher,
             storage=storage,
             tenant_id=tenant_id,
@@ -262,6 +266,8 @@ def eval_stack():
             document_ids=document_ids,
             tenant_id=tenant_id,
             user_id=user_id,
+            search_service=search_service,
+            document_ids_by_slug=document_ids_by_slug,
         )
 
         # Cleanup
