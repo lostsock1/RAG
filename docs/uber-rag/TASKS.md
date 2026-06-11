@@ -179,7 +179,7 @@ Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-an
 - [x] Wire full pipeline ingestion fixture for faithfulness measurement — done 2026-05-23 (duplicate of the Phase 4 item).
 - [x] Run baseline faithfulness measurement — done 2026-05-23 (0.067, substring verifier).
 - [x] Run NLI faithfulness measurement and iterate — done 2026-05-23 (ADR-0016; re-measured entailment 0.133 post-hardening).
-- [ ] Backfill remaining 155 heldout questions with ground-truth chunk IDs.
-- [ ] Add recall@k measurement to harness.
-- [ ] Run multilingual subset (German, Portuguese).
+- [~] Backfill heldout questions with ground truth — **span-anchored design landed 2026-06-11** (evidence blocks, runtime-resolved chunk groups; 15/170 backfilled). Scale-out to ≥60 incl. DE/PT = master plan C5.
+- [x] Add recall@k measurement to harness — done 2026-06-11 (recall@{5,10,20}, MRR@10, nDCG@{5,10,20}, grouped per-span semantics; first baseline committed: recall@10 1.000, nDCG@10 0.778, MRR@10 0.708 on 15 questions).
+- [ ] Run multilingual subset (German, Portuguese) — needs C5 fixture docs.
 - [ ] Add metrics dashboard.

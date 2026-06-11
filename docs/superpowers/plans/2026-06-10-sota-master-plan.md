@@ -340,6 +340,23 @@ new is being adopted.
 **Phase C exit criteria**: committed retrieval baseline on ≥ 60 questions; CI
 advisory gate live; the sentence "retrieval quality is unmeasured" is dead.
 
+**Progress 2026-06-11: C0–C4 COMPLETE** (`838a141`..`0302b46`); **C5 remains**
+(the ≥ 60-question + multilingual half of the exit criteria). Implementation
+notes for C5 and later phases: (1) ground truth is span-anchored — questions
+carry `evidence: [{doc, span}]`, resolved at runtime to chunk-ID equivalence
+groups via `tests/eval/harness/ground_truth.py`; zero-match raises (rot guard);
+every C5 question must follow this pattern with spans verified against the
+authored fixture docs. (2) Metrics are grouped per-span — see
+`grouped_*_at_k` in `scorer.py`; the naive chunk-level variants exist but
+penalize leaf/parent duplication. (3) **First baseline reading: recall@10 =
+1.000 but nDCG@10 = 0.778 / MRR@10 = 0.708 — ranking, not recall, is the
+measured weakness** (eval fixture is dense-only with a stub reranker). Phase
+D/E should add real-reranker and hybrid-lexical eval arms and measure the
+ranking lift; contextual augmentation (E2) targets recall, which this corpus
+does not yet stress — C5's larger corpus may change that. (4) The CI gate
+(`.github/workflows/eval.yml`) is advisory; flip `ADVISORY_FLAG` to "" after
+two clean weeks.
+
 ---
 
 ## Phase D — Verifier upgrade: from contradiction guardrail to true support metric
