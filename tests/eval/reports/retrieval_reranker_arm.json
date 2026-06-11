@@ -1,6 +1,6 @@
 {
   "report": "retrieval_reranker_arm",
-  "measured_at": "2026-06-11T20:44:00+00:00",
+  "measured_at": "2026-06-11T21:14:11+00:00",
   "question_count": 60,
   "retriever": {
     "dense": "BGE-M3 (real) via in-memory Qdrant",
@@ -12,20 +12,20 @@
   "latency": {
     "method": "per-query wall time over the identical stack with stub vs real reranker, warmed; overhead = mean difference; dev-Mac CPU \u2014 optimistic vs the VPS, re-verify there before relying on SLA margin",
     "stub_arm": {
-      "mean_ms": 156.8,
-      "p50_ms": 141.4,
-      "p95_ms": 251.8
+      "mean_ms": 155.2,
+      "p50_ms": 139.6,
+      "p95_ms": 233.0
     },
     "reranker_arm": {
-      "mean_ms": 2592.7,
-      "p50_ms": 2390.8,
-      "p95_ms": 4083.5
+      "mean_ms": 2376.7,
+      "p50_ms": 2263.5,
+      "p95_ms": 3415.7
     },
-    "mean_overhead_ms": 2435.9
+    "mean_overhead_ms": 2221.5
   },
   "decision_rule": {
     "frozen": "flip reranker_backend default iff (MRR@10 or nDCG@10 lift >= +0.02 AND recall@10 drop <= 0.02) AND mean overhead <= 1000 ms/query",
-    "quality_pass": false,
+    "quality_pass": true,
     "latency_pass": false,
     "flip_default": false
   },
@@ -33,28 +33,28 @@
     "recall@5": 0.9833,
     "recall@10": 1.0,
     "recall@20": 1.0,
-    "ndcg@5": 0.9392,
-    "ndcg@10": 0.9445,
-    "ndcg@20": 0.9445,
-    "mrr@10": 0.9271
+    "ndcg@5": 0.8701,
+    "ndcg@10": 0.8754,
+    "ndcg@20": 0.8754,
+    "mrr@10": 0.8337
   },
   "aggregates": {
     "recall@5": 1.0,
     "recall@10": 1.0,
     "recall@20": 1.0,
-    "ndcg@5": 0.9554,
-    "ndcg@10": 0.9554,
-    "ndcg@20": 0.9554,
-    "mrr@10": 0.9403
+    "ndcg@5": 0.9068,
+    "ndcg@10": 0.9068,
+    "ndcg@20": 0.9068,
+    "mrr@10": 0.875
   },
   "lifts_vs_baseline": {
     "recall@5": 0.0167,
     "recall@10": 0.0,
     "recall@20": 0.0,
-    "ndcg@5": 0.0162,
-    "ndcg@10": 0.0109,
-    "ndcg@20": 0.0109,
-    "mrr@10": 0.0132
+    "ndcg@5": 0.0367,
+    "ndcg@10": 0.0314,
+    "ndcg@20": 0.0314,
+    "mrr@10": 0.0413
   },
   "by_language": {
     "de": {
@@ -72,10 +72,10 @@
       "recall@5": 1.0,
       "recall@10": 1.0,
       "recall@20": 1.0,
-      "ndcg@5": 0.9392,
-      "ndcg@10": 0.9392,
-      "ndcg@20": 0.9392,
-      "mrr@10": 0.9186
+      "ndcg@5": 0.8729,
+      "ndcg@10": 0.8729,
+      "ndcg@20": 0.8729,
+      "mrr@10": 0.8295
     },
     "mixed": {
       "question_count": 2,
@@ -115,38 +115,15 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "e68263b8-c4ed-4734-ac5c-55be5ff0e416",
-        "52a85841-8621-4be8-91c7-8a1820330e7f",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "004f1213-620b-4f38-8079-17c805ea1f52",
-        "a94d2f87-236c-4a4e-9bf0-3f21eb031d26"
+        "97da9196-4cc0-43fa-be08-bd90c2046606",
+        "991e2e25-c3c9-4e30-b861-00ded3c11be7",
+        "a9fcf27d-4dc6-489c-8de7-4aa5b7ecea44",
+        "508b52e8-ea24-434e-bb68-7b600468bda7",
+        "d191d855-e815-4db8-a0ec-56e247de70e1"
       ]
     },
     {
       "question_id": "h03",
-      "type": "definition",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 17,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "80da682c-7929-4a0b-b9cb-80af248a3ba9",
-        "b1f50cc6-3097-4825-becd-63adf8625130",
-        "1a9afdb9-1732-4fba-909f-df992b325283",
-        "e55be308-3f48-4623-a532-ed5c2926702e",
-        "362d6f62-30df-445e-a7ae-f135931d2dfd"
-      ]
-    },
-    {
-      "question_id": "h04",
       "type": "definition",
       "language": "en",
       "evidence_group_count": 1,
@@ -161,11 +138,34 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "ae2914ef-3deb-4214-9267-db2addd92acd",
-        "d88d67fb-b86c-40ad-8293-aec979e63af7",
-        "87689ddb-3160-45a7-8c85-0dd6da3eec43",
-        "bb8c1e09-d943-4997-ae91-1d5ab953696a",
-        "8b863e2b-66d8-44d9-bc17-e55d5fbb0b41"
+        "dabbc2b7-eb5a-433d-9d3b-c3331c083813",
+        "eb2da67e-09eb-4811-a657-4ac4cfa344bb",
+        "e0a8e853-d4d0-41d6-ab18-dc0255a1be03",
+        "10c8ae9d-14fd-452a-ab67-5f3f7544f0f8",
+        "5e198caa-2b03-4c47-b11f-ebd71ba4fba6"
+      ]
+    },
+    {
+      "question_id": "h04",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "1b601f18-eeac-4d0d-87e4-aaeec269c3d9",
+        "1f48bc52-404a-4070-8409-fbb128812035",
+        "bd842364-7361-4c09-87b1-0718548b013e",
+        "45858629-e282-4f5f-bd2f-a2ba2d41aa49",
+        "77549ebc-a94e-4d58-875a-3724f6f01450"
       ]
     },
     {
@@ -184,11 +184,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "ca2f47d5-e669-4166-96bc-b34cc8bc2c47",
-        "efd8584b-73dd-4b6f-b44f-022b51105386",
-        "b00ce749-a446-4757-96d2-7bc25568a17e",
-        "bec5a747-476d-4fb1-9986-2b8606d38cf3",
-        "f32c8c80-159c-4a84-8bef-a4f93000f263"
+        "ada54bd5-eb12-423d-b23d-305a4e8705ac",
+        "375c640d-a965-4d58-b97d-668d2a943c08",
+        "7155128a-b631-4b60-bde7-28c2fd9d3d31",
+        "773dbff6-17d6-426d-9967-422e188d4944",
+        "8db4a4d8-bb74-46e8-98af-d6fd224365f2"
       ]
     },
     {
@@ -196,22 +196,22 @@
       "type": "definition",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 16,
       "metrics": {
         "recall@5": 1.0,
-        "ndcg@5": 1.0,
+        "ndcg@5": 0.6309,
         "recall@10": 1.0,
-        "ndcg@10": 1.0,
+        "ndcg@10": 0.6309,
         "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
+        "ndcg@20": 0.6309,
+        "mrr@10": 0.5
       },
       "top_5_chunk_ids": [
-        "179fd61f-c911-4ad5-95a9-9055fe80b8ff",
-        "abe35e6d-9550-4196-bb5a-2a66f15dd458",
-        "d24fc155-cb11-402b-bc84-1a1318040f40",
-        "6fe95c91-4137-4afa-8292-47733edf44dd",
-        "69b085f4-69bd-4e57-bccd-89aad00f8cb1"
+        "daaf3892-52a6-40ce-9622-9648e08195a9",
+        "fccf1e1e-1894-4b90-8818-25d1ae9f4f22",
+        "5a9dadaa-baa8-4f0a-8d91-f231e4065b57",
+        "b6cc24d4-547b-464b-993c-9425e0cc7d2b",
+        "bfa223dd-66b0-401a-bfed-300af92ccbf8"
       ]
     },
     {
@@ -230,61 +230,15 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "3538d194-20d9-4e3f-bb30-c5e59f89679a",
-        "a94d2f87-236c-4a4e-9bf0-3f21eb031d26",
-        "1fded1bd-f5c9-4608-a993-18dce0a1e6d4",
-        "adb15c85-9f01-415d-b64a-3ec56c236979",
-        "a1d3cf19-1b14-468c-a4c7-f10a30e0fd3a"
+        "71b15897-bcfc-4d4d-bb4f-795aab425670",
+        "bfa223dd-66b0-401a-bfed-300af92ccbf8",
+        "480f7c63-8492-460f-a1a7-92201b396c59",
+        "f017e707-02ab-4789-9575-9fdfdbe3156d",
+        "7dcfa5ca-e2e6-4cba-ac1e-3f7b553f5662"
       ]
     },
     {
       "question_id": "h08",
-      "type": "definition",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 17,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "48279056-12aa-43da-8d66-e26d54125394",
-        "c524d022-1dfe-426c-a6d8-151dd546cc0c",
-        "b9076264-de79-48c1-a887-486323622528",
-        "fe870587-fda1-40bb-a8a0-5797cdedb39c",
-        "d95f02fc-cc63-4782-b1a0-56b90988b646"
-      ]
-    },
-    {
-      "question_id": "h09",
-      "type": "definition",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 18,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "b00ce749-a446-4757-96d2-7bc25568a17e",
-        "276796ce-c7f0-44ff-865e-e02be7a4a9ea",
-        "efd8584b-73dd-4b6f-b44f-022b51105386",
-        "f32c8c80-159c-4a84-8bef-a4f93000f263",
-        "abe35e6d-9550-4196-bb5a-2a66f15dd458"
-      ]
-    },
-    {
-      "question_id": "h10",
       "type": "definition",
       "language": "en",
       "evidence_group_count": 1,
@@ -299,11 +253,57 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "adb15c85-9f01-415d-b64a-3ec56c236979",
-        "a1d3cf19-1b14-468c-a4c7-f10a30e0fd3a",
-        "b0c557bb-9120-4462-919f-4968a2a5a8e7",
-        "11fa17d6-5318-44c1-bdf8-974556aebbcb",
-        "5e78e80e-70b2-41ed-bbc4-2b06c5a049ea"
+        "134d8f10-0c60-4307-a91c-2f9084dcb488",
+        "78c33f20-78ec-4ba6-bfda-73403eb03a13",
+        "9302a27f-62eb-42a3-8f47-fec8b0c5d7a0",
+        "68c241f8-4687-4e50-a051-085d41ac73db",
+        "daaf3892-52a6-40ce-9622-9648e08195a9"
+      ]
+    },
+    {
+      "question_id": "h09",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 15,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "773dbff6-17d6-426d-9967-422e188d4944",
+        "8f827764-b8a9-48ad-bdab-ce5fa2dd197f",
+        "d6f192c9-2e61-4d7a-9979-66bca491b4f0",
+        "375c640d-a965-4d58-b97d-668d2a943c08",
+        "9eabd4e3-c93f-407c-875c-84e79c6320df"
+      ]
+    },
+    {
+      "question_id": "h10",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "f017e707-02ab-4789-9575-9fdfdbe3156d",
+        "a212ce78-3f92-4070-ac4c-03c056dfb30d",
+        "7dcfa5ca-e2e6-4cba-ac1e-3f7b553f5662",
+        "e60cbc8a-1d0a-48b6-9ce8-0f1833674daa",
+        "db051045-d375-47ee-9102-2b987bb2d42c"
       ]
     },
     {
@@ -322,16 +322,108 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "bbd8e728-9268-46e5-b426-26366cfbde98",
-        "079d4924-2a88-4a68-b738-3a8e79483ad2",
-        "ca2f47d5-e669-4166-96bc-b34cc8bc2c47",
-        "f32c8c80-159c-4a84-8bef-a4f93000f263",
-        "efd8584b-73dd-4b6f-b44f-022b51105386"
+        "ac3da5fe-2529-4a73-a243-e4cdf43e574e",
+        "cf447d1b-2601-4226-a470-d4793a9f3feb",
+        "9eabd4e3-c93f-407c-875c-84e79c6320df",
+        "375c640d-a965-4d58-b97d-668d2a943c08",
+        "9302a27f-62eb-42a3-8f47-fec8b0c5d7a0"
       ]
     },
     {
       "question_id": "h12",
       "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 19,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 0.6309,
+        "recall@10": 1.0,
+        "ndcg@10": 0.6309,
+        "recall@20": 1.0,
+        "ndcg@20": 0.6309,
+        "mrr@10": 0.5
+      },
+      "top_5_chunk_ids": [
+        "25ff8256-77f7-4ffe-b276-a2a806edc97a",
+        "334c3fb3-14ab-44d1-b20d-2d9eede4907a",
+        "10c8ae9d-14fd-452a-ab67-5f3f7544f0f8",
+        "7cdae64a-f06a-4d74-ab3b-d40bb28bac9d",
+        "5d6074ff-d1c6-4930-90e4-a66886a5ab9c"
+      ]
+    },
+    {
+      "question_id": "h13",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 19,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "3269bbfd-c7eb-4dfe-b406-025b5094901d",
+        "319f22ef-b935-4f7e-b430-a21ae1e16c71",
+        "a5ed2809-8619-4b25-b32d-2cfe873ebf09",
+        "ad985543-b4ec-4991-bf45-273d8681477a",
+        "6dbc638b-d4f9-4c73-a1d9-5aa4f7fe7e99"
+      ]
+    },
+    {
+      "question_id": "h14",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "e8dfb835-e956-4948-b3be-9fd306e93327",
+        "6617a783-1706-4886-81b0-4eb664753ab6",
+        "ada54bd5-eb12-423d-b23d-305a4e8705ac",
+        "ca7d2430-6898-4df2-ab75-cea3e8357de2",
+        "58467c43-594c-471f-bc27-2a53b26763e8"
+      ]
+    },
+    {
+      "question_id": "h15",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 13,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "e0a8e853-d4d0-41d6-ab18-dc0255a1be03",
+        "7c5badd1-e5e1-46d7-9a56-4210242c6676",
+        "0d988b3e-29eb-4643-9ecd-6ca44584864d",
+        "9302a27f-62eb-42a3-8f47-fec8b0c5d7a0",
+        "10c8ae9d-14fd-452a-ab67-5f3f7544f0f8"
+      ]
+    },
+    {
+      "question_id": "h16",
+      "type": "exact_lookup",
       "language": "en",
       "evidence_group_count": 1,
       "retrieved_count": 18,
@@ -345,103 +437,11 @@
         "mrr@10": 0.5
       },
       "top_5_chunk_ids": [
-        "361f97fb-3b5a-440c-af2b-2335b280fd32",
-        "fc239fe9-ddd6-4869-940c-0039582483fb",
-        "1a9afdb9-1732-4fba-909f-df992b325283",
-        "a91b511b-c4f4-48ca-814b-5e9863b95cc4",
-        "22cf03f8-6850-46fa-aefa-ca39b6a05697"
-      ]
-    },
-    {
-      "question_id": "h13",
-      "type": "definition",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 20,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "8b86f54a-882f-47a7-81bd-ff58ee667e70",
-        "7bef509f-9280-4cfe-b782-31325be0520c",
-        "d95f9baf-d424-4ae0-9644-e8207dc8a46d",
-        "105fd69e-2e18-422b-976e-491c506d771c",
-        "d88d67fb-b86c-40ad-8293-aec979e63af7"
-      ]
-    },
-    {
-      "question_id": "h14",
-      "type": "definition",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 17,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "482472b6-12d3-4c2f-86ef-092273ed9858",
-        "f32c8c80-159c-4a84-8bef-a4f93000f263",
-        "ca2f47d5-e669-4166-96bc-b34cc8bc2c47",
-        "b03d298e-36cc-4ea5-a271-0749019e59df",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6"
-      ]
-    },
-    {
-      "question_id": "h15",
-      "type": "definition",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 16,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "b1f50cc6-3097-4825-becd-63adf8625130",
-        "dd3d367c-1c6b-423b-9772-8f9be0d02718",
-        "1a9afdb9-1732-4fba-909f-df992b325283",
-        "dfdc1b0b-7db4-4272-8d84-f40d51ac0e07",
-        "361f97fb-3b5a-440c-af2b-2335b280fd32"
-      ]
-    },
-    {
-      "question_id": "h16",
-      "type": "exact_lookup",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 16,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "5136b462-2aca-4357-bb67-3018f07c85ff",
-        "e986d167-7b39-4fea-a734-695d88f754b5",
-        "ef94aa18-2f55-44c9-805b-77d012a73475",
-        "b9076264-de79-48c1-a887-486323622528"
+        "fd71be66-1e80-4fa3-98cd-819978aa0e7c",
+        "508b52e8-ea24-434e-bb68-7b600468bda7",
+        "52a5064c-5509-4e03-b01b-93d4edf55046",
+        "bdc2ca0f-f13b-4ae3-96b7-3321fa198bfd",
+        "37255787-a1d9-47fd-9e65-17569b1359a9"
       ]
     },
     {
@@ -460,11 +460,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "abe35e6d-9550-4196-bb5a-2a66f15dd458",
-        "266f1c04-31ad-475c-8098-6cedc3383edb",
-        "ee5e7c67-c522-44a7-a31e-70f4290737b5",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "00a55f6d-2605-4832-b254-58890712cf87"
+        "5a9dadaa-baa8-4f0a-8d91-f231e4065b57",
+        "7d5ce9af-cc2a-450d-95cd-0c06f7eaa922",
+        "58467c43-594c-471f-bc27-2a53b26763e8",
+        "daaf3892-52a6-40ce-9622-9648e08195a9",
+        "bfa223dd-66b0-401a-bfed-300af92ccbf8"
       ]
     },
     {
@@ -472,7 +472,7 @@
       "type": "exact_lookup",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 18,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -483,11 +483,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "90d17def-1566-4573-a423-5d3ddd9abedc",
-        "d24fc155-cb11-402b-bc84-1a1318040f40",
-        "abe35e6d-9550-4196-bb5a-2a66f15dd458",
-        "3cd9dbd6-7fbd-4daa-86b4-c82a2c5469f4",
-        "3538d194-20d9-4e3f-bb30-c5e59f89679a"
+        "aa7a1d6b-fc22-453c-a38c-e91d3e8487fe",
+        "0d35ef72-5bae-4f72-9af6-e23099fb1518",
+        "35228add-509d-4b5b-a594-26881cc6fd4b",
+        "148f4959-24a0-40aa-8964-b14e70a4ce53",
+        "e390514b-8fa8-4fc4-a73d-9bbc1585ad70"
       ]
     },
     {
@@ -498,19 +498,19 @@
       "retrieved_count": 18,
       "metrics": {
         "recall@5": 1.0,
-        "ndcg@5": 0.6309,
+        "ndcg@5": 0.5,
         "recall@10": 1.0,
-        "ndcg@10": 0.6309,
+        "ndcg@10": 0.5,
         "recall@20": 1.0,
-        "ndcg@20": 0.6309,
-        "mrr@10": 0.5
+        "ndcg@20": 0.5,
+        "mrr@10": 0.3333
       },
       "top_5_chunk_ids": [
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "12b3366d-76a6-483a-ad2c-6516df00e4ab",
-        "01d56226-8a2a-43a3-ad3f-0ba7939a66dc",
-        "00a55f6d-2605-4832-b254-58890712cf87",
-        "426ba2b7-74ab-4c23-ac16-b8e591ac4102"
+        "836a20b7-df94-41ce-ae41-42d7b70cb368",
+        "508b52e8-ea24-434e-bb68-7b600468bda7",
+        "21f37867-ae1b-45b8-8da3-906a49ebfe21",
+        "f52a72dc-f30c-4bcd-b3be-ee9091c1a4bb",
+        "85e3935d-d8e1-4f8d-9f94-a9b1746000db"
       ]
     },
     {
@@ -529,11 +529,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "607bedd3-533d-444f-90f5-77cabc07d0e7",
-        "f95cccbe-5c2c-4654-8fad-2a8d345e5959",
-        "35045586-c297-47fd-930b-e95ff9747730",
-        "bd3e7a44-8d82-40fc-b62f-85571bb03b72",
-        "05508ab8-cee2-4031-9f10-0015cc493b60"
+        "16bf5499-c19d-4b7c-b00a-2220cd84a290",
+        "fc65e184-b585-4f39-8a88-e84ef03171c0",
+        "ce984725-a7b0-45bd-8953-b38a3f47bdac",
+        "56f9e69d-3806-4b1e-8751-c2b2c804f0c1",
+        "f8d20c55-e475-4043-9b01-72b5542ddbee"
       ]
     },
     {
@@ -541,7 +541,7 @@
       "type": "exact_lookup",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 18,
+      "retrieved_count": 19,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -552,11 +552,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "d24fc155-cb11-402b-bc84-1a1318040f40",
-        "309f33c1-8042-4c35-bfe7-9dfd7067f986",
-        "abe35e6d-9550-4196-bb5a-2a66f15dd458",
-        "c524d022-1dfe-426c-a6d8-151dd546cc0c",
-        "266f1c04-31ad-475c-8098-6cedc3383edb"
+        "35228add-509d-4b5b-a594-26881cc6fd4b",
+        "8c6ac43a-dd95-499f-b93a-21ead87bbe3a",
+        "daaf3892-52a6-40ce-9622-9648e08195a9",
+        "ea25879e-027b-4d71-bfc3-cb9231239279",
+        "58467c43-594c-471f-bc27-2a53b26763e8"
       ]
     },
     {
@@ -575,11 +575,11 @@
         "mrr@10": 0.5
       },
       "top_5_chunk_ids": [
-        "25a4091b-dc29-40f7-a535-cf092df9eedf",
-        "fb13e996-2a8d-4c6a-b68b-2c13c2aec72a",
-        "e1e6d709-d327-4941-82a9-f5c540cb4822",
-        "c30ee3e8-02ed-440b-a2e9-ede5085d6b84",
-        "c5941ebe-c729-4485-bd3a-72b9a4cbbf3a"
+        "7b99dbeb-f1b5-4cb0-886d-3cdbc3a15f9e",
+        "9abf8184-d165-4902-8036-b873c0b7ba47",
+        "43e121ab-5a17-4676-b85f-6ac37c33ed40",
+        "67e82abe-b9c6-4248-afab-1890378b482b",
+        "c353fe53-1e20-4cd8-94ad-921b034ccc99"
       ]
     },
     {
@@ -598,11 +598,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "b9076264-de79-48c1-a887-486323622528",
-        "3cd9dbd6-7fbd-4daa-86b4-c82a2c5469f4",
-        "a1d3cf19-1b14-468c-a4c7-f10a30e0fd3a",
-        "bd3e7a44-8d82-40fc-b62f-85571bb03b72",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6"
+        "a1cc1cf3-bfef-4ff6-98d6-e7023b729321",
+        "148f4959-24a0-40aa-8964-b14e70a4ce53",
+        "03eb6ba0-985b-4929-a844-763317b723a9",
+        "58467c43-594c-471f-bc27-2a53b26763e8",
+        "daaf3892-52a6-40ce-9622-9648e08195a9"
       ]
     },
     {
@@ -613,29 +613,6 @@
       "retrieved_count": 17,
       "metrics": {
         "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "8c5eea2e-eae7-4e9d-bb9f-f52740cad140",
-        "abe35e6d-9550-4196-bb5a-2a66f15dd458",
-        "c524d022-1dfe-426c-a6d8-151dd546cc0c",
-        "50796098-34bd-4394-b3bd-fa755c3fc2ec",
-        "feeaa900-7755-4369-be1e-5157db890163"
-      ]
-    },
-    {
-      "question_id": "h29",
-      "type": "formula",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 18,
-      "metrics": {
-        "recall@5": 1.0,
         "ndcg@5": 0.5,
         "recall@10": 1.0,
         "ndcg@10": 0.5,
@@ -644,11 +621,34 @@
         "mrr@10": 0.3333
       },
       "top_5_chunk_ids": [
-        "067a4419-67ab-4157-a8a4-47843b8b2791",
-        "eae98f14-fd57-402c-91ee-8fcac1d99747",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "afbc2fec-f3bf-40b7-8451-1e912dbd7d67",
-        "3cd9dbd6-7fbd-4daa-86b4-c82a2c5469f4"
+        "7d66c2d3-547b-4663-89fe-99696308960b",
+        "58f8f292-5b8f-4ffb-a281-3f18e8e1eefd",
+        "d59c6048-a979-4e90-b76b-a5b9acf0ae0d",
+        "daaf3892-52a6-40ce-9622-9648e08195a9",
+        "5a9dadaa-baa8-4f0a-8d91-f231e4065b57"
+      ]
+    },
+    {
+      "question_id": "h29",
+      "type": "formula",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 20,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 0.4307,
+        "recall@10": 1.0,
+        "ndcg@10": 0.4307,
+        "recall@20": 1.0,
+        "ndcg@20": 0.4307,
+        "mrr@10": 0.25
+      },
+      "top_5_chunk_ids": [
+        "d6b72eab-1d37-44ac-962b-2a844210b40d",
+        "31725f8a-4a6c-49d6-be38-a2cf898f82cd",
+        "86f7603b-25d5-464e-8c4e-444918aa5887",
+        "508b52e8-ea24-434e-bb68-7b600468bda7",
+        "1eff12c6-1877-422d-9dee-6280305c6d17"
       ]
     },
     {
@@ -656,7 +656,7 @@
       "type": "formula",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 16,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -667,11 +667,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "af171c9b-a0c5-40de-a0ad-8744ccbf0f0f",
-        "50796098-34bd-4394-b3bd-fa755c3fc2ec",
-        "feeaa900-7755-4369-be1e-5157db890163",
-        "a84516df-1f37-473d-b068-4b4bd3d3722f",
-        "b9076264-de79-48c1-a887-486323622528"
+        "b1533e4d-52eb-4b3c-bad0-71ad53aef252",
+        "a7b48b7b-68ad-4a6a-ab31-d71171cddad9",
+        "daaf3892-52a6-40ce-9622-9648e08195a9",
+        "58f8f292-5b8f-4ffb-a281-3f18e8e1eefd",
+        "6521889c-64fc-4e79-846d-37912138affd"
       ]
     },
     {
@@ -690,11 +690,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "ab16590b-3da9-4fa0-9b77-3714e90d257d",
-        "8dc40987-635c-4b55-81e1-156828ccc254",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "77da208c-8f43-4ea6-b349-8e04215f3fea",
-        "d06ea1b6-2c0c-4796-924a-85363f82af1f"
+        "9b93ee01-40f2-41c9-8cd9-14868c5f4353",
+        "b61a0427-bd50-4497-8455-aa50b5260d79",
+        "508b52e8-ea24-434e-bb68-7b600468bda7",
+        "be6b57dc-352b-46f7-b1c1-eb7652bc193b",
+        "43bc0c6f-d5cf-4646-8333-812a889faa1c"
       ]
     },
     {
@@ -713,38 +713,15 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "ddfc964c-12f0-482f-b0af-f475fec77143",
-        "b9076264-de79-48c1-a887-486323622528",
-        "383088ed-e86a-45fc-91bf-16a00817ef13",
-        "5136b462-2aca-4357-bb67-3018f07c85ff",
-        "af170aa9-97ca-4643-ad38-98de5f88d1f9"
+        "2f2ed928-c550-4429-bf0b-158c9a08a530",
+        "4ba01c74-43b6-4529-a616-60e1ad496b21",
+        "58f8f292-5b8f-4ffb-a281-3f18e8e1eefd",
+        "daaf3892-52a6-40ce-9622-9648e08195a9",
+        "a1cc1cf3-bfef-4ff6-98d6-e7023b729321"
       ]
     },
     {
       "question_id": "h34",
-      "type": "table",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 16,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "b91f6720-f9be-4f17-acf2-df67523b282b",
-        "2a8de499-199f-4191-8eb0-ef9fb6570ec0",
-        "45d183f8-07b9-47d5-895a-8d7e373a0473",
-        "105fd69e-2e18-422b-976e-491c506d771c",
-        "d95f9baf-d424-4ae0-9644-e8207dc8a46d"
-      ]
-    },
-    {
-      "question_id": "h35",
       "type": "table",
       "language": "en",
       "evidence_group_count": 1,
@@ -759,11 +736,34 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "cbaac7e3-64fe-468c-b545-b58bc5a0fc4a",
-        "bd3e7a44-8d82-40fc-b62f-85571bb03b72",
-        "22282099-6ec3-47cd-927c-2a583b3454a8",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "5136b462-2aca-4357-bb67-3018f07c85ff"
+        "65c4daf0-a5da-48d7-9d5f-9fc974a172a3",
+        "a65b5dca-f5d9-47ef-9fab-4e21f0dbd849",
+        "0ae81ec7-6cff-4610-bf07-c3e473af2848",
+        "6dbc638b-d4f9-4c73-a1d9-5aa4f7fe7e99",
+        "ad985543-b4ec-4991-bf45-273d8681477a"
+      ]
+    },
+    {
+      "question_id": "h35",
+      "type": "table",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 0.6309,
+        "recall@10": 1.0,
+        "ndcg@10": 0.6309,
+        "recall@20": 1.0,
+        "ndcg@20": 0.6309,
+        "mrr@10": 0.5
+      },
+      "top_5_chunk_ids": [
+        "ddbe5a80-8c04-4f04-bbcd-f73fb5036869",
+        "9c6dbdc5-b8d8-4db1-ad6b-550c6d972c4f",
+        "56f9e69d-3806-4b1e-8751-c2b2c804f0c1",
+        "8655832f-a18f-4cc7-ad49-cb9b4df3fafc",
+        "508b52e8-ea24-434e-bb68-7b600468bda7"
       ]
     },
     {
@@ -782,11 +782,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "cfa18275-04af-47d3-9404-7fabccc33c59",
-        "eb9ff474-ade1-435c-8819-18e07e49fbb6",
-        "f95cccbe-5c2c-4654-8fad-2a8d345e5959",
-        "feeaa900-7755-4369-be1e-5157db890163",
-        "471eabfb-0460-4702-9861-7b029b65ee56"
+        "2fd9d6f2-5fba-4cb6-8c6d-8b4bc82e0f18",
+        "0997e5ef-e668-44db-9010-36dd29696eb6",
+        "4970acdf-80c8-427b-b798-4d45e13a758a",
+        "2def5177-bc94-49cc-a44e-5cc503a4980d",
+        "898f5382-5764-4c4e-8051-fa1accca0754"
       ]
     },
     {
@@ -794,7 +794,7 @@
       "type": "table",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 16,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -805,11 +805,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "a2a247f0-1aef-4509-b3ca-ec378744526e",
-        "d97f579a-8e3d-4b51-92fd-eb71f29b1d1c",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "8dc40987-635c-4b55-81e1-156828ccc254",
-        "ab16590b-3da9-4fa0-9b77-3714e90d257d"
+        "9c243046-a326-4c86-ae6e-d3edb137ac11",
+        "11446873-d070-4605-877b-477c9709538c",
+        "468d3489-8afe-4617-b17b-1be276d297c4",
+        "508b52e8-ea24-434e-bb68-7b600468bda7",
+        "b61a0427-bd50-4497-8455-aa50b5260d79"
       ]
     },
     {
@@ -817,7 +817,7 @@
       "type": "table",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 15,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -828,11 +828,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "c723bc82-f031-4671-a9e3-44bda642261e",
-        "45d183f8-07b9-47d5-895a-8d7e373a0473",
-        "f95cccbe-5c2c-4654-8fad-2a8d345e5959",
-        "feeaa900-7755-4369-be1e-5157db890163",
-        "aab67d83-c44b-46c9-8a2c-8e82634c1bb6"
+        "b4e08120-f6c2-42ca-a153-d4e183974e55",
+        "35842eae-c58e-4ba8-969a-7abe05da7b0f",
+        "898f5382-5764-4c4e-8051-fa1accca0754",
+        "197bd6ef-02a9-4159-940f-dcdd710874d7",
+        "11c2cecb-c7b1-4ef3-b28c-45879106f4c0"
       ]
     },
     {
@@ -840,22 +840,22 @@
       "type": "multi_hop",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 14,
+      "retrieved_count": 16,
       "metrics": {
         "recall@5": 1.0,
-        "ndcg@5": 1.0,
+        "ndcg@5": 0.6309,
         "recall@10": 1.0,
-        "ndcg@10": 1.0,
+        "ndcg@10": 0.6309,
         "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
+        "ndcg@20": 0.6309,
+        "mrr@10": 0.5
       },
       "top_5_chunk_ids": [
-        "e68263b8-c4ed-4734-ac5c-55be5ff0e416",
-        "309f33c1-8042-4c35-bfe7-9dfd7067f986",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "abe35e6d-9550-4196-bb5a-2a66f15dd458",
-        "266f1c04-31ad-475c-8098-6cedc3383edb"
+        "cda315fa-f070-41ac-88fa-37e002bcd332",
+        "97da9196-4cc0-43fa-be08-bd90c2046606",
+        "bfa223dd-66b0-401a-bfed-300af92ccbf8",
+        "ea25879e-027b-4d71-bfc3-cb9231239279",
+        "daaf3892-52a6-40ce-9622-9648e08195a9"
       ]
     },
     {
@@ -863,22 +863,22 @@
       "type": "multi_hop",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 19,
       "metrics": {
         "recall@5": 1.0,
-        "ndcg@5": 1.0,
+        "ndcg@5": 0.6309,
         "recall@10": 1.0,
-        "ndcg@10": 1.0,
+        "ndcg@10": 0.6309,
         "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
+        "ndcg@20": 0.6309,
+        "mrr@10": 0.5
       },
       "top_5_chunk_ids": [
-        "0ca40ee8-9dff-4505-b875-3cb8bda28475",
-        "abe35e6d-9550-4196-bb5a-2a66f15dd458",
-        "4ffffa05-4553-4494-93be-fb0c59e4e1b1",
-        "69b085f4-69bd-4e57-bccd-89aad00f8cb1",
-        "a1d3cf19-1b14-468c-a4c7-f10a30e0fd3a"
+        "8b8d7da1-f4cb-4135-8342-74235d7603ba",
+        "18d0fd6c-6394-4ba2-9ac0-a33ab68b4e88",
+        "bfa223dd-66b0-401a-bfed-300af92ccbf8",
+        "5a9dadaa-baa8-4f0a-8d91-f231e4065b57",
+        "0c297602-7791-4d74-9731-efd80b0a9e7f"
       ]
     },
     {
@@ -886,7 +886,7 @@
       "type": "multi_hop",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 18,
+      "retrieved_count": 17,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -897,11 +897,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "4a38b4f3-db97-4262-91f7-6011995dc413",
-        "1a9afdb9-1732-4fba-909f-df992b325283",
-        "362d6f62-30df-445e-a7ae-f135931d2dfd",
-        "1adeeb5c-cf0a-4010-bc44-77ebcb780411",
-        "e74bd72a-4786-40ab-b429-99a98f692246"
+        "e783496f-06ba-45e1-b65d-9cd19569278c",
+        "38808fc4-26f5-4582-8303-84286d891804",
+        "9302a27f-62eb-42a3-8f47-fec8b0c5d7a0",
+        "10c8ae9d-14fd-452a-ab67-5f3f7544f0f8",
+        "37b4525d-787a-44ba-a628-f11d19d91dfd"
       ]
     },
     {
@@ -909,22 +909,22 @@
       "type": "chapter_synthesis",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 16,
+      "retrieved_count": 15,
       "metrics": {
         "recall@5": 1.0,
-        "ndcg@5": 1.0,
+        "ndcg@5": 0.6309,
         "recall@10": 1.0,
-        "ndcg@10": 1.0,
+        "ndcg@10": 0.6309,
         "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
+        "ndcg@20": 0.6309,
+        "mrr@10": 0.5
       },
       "top_5_chunk_ids": [
-        "048a32af-7f68-4e27-96e8-6d97b75ab353",
-        "a1d3cf19-1b14-468c-a4c7-f10a30e0fd3a",
-        "4ffffa05-4553-4494-93be-fb0c59e4e1b1",
-        "5e78e80e-70b2-41ed-bbc4-2b06c5a049ea",
-        "3538d194-20d9-4e3f-bb30-c5e59f89679a"
+        "517c8f02-4ad4-4884-9e9a-8987beeb2e5b",
+        "640ca1e5-48be-4c80-a8dd-5e138f80d874",
+        "bfa223dd-66b0-401a-bfed-300af92ccbf8",
+        "7dcfa5ca-e2e6-4cba-ac1e-3f7b553f5662",
+        "0c297602-7791-4d74-9731-efd80b0a9e7f"
       ]
     },
     {
@@ -932,7 +932,7 @@
       "type": "chapter_synthesis",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 16,
+      "retrieved_count": 15,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -943,61 +943,15 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "52a85841-8621-4be8-91c7-8a1820330e7f",
-        "e68263b8-c4ed-4734-ac5c-55be5ff0e416",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "a94d2f87-236c-4a4e-9bf0-3f21eb031d26",
-        "004f1213-620b-4f38-8079-17c805ea1f52"
+        "991e2e25-c3c9-4e30-b861-00ded3c11be7",
+        "1f9214f4-39c2-40e6-ad35-507659a7a736",
+        "97da9196-4cc0-43fa-be08-bd90c2046606",
+        "508b52e8-ea24-434e-bb68-7b600468bda7",
+        "a9fcf27d-4dc6-489c-8de7-4aa5b7ecea44"
       ]
     },
     {
       "question_id": "n03",
-      "type": "needle",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 16,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "24883c69-bbfd-4e5f-9282-c1f0aacf61f3",
-        "d95f02fc-cc63-4782-b1a0-56b90988b646",
-        "7def349b-0972-4234-a5f7-5e1897d01677",
-        "276796ce-c7f0-44ff-865e-e02be7a4a9ea",
-        "a250d0bc-2e86-4d1d-be2c-c68c7506ae6f"
-      ]
-    },
-    {
-      "question_id": "n05",
-      "type": "needle",
-      "language": "en",
-      "evidence_group_count": 1,
-      "retrieved_count": 18,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "21999db0-459a-4d81-9373-625c862b007e",
-        "f9ebf1d4-eca5-449d-94d3-0fa7d5064cba",
-        "a1d3cf19-1b14-468c-a4c7-f10a30e0fd3a",
-        "ee5e7c67-c522-44a7-a31e-70f4290737b5",
-        "c7a36a0a-4168-4669-b6e6-d2479242ff6d"
-      ]
-    },
-    {
-      "question_id": "n06",
       "type": "needle",
       "language": "en",
       "evidence_group_count": 1,
@@ -1012,11 +966,57 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "efccf393-8320-4865-af2f-36e38e861407",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "b6056e5f-7c52-426d-82b7-4eddf4e9d7c1",
-        "3361c9b9-1e34-419b-bdc4-a6de0f68dda0",
-        "607bedd3-533d-444f-90f5-77cabc07d0e7"
+        "bf44c925-a8c3-466f-8673-c582d9b9e3b6",
+        "dda9ed8b-55a8-425a-993e-1d1a3815c2fc",
+        "f69d51d9-b6a0-4a71-8df1-5082206ef08f",
+        "d6f192c9-2e61-4d7a-9979-66bca491b4f0",
+        "6b2617ea-619c-4b5b-bc3c-aabedc016298"
+      ]
+    },
+    {
+      "question_id": "n05",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "2f2de0d7-6254-409b-aa5a-0cd9f409cde7",
+        "96c0d92c-a75c-4af9-b080-ef79f8934ae0",
+        "bfa223dd-66b0-401a-bfed-300af92ccbf8",
+        "fb711fc7-36e6-43ae-ab7a-832434db1eed",
+        "7dcfa5ca-e2e6-4cba-ac1e-3f7b553f5662"
+      ]
+    },
+    {
+      "question_id": "n06",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "5cd5be19-068e-4aef-939b-2e9c18d9a724",
+        "508b52e8-ea24-434e-bb68-7b600468bda7",
+        "df3d8142-05a0-4ad2-8279-f0a597409a0b",
+        "5b67926e-f501-425f-8cc3-261dd08fa056",
+        "16bf5499-c19d-4b7c-b00a-2220cd84a290"
       ]
     },
     {
@@ -1035,11 +1035,11 @@
         "mrr@10": 0.3333
       },
       "top_5_chunk_ids": [
-        "ba86b84a-17f4-4e2f-818c-768cd5078202",
-        "3ac3ad75-dfa3-4544-bba8-0e0c85c7eb48",
-        "feeaa900-7755-4369-be1e-5157db890163",
-        "8bfc8a26-b3ea-4c68-9373-0fb6b1920a4a",
-        "097b48c8-1206-4cc1-90df-f06dfae94ffb"
+        "04bbf369-8c2c-4886-b99e-94053c043ef9",
+        "448bcfdf-de29-40b6-a169-6f504dcd2cef",
+        "11c2cecb-c7b1-4ef3-b28c-45879106f4c0",
+        "e717fd1b-bcd3-4a60-93f2-f78e432e86ce",
+        "a1314d6a-a22a-4099-ba73-6ddd23716e68"
       ]
     },
     {
@@ -1058,11 +1058,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "d54c6380-da32-45c8-8b98-38642fa66e04",
-        "ee5e7c67-c522-44a7-a31e-70f4290737b5",
-        "8e46d87b-8f0d-45f7-b67c-20003e1c263b",
-        "5575cd56-08dc-42d4-b8a7-99103d4a1051",
-        "d968b507-245f-45b4-9376-471debbc268d"
+        "dc2b3515-f819-4d97-9cc3-d03a66df5254",
+        "435e78a8-412f-462a-a108-35fd72b62359",
+        "cf69d278-ec70-4b0c-bacf-096e5483e347",
+        "40bca120-f7f4-4154-b78c-c420852bc784",
+        "172043e5-f5db-411c-b7a5-d97bda01d83e"
       ]
     },
     {
@@ -1081,11 +1081,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "779378fd-e66a-48f8-a22c-e44c5ff04d81",
-        "4dc6e065-a703-4a38-9eb7-fee18b6301ae",
-        "db3491db-a2e4-41db-bfec-db664cbc3e54",
-        "4ffffa05-4553-4494-93be-fb0c59e4e1b1",
-        "60c2f341-aee9-4adb-912b-0fdb26f77394"
+        "f03ee243-f10d-4b14-9ee3-f1ff450c86bf",
+        "b6cc24d4-547b-464b-993c-9425e0cc7d2b",
+        "0ce3d367-d9a8-46ff-be29-9f99179236ac",
+        "bfa223dd-66b0-401a-bfed-300af92ccbf8",
+        "f837c905-ac83-48b1-a846-d05be97daca7"
       ]
     },
     {
@@ -1093,7 +1093,7 @@
       "type": "needle",
       "language": "en",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 19,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 0.4307,
@@ -1104,11 +1104,11 @@
         "mrr@10": 0.25
       },
       "top_5_chunk_ids": [
-        "ee5e7c67-c522-44a7-a31e-70f4290737b5",
-        "266f1c04-31ad-475c-8098-6cedc3383edb",
-        "6f5ea036-50ad-40cc-81f5-e91860757836",
-        "f9ebf1d4-eca5-449d-94d3-0fa7d5064cba",
-        "8095c696-e147-48e8-8c07-e2dd10d89273"
+        "435e78a8-412f-462a-a108-35fd72b62359",
+        "956b3561-64ee-4c60-b8c5-af16f7c1241a",
+        "c839a250-cc81-4399-b893-096167512d42",
+        "fb711fc7-36e6-43ae-ab7a-832434db1eed",
+        "f45f3c61-fab8-4195-a473-6e48a0f8e22d"
       ]
     },
     {
@@ -1116,7 +1116,7 @@
       "type": "definition",
       "language": "de",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 16,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -1127,16 +1127,39 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "f32c8c80-159c-4a84-8bef-a4f93000f263",
-        "079d4924-2a88-4a68-b738-3a8e79483ad2",
-        "efd8584b-73dd-4b6f-b44f-022b51105386",
-        "b00ce749-a446-4757-96d2-7bc25568a17e",
-        "4c29d4fb-4e57-47b3-984f-ec25e4b61397"
+        "9eabd4e3-c93f-407c-875c-84e79c6320df",
+        "ca7d2430-6898-4df2-ab75-cea3e8357de2",
+        "c7b78eb7-0010-4a0a-a303-bf1f2b86fb00",
+        "375c640d-a965-4d58-b97d-668d2a943c08",
+        "173ffd2c-5051-447a-b610-5924f5eaafff"
       ]
     },
     {
       "question_id": "m02",
       "type": "exact_lookup",
+      "language": "de",
+      "evidence_group_count": 1,
+      "retrieved_count": 15,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "ce984725-a7b0-45bd-8953-b38a3f47bdac",
+        "cf619166-01ac-4667-b436-30fe72aaac1e",
+        "f8307065-8c88-45a7-9d34-e1f6e0ddbc5c",
+        "ddbe5a80-8c04-4f04-bbcd-f73fb5036869",
+        "197bd6ef-02a9-4159-940f-dcdd710874d7"
+      ]
+    },
+    {
+      "question_id": "m03",
+      "type": "formula",
       "language": "de",
       "evidence_group_count": 1,
       "retrieved_count": 17,
@@ -1150,16 +1173,16 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "35045586-c297-47fd-930b-e95ff9747730",
-        "f8211917-84a5-4b97-a276-c0800d9c9103",
-        "bd3e7a44-8d82-40fc-b62f-85571bb03b72",
-        "45d183f8-07b9-47d5-895a-8d7e373a0473",
-        "05508ab8-cee2-4031-9f10-0015cc493b60"
+        "1cac5a32-ee77-4faf-b8a5-670a048fd36f",
+        "b5b654cf-c36b-40f1-bf8c-4bd72be412de",
+        "173ffd2c-5051-447a-b610-5924f5eaafff",
+        "a1cc1cf3-bfef-4ff6-98d6-e7023b729321",
+        "58467c43-594c-471f-bc27-2a53b26763e8"
       ]
     },
     {
-      "question_id": "m03",
-      "type": "formula",
+      "question_id": "m04",
+      "type": "multi_hop",
       "language": "de",
       "evidence_group_count": 1,
       "retrieved_count": 18,
@@ -1173,34 +1196,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "af170aa9-97ca-4643-ad38-98de5f88d1f9",
-        "4c29d4fb-4e57-47b3-984f-ec25e4b61397",
-        "b9076264-de79-48c1-a887-486323622528",
-        "3cd9dbd6-7fbd-4daa-86b4-c82a2c5469f4",
-        "383088ed-e86a-45fc-91bf-16a00817ef13"
-      ]
-    },
-    {
-      "question_id": "m04",
-      "type": "multi_hop",
-      "language": "de",
-      "evidence_group_count": 1,
-      "retrieved_count": 19,
-      "metrics": {
-        "recall@5": 1.0,
-        "ndcg@5": 1.0,
-        "recall@10": 1.0,
-        "ndcg@10": 1.0,
-        "recall@20": 1.0,
-        "ndcg@20": 1.0,
-        "mrr@10": 1.0
-      },
-      "top_5_chunk_ids": [
-        "f0bf8b0c-95b4-45d7-af0a-5ed9e223d41c",
-        "609292ec-3545-4d66-a322-af6afaf313d8",
-        "eb9ff474-ade1-435c-8819-18e07e49fbb6",
-        "db786dfb-8a36-4737-8094-3827fa7dd10c",
-        "bec5a747-476d-4fb1-9986-2b8606d38cf3"
+        "4ecf7034-5f72-4579-8abd-1e9afe49407e",
+        "a0e4663c-ba3d-4366-9a3d-bbd0bfb9904d",
+        "a1f3bf80-2ba7-40ca-8a34-47e1d4dbdc52",
+        "ca7d2430-6898-4df2-ab75-cea3e8357de2",
+        "4970acdf-80c8-427b-b798-4d45e13a758a"
       ]
     },
     {
@@ -1208,7 +1208,7 @@
       "type": "contract_clause",
       "language": "de",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 15,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -1219,11 +1219,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "d02265f1-ca5a-4509-9cfb-2b563d598a05",
-        "fac21f46-6f06-4486-8e66-e682e1dfdbd2",
-        "d75879b9-4939-474c-9ee2-499e555ed92d",
-        "5f857ab9-6991-4cee-ac5f-a62b3c6f9d3c",
-        "eb9ff474-ade1-435c-8819-18e07e49fbb6"
+        "05319604-0dfe-466e-874f-81662bf89a28",
+        "f51b8b29-e098-480a-a0f7-09ea31025ab7",
+        "ca7d2430-6898-4df2-ab75-cea3e8357de2",
+        "b8850f04-a2b4-46ae-bf25-664aa4ce0d89",
+        "2608e436-4fbc-48a9-b137-9a0f892700c8"
       ]
     },
     {
@@ -1231,7 +1231,7 @@
       "type": "policy_procedure",
       "language": "de",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 18,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -1242,11 +1242,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "d75879b9-4939-474c-9ee2-499e555ed92d",
-        "1eb6bec0-76fa-489b-96c5-ce309a955c36",
-        "079d4924-2a88-4a68-b738-3a8e79483ad2",
-        "d5931fd2-1472-4e00-8119-d97bc86e10be",
-        "9cfe3c6b-d8c7-4143-804e-8e8d6dda6a02"
+        "2608e436-4fbc-48a9-b137-9a0f892700c8",
+        "ba175ee9-5201-4416-bc7b-0ca65507b49f",
+        "0461c93c-1a35-4c61-acab-2417449ab70e",
+        "c7b78eb7-0010-4a0a-a303-bf1f2b86fb00",
+        "582a8d74-1721-4ae1-a355-f211c68e219e"
       ]
     },
     {
@@ -1254,7 +1254,7 @@
       "type": "chapter_synthesis",
       "language": "de",
       "evidence_group_count": 1,
-      "retrieved_count": 17,
+      "retrieved_count": 18,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -1265,11 +1265,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "4c29d4fb-4e57-47b3-984f-ec25e4b61397",
-        "42c65231-ccc1-496b-a62f-8744e829e81e",
-        "1a9afdb9-1732-4fba-909f-df992b325283",
-        "f0bf8b0c-95b4-45d7-af0a-5ed9e223d41c",
-        "7def349b-0972-4234-a5f7-5e1897d01677"
+        "173ffd2c-5051-447a-b610-5924f5eaafff",
+        "6b773b72-68bd-4086-96ec-d311017e76ab",
+        "ca7d2430-6898-4df2-ab75-cea3e8357de2",
+        "81fa1cfb-06f4-4e57-872f-94f5029f5e9c",
+        "9302a27f-62eb-42a3-8f47-fec8b0c5d7a0"
       ]
     },
     {
@@ -1288,11 +1288,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "361f97fb-3b5a-440c-af2b-2335b280fd32",
-        "fc239fe9-ddd6-4869-940c-0039582483fb",
-        "1a9afdb9-1732-4fba-909f-df992b325283",
-        "a91b511b-c4f4-48ca-814b-5e9863b95cc4",
-        "383088ed-e86a-45fc-91bf-16a00817ef13"
+        "25ff8256-77f7-4ffe-b276-a2a806edc97a",
+        "334c3fb3-14ab-44d1-b20d-2d9eede4907a",
+        "10c8ae9d-14fd-452a-ab67-5f3f7544f0f8",
+        "5d6074ff-d1c6-4930-90e4-a66886a5ab9c",
+        "7cdae64a-f06a-4d74-ab3b-d40bb28bac9d"
       ]
     },
     {
@@ -1300,7 +1300,7 @@
       "type": "exact_lookup",
       "language": "pt",
       "evidence_group_count": 1,
-      "retrieved_count": 14,
+      "retrieved_count": 11,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -1311,11 +1311,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "50796098-34bd-4394-b3bd-fa755c3fc2ec",
-        "af171c9b-a0c5-40de-a0ad-8744ccbf0f0f",
-        "b9076264-de79-48c1-a887-486323622528",
-        "454bb51e-e947-433b-847e-7b9080b89f8a",
-        "bd3e7a44-8d82-40fc-b62f-85571bb03b72"
+        "6521889c-64fc-4e79-846d-37912138affd",
+        "caeab594-e7d9-4996-ad1c-3c86ce17499d",
+        "7d66c2d3-547b-4663-89fe-99696308960b",
+        "b1533e4d-52eb-4b3c-bad0-71ad53aef252",
+        "e390514b-8fa8-4fc4-a73d-9bbc1585ad70"
       ]
     },
     {
@@ -1334,11 +1334,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "b3ff72a9-9d54-43d7-8e03-46b30957ac37",
-        "609292ec-3545-4d66-a322-af6afaf313d8",
-        "ee5e7c67-c522-44a7-a31e-70f4290737b5",
-        "7dee93ac-cda9-4859-9313-45fe32818bef",
-        "361f97fb-3b5a-440c-af2b-2335b280fd32"
+        "b887291e-73fe-4fee-bcd7-c8bb7ee096a5",
+        "7d66ed57-2356-4cb3-8cd5-13d3c780bc4c",
+        "a1f3bf80-2ba7-40ca-8a34-47e1d4dbdc52",
+        "a0e4663c-ba3d-4366-9a3d-bbd0bfb9904d",
+        "435e78a8-412f-462a-a108-35fd72b62359"
       ]
     },
     {
@@ -1357,11 +1357,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "3cd9dbd6-7fbd-4daa-86b4-c82a2c5469f4",
-        "b9076264-de79-48c1-a887-486323622528",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6",
-        "feeaa900-7755-4369-be1e-5157db890163",
-        "d06ea1b6-2c0c-4796-924a-85363f82af1f"
+        "148f4959-24a0-40aa-8964-b14e70a4ce53",
+        "e390514b-8fa8-4fc4-a73d-9bbc1585ad70",
+        "87e63b14-7292-47fc-ad43-98b9dff62c08",
+        "a1cc1cf3-bfef-4ff6-98d6-e7023b729321",
+        "508b52e8-ea24-434e-bb68-7b600468bda7"
       ]
     },
     {
@@ -1380,11 +1380,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "5f857ab9-6991-4cee-ac5f-a62b3c6f9d3c",
-        "fac21f46-6f06-4486-8e66-e682e1dfdbd2",
-        "d02265f1-ca5a-4509-9cfb-2b563d598a05",
-        "bbd8e728-9268-46e5-b426-26366cfbde98",
-        "dd3d367c-1c6b-423b-9772-8f9be0d02718"
+        "603e1f77-0d92-4654-844a-e974862b574d",
+        "93fc19b7-5388-44b8-8f45-9552a75a3219",
+        "87e63b14-7292-47fc-ad43-98b9dff62c08",
+        "b8850f04-a2b4-46ae-bf25-664aa4ce0d89",
+        "05319604-0dfe-466e-874f-81662bf89a28"
       ]
     },
     {
@@ -1403,11 +1403,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "1eb6bec0-76fa-489b-96c5-ce309a955c36",
-        "d75879b9-4939-474c-9ee2-499e555ed92d",
-        "079d4924-2a88-4a68-b738-3a8e79483ad2",
-        "50796098-34bd-4394-b3bd-fa755c3fc2ec",
-        "3e7f5b93-1e81-4647-aa5c-6055c6c1f2d6"
+        "0461c93c-1a35-4c61-acab-2417449ab70e",
+        "582a8d74-1721-4ae1-a355-f211c68e219e",
+        "2608e436-4fbc-48a9-b137-9a0f892700c8",
+        "87e63b14-7292-47fc-ad43-98b9dff62c08",
+        "ba175ee9-5201-4416-bc7b-0ca65507b49f"
       ]
     },
     {
@@ -1415,7 +1415,7 @@
       "type": "table",
       "language": "pt",
       "evidence_group_count": 1,
-      "retrieved_count": 12,
+      "retrieved_count": 13,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -1426,11 +1426,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "ff6303a6-cdf7-4353-8dd3-8bb65083818b",
-        "9bffb404-9817-4f6c-90c2-ea294cd68794",
-        "aab67d83-c44b-46c9-8a2c-8e82634c1bb6",
-        "f95cccbe-5c2c-4654-8fad-2a8d345e5959",
-        "bd3e7a44-8d82-40fc-b62f-85571bb03b72"
+        "533ad342-bd47-4016-910b-db3f0b8d7537",
+        "6add107d-ce82-436b-83b6-3e534e14a77b",
+        "73ac1962-0ebb-419a-a799-6f6a6d9d3b36",
+        "a65b5dca-f5d9-47ef-9fab-4e21f0dbd849",
+        "87e63b14-7292-47fc-ad43-98b9dff62c08"
       ]
     },
     {
@@ -1449,11 +1449,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "fac21f46-6f06-4486-8e66-e682e1dfdbd2",
-        "5f857ab9-6991-4cee-ac5f-a62b3c6f9d3c",
-        "bbd8e728-9268-46e5-b426-26366cfbde98",
-        "514e9aa8-79c1-45ce-87e0-55066a7394eb",
-        "d02265f1-ca5a-4509-9cfb-2b563d598a05"
+        "b8850f04-a2b4-46ae-bf25-664aa4ce0d89",
+        "603e1f77-0d92-4654-844a-e974862b574d",
+        "93fc19b7-5388-44b8-8f45-9552a75a3219",
+        "ac3da5fe-2529-4a73-a243-e4cdf43e574e",
+        "cf447d1b-2601-4226-a470-d4793a9f3feb"
       ]
     },
     {
@@ -1461,7 +1461,7 @@
       "type": "comparison",
       "language": "mixed",
       "evidence_group_count": 1,
-      "retrieved_count": 16,
+      "retrieved_count": 15,
       "metrics": {
         "recall@5": 1.0,
         "ndcg@5": 1.0,
@@ -1472,11 +1472,11 @@
         "mrr@10": 1.0
       },
       "top_5_chunk_ids": [
-        "efd8584b-73dd-4b6f-b44f-022b51105386",
-        "ca2f47d5-e669-4166-96bc-b34cc8bc2c47",
-        "f32c8c80-159c-4a84-8bef-a4f93000f263",
-        "b00ce749-a446-4757-96d2-7bc25568a17e",
-        "079d4924-2a88-4a68-b738-3a8e79483ad2"
+        "375c640d-a965-4d58-b97d-668d2a943c08",
+        "ada54bd5-eb12-423d-b23d-305a4e8705ac",
+        "7155128a-b631-4b60-bde7-28c2fd9d3d31",
+        "9eabd4e3-c93f-407c-875c-84e79c6320df",
+        "ca7d2430-6898-4df2-ab75-cea3e8357de2"
       ]
     }
   ]

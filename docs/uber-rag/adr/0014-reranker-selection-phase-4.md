@@ -116,6 +116,23 @@ note above: ~400–530 ms / 20 pairs, ≈5× faster than the eager-PyTorch
 number measured here) and/or a smaller rerank candidate count could pass
 the latency bar — same model, freeze-compatible in principle, unscheduled.
 
+**Update (2026-06-11) — re-measured on a non-trivial corpus; quality bar now
+PASSES, reopen rests on latency alone.** Reopen path (a) was executed: 8
+same-topic hard-negative distractor docs were added to the eval corpus
+(`tests/eval/fixtures/sample_corpus/`), de-saturating the ranking metrics
+(baseline MRR@10 0.927 → 0.834, nDCG@10 0.944 → 0.875; recall@10 still
+1.000). Against that harder baseline the reranker arm clears the frozen
+quality bar with margin — **MRR@10 +0.0413, nDCG@10 +0.0314** (both > +0.02),
+recall flat (`quality_pass=true`, report
+`tests/eval/reports/retrieval_reranker_arm.json`). The earlier sub-bar
+"+0.013" was a corpus-saturation artifact: the cross-encoder's quality value
+is real once retrieval has genuine confusables. Latency is unchanged at
+~2200 ms/query overhead (bar 1000 ms, optimistic dev-Mac CPU), so the flip
+is still blocked — but now on latency alone. **Net: the only thing standing
+between v2-m3 and a measured production win is inference latency**, which
+makes reopen path (b) (ONNX/quantized CPU serving, or a smaller rerank
+candidate pool) the concrete next experiment whenever it is scheduled.
+
 Implementation note (same date): `BgeRerankerV2M3` was reimplemented on
 plain transformers (`AutoModelForSequenceClassification` +
 `AutoTokenizer`, official model-card scoring) because FlagEmbedding 1.4.0's

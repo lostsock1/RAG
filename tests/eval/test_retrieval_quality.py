@@ -85,10 +85,25 @@ def test_retrieval_quality_baseline(eval_stack: EvalStack):
             **{m: _mean_over(rows, m) for m in metric_keys},
         }
 
+    from tests.eval.conftest import CORPUS_DIR
+
     report = {
         "report": "retrieval_baseline",
         "measured_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "question_count": len(per_question),
+        "corpus": {
+            "documents": len(list(CORPUS_DIR.glob("*.md"))),
+            "note": (
+                "C5 evidence corpus + 8 same-topic hard-negative distractor docs "
+                "(added 2026-06-11): they echo each target query's exact subject "
+                "phrasing but state a sibling fact and contain no evidence span, "
+                "deliberately de-saturating the ranking metrics (nDCG/MRR) so "
+                "ranking upgrades can show a measurable lift. Recall stays "
+                "saturated by design — confusables push true evidence down a few "
+                "ranks, not past k. This baseline SUPERSEDES the pre-distractor "
+                "one (MRR@10 0.927 / nDCG@10 0.944, easy corpus)."
+            ),
+        },
         "retriever": {
             "dense": "BGE-M3 (real) via in-memory Qdrant",
             "lexical": "disabled (stub) — dense-only eval fixture",

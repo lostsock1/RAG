@@ -357,7 +357,9 @@ both 1.000**. Notes that bind D/E:
    **E2 contextual augmentation is recall-oriented and CANNOT show a win on this
    corpus**; either add distractor/near-duplicate docs first (a small eval-corpus
    task) or evaluate E2 on nDCG/MRR ranking lift, not recall. Logged in the entry
-   note.
+   note. **[RESOLVED 2026-06-11 — distractor corpus landed; see the Phase E
+   reranker block below. New baseline MRR@10 0.834 / nDCG@10 0.875; recall
+   still 1.000, so judge E2 on ranking lift.]**
 4. Multilingual *retrieval* is de-risked (DE/PT 1.000); multilingual *generation*
    is still open (D/E5).
 5. CI gate (`.github/workflows/eval.yml`) is advisory; flip `ADVISORY_FLAG` to ""
@@ -487,8 +489,9 @@ config-selectable; canaries run nightly in CI as the standing blind-spot guard.
    proceed to E1.
 2. The D3/D5 reports persist generated answers — reuse them for any
    answer-style before/after comparison.
-3. C5's "easy corpus" caveat still binds E2 (recall-oriented upgrades can't
-   show a win on this corpus; judge by nDCG/MRR or author distractor docs).
+3. C5's "easy corpus" caveat is **RESOLVED (2026-06-11)** — distractor docs
+   landed; the new baseline (MRR@10 0.834 / nDCG@10 0.875, recall@10 1.000)
+   has ranking headroom. Judge E2 by nDCG/MRR lift, not recall.
 
 ---
 
@@ -543,6 +546,27 @@ ADR-0014: distractor corpus for the quality side; ONNX CPU serving (~5×
 per the ADR's DeepEye note) and/or a smaller rerank candidate pool for the
 latency side (same model — freeze-compatible, unscheduled). Next in line:
 the distractor corpus, which gates every further ranking/recall eval.
+
+**✅ DISTRACTOR CORPUS LANDED — 2026-06-11: C5 "easy corpus" caveat
+resolved, and it changed the reranker verdict.** 8 same-topic hard-negative
+docs (EN×6, DE, PT) added under `tests/eval/fixtures/sample_corpus/`: each
+section echoes a target query's exact subject phrase but states a sibling
+fact (a neighbouring constant/definition/element) and contains **no
+evidence span** — verified programmatically across all 60 spans (a
+distractor that contained a span would silently join its relevance group).
+First attempt used sibling *terms* (deflation vs inflation); BGE-M3
+distinguished them and MRR moved only −0.002. Rewritten to echo exact query
+phrasing → baseline **MRR@10 0.927→0.834, nDCG@10 0.944→0.875** (recall@10
+holds at 1.000: confusables push true evidence down a few ranks, not past
+k — the intended ranking headroom, since ranking was always the measured
+weakness). **Re-running the reranker arm against this harder baseline
+flipped its quality verdict**: MRR@10 +0.0413, nDCG@10 +0.0314 (both clear
+the +0.02 bar; recall intact) → `quality_pass=true`, recovering ~half the
+introduced headroom. So the easy-corpus "+0.013, not worth it" result was a
+saturation artifact; the reranker's quality value is real on a non-trivial
+corpus and only CPU latency (2222 ms overhead) blocks the flip — ADR-0014's
+reopen now rests on the latency path alone. E2/E3 are judgeable on ranking
+lift against this new baseline.
 
 ### E1 — Parent-child expansion: audit and wire (M)
 - **Files**: `apps/api/app/services/retrieval/hybrid_retriever.py`, possibly new

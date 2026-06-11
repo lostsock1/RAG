@@ -1,12 +1,13 @@
-# HANDOVER — Phase E in progress; reranker arm closed (NO FLIP), resume at the distractor corpus (written 2026-06-11, end of third session)
+# HANDOVER — Phase E in progress; reranker arm + distractor corpus closed, resume at E2 (written 2026-06-11, end of fourth session)
 
 For a fresh session continuing the master plan. Read in this order:
 
 1. `AGENTS.md` — startup protocol (mandatory: read PROJECT_STATE.md + TASKS.md first).
 2. `docs/superpowers/plans/2026-06-10-sota-master-plan.md` — **the canonical
    forward plan**. Phases A–D carry ✅ COMPLETE blocks; Phase E carries ✅
-   blocks for E0a (+ both ADR-0019 reopen follow-ups), E1, and the reranker
-   arm, plus the dated **DESCOPED** note (models frozen).
+   blocks for E0a (+ both ADR-0019 reopen follow-ups), E1, the reranker
+   arm, and the distractor corpus, plus the dated **DESCOPED** note (models
+   frozen).
 3. `docs/uber-rag/PROJECT_STATE.md` — status header + Recent-changes rows.
 
 ## Binding user directive (2026-06-11)
@@ -22,10 +23,47 @@ need VPS re-verification before SLA-relevant defaults ship.
 
 ## Where things stand
 
-All on `main`, **NOT pushed** (push only when the user says "push").
-Backend suite: **511 passed, 3 skipped** (`python -m pytest apps/api/app/tests/ -q`).
+All on `main`. Backend suite: **511 passed, 3 skipped**
+(`python -m pytest apps/api/app/tests/ -q`). The reranker fix is pushed
+(`c3b0f1a`); the distractor-corpus commit is local unless the user has said
+"push" (push only when they do).
 
-This session (after handover commit `5d048fd`) closed the reranker arm:
+### This session — distractor corpus (C5 caveat resolved)
+
+8 same-topic hard-negative docs added under
+`tests/eval/fixtures/sample_corpus/` (EN×6: physics/chem/econ/law/math/bio
+study-guides; + `de_pruefungsleitfaden`, `pt_guia_de_estudo`). Each section
+echoes a target query's **exact subject phrase** ("The gravitational
+constant G…", "Inflação é medida por…") but states a **sibling fact** (a
+neighbouring constant / definition / element) and contains **no evidence
+span** — verified programmatically across all 60 spans (a distractor that
+contained a span would silently join its relevance group and defeat the
+purpose). Key lesson: the first attempt used sibling *terms* (deflation vs
+inflation) and BGE-M3 distinguished them easily (MRR moved −0.002);
+**echoing the query's exact phrasing is what creates dense-retrieval
+confusion** (MRR moved −0.093).
+
+Outcome — baseline re-measured and **superseded** (corpus now 27 docs):
+- **MRR@10 0.927 → 0.834, nDCG@10 0.944 → 0.875, nDCG@5 0.939 → 0.870.**
+  Recall@10 stays **1.000** by design — confusables push true evidence down
+  a few ranks, not past k; ranking (the measured weakness) now has headroom,
+  recall does not (recall headroom would need far higher distractor density,
+  deferred — recall was never the weakness). EN MRR 0.898→0.785, DE 1.0→0.929,
+  PT held 1.0 (BGE-M3 ranks the PT evidence very robustly).
+- **The reranker arm, re-run against the harder baseline, now CLEARS the
+  quality bar**: MRR@10 +0.0413, nDCG@10 +0.0314 (both > +0.02), recall flat
+  → `quality_pass=true`, recovering ~half the introduced headroom
+  (MRR→0.875, nDCG→0.907). Flip still blocked on latency alone (2222 ms
+  overhead vs 1000 ms bar). The easy-corpus "+0.013, not worth it" verdict
+  was a saturation artifact; ADR-0014's reopen now rests on the latency path
+  only (ONNX / smaller candidate pool). ADR-0014 updated with this.
+- Reports re-baselined and mutually consistent (baseline aggregates ==
+  reranker `baseline_reference`): `retrieval_baseline.json` (gained a
+  test-owned `corpus` descriptor), `retrieval_parent_expansion.json`
+  (re-passes, positive control 1200 parent rows), `retrieval_reranker_arm.json`.
+  Ingestion fixture 3 passed (27-doc count guard auto-adjusts).
+
+### Earlier this day (commit `c3b0f1a`, pushed) — reranker arm closed:
 
 - **Reranker unblocked**: `BgeRerankerV2M3`
   (`apps/api/app/services/retrieval/bge_reranker.py`) reimplemented on plain
@@ -55,32 +93,15 @@ This session (after handover commit `5d048fd`) closed the reranker arm:
   bit-identical to committed reports (run-specific chunk-id churn reverted,
   per policy).
 
-## NEXT — distractor corpus (resume here)
+## NEXT — E2: ADR-0020 contextual augmentation (resume here)
 
-**Why it gates everything**: the C5 caveat binds harder than ever. The
-16-doc corpus is topically distinct; recall@5/10/20 are all saturated at
-1.000 and the reranker arm showed sub-bar lifts on near-ceiling baselines
-(nDCG@10 0.944, MRR@10 0.927). No further ranking/recall technique (E2
-contextual augmentation, E3 query understanding, any future reranker
-re-measurement) can show a defensible win on this corpus.
+The distractor corpus removed the blocker — the new baseline (MRR@10 0.834,
+nDCG@10 0.875, recall@10 still 1.000) has **ranking headroom**, so a
+recall-flat technique can still show a defensible win when judged on
+nDCG/MRR lift. **Judge E2 on ranking lift vs the new baseline, not recall**
+(recall stays saturated; that was never the weakness).
 
-**Shape** (C5 pattern, all infrastructure exists): author near-duplicate /
-same-topic distractor fixture docs into `tests/eval/fixtures/sample_corpus/`
-+ evidence blocks in `docs/uber-rag/eval/heldout-v1.yaml` (verbatim-quote
-spans, rot-guarded loader asserts — `tests/eval/test_ingestion_fixture.py`
-and `apps/api/app/tests/unit/test_eval_harness_loader.py` enforce). Aim:
-distractors that share topic/vocabulary with existing evidence docs so
-dense retrieval has real confusable candidates (same-topic different-fact
-docs, near-duplicate paragraphs with altered specifics, cross-language
-near-misses for the DE/PT subsets). After authoring: re-run
-`tests/eval/test_retrieval_quality.py` to commit a **new baseline** (the
-old `retrieval_baseline.json` aggregates will legitimately drop — that is
-the point; keep the old report in git history, note the corpus change in
-the report payload + PROJECT_STATE), then the reranker arm can be
-re-measured against the new baseline if desired (quality side only — the
-latency bar still fails on this hardware).
-
-**Then, in order**:
+**Order, per the plan**:
 
 1. **E2 — ADR-0020 contextual augmentation** (ADR first, docs-only):
    breadcrumb arm (no LLM) + llm arm via the existing ppq seam — both
@@ -124,14 +145,18 @@ latency bar still fails on this hardware).
 
 ```bash
 python -m pytest apps/api/app/tests/ -q                        # backend suite (expect 511/3 skipped)
-python -m pytest tests/eval/test_retrieval_quality.py -q       # baseline arm (~35 s warm; aggregates must match committed)
-python -m pytest tests/eval/test_retrieval_parent_expansion.py -q  # E1 gate (passes)
-python -m pytest tests/eval/test_retrieval_reranker_arm.py -q -s   # reranker arm (~3.5 min; passes, report = NO FLIP)
+python -m pytest tests/eval/test_retrieval_quality.py -q       # baseline arm (~38 s warm; MRR@10 0.834 — harder corpus; aggregates must match committed)
+python -m pytest tests/eval/test_retrieval_parent_expansion.py -q  # E1 gate (passes; no regression vs baseline)
+python -m pytest tests/eval/test_retrieval_reranker_arm.py -q -s   # reranker arm (~3.5 min; quality_pass=true, flip_default=false on latency)
 python -m pytest tests/eval/test_hallucination_canaries.py -q  # canary guard (CPU, models cached)
 ```
 
-Do not regress: retrieval baseline aggregates (until the distractor corpus
-intentionally resets them), ADR-0017 SLA numbers, negative compliance 1.00,
-ACL leakage tests, canary catch-rate assertions, E1 containment-dedupe
-regression test, the FlagEmbedding-free reranker guard
+Do not regress: retrieval baseline aggregates (now the **post-distractor**
+numbers: MRR@10 0.834 / nDCG@10 0.875 / recall@10 1.000 — a future corpus
+change may reset them again, intentionally), the corpus span-isolation
+invariant (no distractor doc may contain a heldout evidence span — re-check
+with the one-off script in this session's notes if you touch the corpus),
+ADR-0017 SLA numbers, negative compliance 1.00, ACL leakage tests, canary
+catch-rate assertions, E1 containment-dedupe regression test, the
+FlagEmbedding-free reranker guard
 (`test_bge_reranker_does_not_import_flagembedding`).
