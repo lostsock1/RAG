@@ -52,6 +52,8 @@ def build_search_retriever(*, settings: Settings, state: object) -> HybridSearch
         search_sources_repository=_SearchSourcesRepository(),
         reranker=reranker,
         rerank_candidate_limit=settings.reranker_candidate_limit,
+        parent_expansion_enabled=settings.retrieval_parent_expansion,
+        parent_expansion_max_characters=settings.retrieval_parent_expansion_max_characters,
     )
 
 

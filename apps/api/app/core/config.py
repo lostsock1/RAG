@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     reranker_batch_size: int = 8
     reranker_max_length: int = 512
     reranker_candidate_limit: int = 20
+    retrieval_parent_expansion: bool = True  # master plan E1
+    retrieval_parent_expansion_max_characters: int = Field(default=2048, ge=256)  # E1
     context_builder_max_characters: int = Field(default=4000, ge=1)
     context_builder_max_blocks: int | None = Field(default=None, ge=1)
     llm_backend: Literal["disabled", "stub", "ppq"] = "disabled"

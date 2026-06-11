@@ -36,6 +36,8 @@ class EvalStack:
     user_id: UUID
     search_service: object = None  # SearchService (retrieval-only eval, C3)
     document_ids_by_slug: dict[str, UUID] | None = None  # fixture slug -> doc id (span resolution, C1)
+    search_service_parent_expansion: object = None  # E1 ON-arm: real parent lookup + expansion
+    parent_expansion_repo: object = None  # E1 positive control (lookup/resolution counters)
 
 
 class _MarkdownParser(DocumentParser):
@@ -241,6 +243,22 @@ def eval_stack():
 
         search_service = SearchService(retriever=retriever)
 
+        # E1 ON-arm: identical stack, but with the production parent lookup
+        # (real SQLite-backed repo) and expansion enabled — the committed
+        # baseline arm above stays expansion-off for bit-stability.
+        parent_expansion_repo = _CountingSearchSourcesRepo()
+        retriever_parent_expansion = HybridSearchRetriever(
+            router=QueryRouter(),
+            lexical_retriever=opensearch_retriever,
+            vector_retriever=qdrant_retriever,
+            query_embedder=query_embedder,
+            search_sources_repository=parent_expansion_repo,
+            reranker=StubReranker(),
+            rerank_candidate_limit=20,
+            parent_expansion_enabled=True,
+        )
+        search_service_parent_expansion = SearchService(retriever=retriever_parent_expansion)
+
         # 9. Build ChatService with StubLlmBackend
         chat_service = ChatService(
             search_service=search_service,
@@ -268,6 +286,8 @@ def eval_stack():
             user_id=user_id,
             search_service=search_service,
             document_ids_by_slug=document_ids_by_slug,
+            search_service_parent_expansion=search_service_parent_expansion,
+            parent_expansion_repo=parent_expansion_repo,
         )
 
         # Cleanup
@@ -283,7 +303,25 @@ class _StubOpenSearchRetriever:
 
 
 class _EvalSearchSourcesRepo:
-    """Stub — parent-child expansion isn't critical for faithfulness measurement."""
+    """Stub — keeps the committed retrieval baseline arm expansion-off."""
 
     def get_parent_chunks_by_child_ids(self, *, child_chunk_ids):
         return {}
+
+
+class _CountingSearchSourcesRepo:
+    """E1 ON-arm: the production parent lookup against the eval SQLite stack,
+    with counters as the positive control — a silently empty lookup (e.g. an
+    id-format mismatch) would make the ON arm fraudulently identical to OFF."""
+
+    def __init__(self) -> None:
+        self.lookups = 0
+        self.resolved = 0
+
+    def get_parent_chunks_by_child_ids(self, *, child_chunk_ids):
+        from app.repositories.search_sources import get_parent_chunks_by_child_ids
+
+        result = get_parent_chunks_by_child_ids(child_chunk_ids=child_chunk_ids)
+        self.lookups += 1
+        self.resolved += len(result)
+        return result

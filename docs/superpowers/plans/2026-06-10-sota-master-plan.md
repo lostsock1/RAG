@@ -524,6 +524,33 @@ incumbent Llama 3.3 70B and Hermes fallback as baselines.
 - **Accept**: C3 before/after committed; expansion preserves citation `chunk_id`
   stability (existing citation tests green).
 
+**✅ E1 COMPLETE — 2026-06-11.** Audit overturned the "absent" expectation:
+expansion existed and was production-wired (`runtime.py` →
+`get_parent_chunks_by_child_ids`) but ran BEFORE rerank, replaced the leaf
+`chunk_id` with the parent's (loose profile: parent = whole document ≤ 8192
+chars ⇒ production context was 1–2 truncated whole-doc blobs with
+document-level citations), was uncapped, ungated, and stubbed off in the
+eval fixture (committed baseline measured a pipeline production never ran).
+Conformed to spec: fuse → rerank full leaf-text pool → expand top_k (leaf
+identity + citation `chunk_id` kept; parent text in a 2048-char window
+centered on the leaf; fallback to leaf when the truncated parent lost it);
+`retrieval_parent_expansion`/`..._max_characters` settings wired
+(default ON); repo lookup id-normalization fixed (`_to_uuid_hex` — SQLite
+hex storage made the eval arm a silent no-op otherwise). **The eval gate
+caught a real regression in the first design**: dedupe keyed on parent id
+collapsed every leaf of a doc into one hit (recall@10 1.000 → 0.900, 6
+multi-span questions zeroed) — replaced with content-true containment
+dedupe (drop a hit only if its expanded text is inside a kept hit's text;
+provably group-safe). Final gate: ON vs committed baseline **all deltas
++0.0000** (recall/nDCG/MRR @5/10/20), positive control 60 lookups / 1200
+parents resolved, OFF arm reproduces the committed baseline bit-for-bit,
+citation tests green. Reports: `tests/eval/reports/retrieval_parent_expansion.json`.
+Suite **507 passed, 3 skipped**. Reading: the id-metric win was never
+available here (leaf ids preserved by design); the change is a production
+answer-path fix (leaf-precise citations + capped windows instead of
+whole-doc blobs) + eval/production parity + correct reranker input for the
+E2 real-reranker arm.
+
 ### E2 — ADR-0020 + contextual chunk augmentation stage (L)
 - **Files**: `docs/uber-rag/adr/0020-contextual-chunk-augmentation.md`,
   `apps/api/app/workflows/stages.py` (+ `pipeline_runner.py`) new optional

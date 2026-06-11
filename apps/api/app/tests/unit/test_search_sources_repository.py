@@ -64,6 +64,58 @@ def test_get_parent_chunks_by_child_ids_returns_parent_payloads() -> None:
 
 
 
+def test_get_parent_chunks_by_child_ids_matches_hyphenated_ids_against_hex_storage() -> None:
+    """SQLAlchemy's Uuid type stores raw hex (no hyphens) on SQLite while
+    retrieval hits carry canonical hyphenated UUIDs — the lookup must
+    normalize (like get_source_slice_by_chunk_id does) and key the result by
+    the caller's id form, or parent expansion silently no-ops."""
+    child_hex = "aaaaaaaabbbbccccddddeeeeeeeeeeee"
+    parent_hex = "11111111222233334444555555555555"
+    child_hyphenated = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+    with TemporaryDirectory() as tmp_dir:
+        database_url = f"sqlite:///{Path(tmp_dir) / 'search-sources-hex.db'}"
+        engine = create_engine(database_url)
+
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                """
+                CREATE TABLE chunks (
+                    id TEXT PRIMARY KEY,
+                    document_id TEXT NOT NULL,
+                    unit_type TEXT NOT NULL,
+                    heading_path TEXT NOT NULL,
+                    page_start INTEGER NULL,
+                    page_end INTEGER NULL,
+                    text TEXT NOT NULL,
+                    parent_id TEXT NULL,
+                    chunk_index INTEGER NOT NULL,
+                    is_tombstoned BOOLEAN NOT NULL DEFAULT 0,
+                    created_at TEXT NULL
+                )
+                """
+            )
+            connection.exec_driver_sql(
+                f"""
+                INSERT INTO chunks (id, document_id, unit_type, heading_path, page_start, page_end, text, parent_id, chunk_index, is_tombstoned)
+                VALUES
+                    ('{parent_hex}', 'doc-1', 'document', '[]', 1, 2, 'parent text', NULL, 0, 0),
+                    ('{child_hex}', 'doc-1', 'paragraph', '[]', 2, 2, 'child text', '{parent_hex}', 1, 0)
+                """
+            )
+
+        session_factory.configure(bind=engine)
+        try:
+            results = get_parent_chunks_by_child_ids(child_chunk_ids=[child_hyphenated])
+        finally:
+            session_factory.configure(bind=None)
+            engine.dispose()
+
+    assert child_hyphenated in results
+    assert results[child_hyphenated]["chunk_id"] == "11111111-2222-3333-4444-555555555555"
+    assert results[child_hyphenated]["text"] == "parent text"
+
+
 def test_get_source_slice_by_chunk_id_returns_none_for_chunk_outside_acl_filter() -> None:
     with TemporaryDirectory() as tmp_dir:
         database_url = f"sqlite:///{Path(tmp_dir) / 'search-sources-acl.db'}"

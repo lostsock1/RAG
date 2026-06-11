@@ -1,0 +1,1450 @@
+{
+  "report": "retrieval_parent_expansion",
+  "measured_at": "2026-06-11T16:23:57+00:00",
+  "question_count": 60,
+  "retriever": {
+    "dense": "BGE-M3 (real) via in-memory Qdrant",
+    "lexical": "disabled (stub) \u2014 dense-only eval fixture",
+    "reranker": "stub (pass-through)",
+    "parent_expansion": "ENABLED (E1): after-rerank, leaf chunk_id preserved, parent text capped at 2048 chars centered on the leaf, shared parents deduped",
+    "top_k": 20
+  },
+  "ground_truth": "span-anchored (heldout-v1 evidence blocks, resolved at runtime)",
+  "positive_control": {
+    "parent_lookups": 60,
+    "parent_rows_resolved": 1200
+  },
+  "aggregates": {
+    "recall@5": 0.9833,
+    "recall@10": 1.0,
+    "recall@20": 1.0,
+    "ndcg@5": 0.9392,
+    "ndcg@10": 0.9445,
+    "ndcg@20": 0.9445,
+    "mrr@10": 0.9271
+  },
+  "by_language": {
+    "de": {
+      "question_count": 7,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "recall@20": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "ndcg@20": 1.0,
+      "mrr@10": 1.0
+    },
+    "en": {
+      "question_count": 44,
+      "recall@5": 0.9773,
+      "recall@10": 1.0,
+      "recall@20": 1.0,
+      "ndcg@5": 0.9171,
+      "ndcg@10": 0.9243,
+      "ndcg@20": 0.9243,
+      "mrr@10": 0.9006
+    },
+    "mixed": {
+      "question_count": 2,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "recall@20": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "ndcg@20": 1.0,
+      "mrr@10": 1.0
+    },
+    "pt": {
+      "question_count": 7,
+      "recall@5": 1.0,
+      "recall@10": 1.0,
+      "recall@20": 1.0,
+      "ndcg@5": 1.0,
+      "ndcg@10": 1.0,
+      "ndcg@20": 1.0,
+      "mrr@10": 1.0
+    }
+  },
+  "per_question": [
+    {
+      "question_id": "h01",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "a5f23b50-72e6-4c3b-aadf-9b657d61291f",
+        "f8a7488b-0ee9-4cf7-b44b-a84e12607d57",
+        "19b5d92b-b9a1-4600-9285-646c5c354df9",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "ce6b4efc-3e69-4782-872b-635fa1954179"
+      ]
+    },
+    {
+      "question_id": "h03",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "75ab498b-eae6-4c54-9aaf-e87ffaa958a3",
+        "0384ba57-de4f-4682-bd7c-d0e301ed799a",
+        "8d50e3bb-5fd5-4f2b-98fd-cb52a264154f",
+        "d7d6aa09-2469-49da-92b0-f4b5d0bbb458",
+        "aad283c4-8633-4643-9338-b7a7aa180207"
+      ]
+    },
+    {
+      "question_id": "h04",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 0.4307,
+        "recall@10": 1.0,
+        "ndcg@10": 0.4307,
+        "recall@20": 1.0,
+        "ndcg@20": 0.4307,
+        "mrr@10": 0.25
+      },
+      "top_5_chunk_ids": [
+        "bb58067b-6fc7-4c2f-9480-69f75fba7724",
+        "908ca8b5-6df9-416d-a919-c29c5721524b",
+        "d6d4787f-de37-4464-9e28-a09b42579799",
+        "cba3d2c0-b42a-4be2-92e0-5e76cc914222",
+        "9f4a1203-19f5-47c5-a922-0dcf3dde33f3"
+      ]
+    },
+    {
+      "question_id": "h05",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "5a751cd5-42b4-47f0-8d0f-12e987ca4027",
+        "21c9d0d8-8362-4ae8-bffb-b87d59d890fc",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "a0fc1ad4-daae-4daa-a8de-71a6e6f83373",
+        "86d05b66-05ee-4cb6-bee8-55d81b44f74f"
+      ]
+    },
+    {
+      "question_id": "h06",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "67c13084-7567-4881-a0a9-58a29a841034",
+        "a0fc1ad4-daae-4daa-a8de-71a6e6f83373",
+        "3479c90c-e3e7-4dd6-8ccb-5baf0c0275eb",
+        "877bf8a0-cd37-40e0-9b18-08c56c4ec752",
+        "bd0d0882-0be1-456d-968b-ac5c0e611565"
+      ]
+    },
+    {
+      "question_id": "h07",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 15,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "97cea0b8-dde1-4eff-9904-b600d1ea987a",
+        "cbd19567-8215-420c-8db4-0b9a181e388d",
+        "9b692321-654b-414c-9a69-508a297749bc",
+        "dbc6dd6f-3bf4-4b47-b902-a2b03e7c0013",
+        "181f23d8-47e6-4d1e-975c-4cb9db0b19c0"
+      ]
+    },
+    {
+      "question_id": "h08",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "0bf42693-d487-4d2c-be38-d91afb27fe53",
+        "a0fc1ad4-daae-4daa-a8de-71a6e6f83373",
+        "06e85bc6-3ae8-4acb-8879-41ae5f8a195a",
+        "9af97d38-7ef5-446b-ae3f-1a65b00c98c4",
+        "4e5805cd-27ea-40fe-bc1e-33beb89d8e13"
+      ]
+    },
+    {
+      "question_id": "h09",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "9e790c72-46c3-4ea2-9de6-862c013f652b",
+        "f2cfc428-3eda-424a-8315-3630ea419902",
+        "1a1e26da-ba1f-44d8-bad5-f43f6f623db7",
+        "3479c90c-e3e7-4dd6-8ccb-5baf0c0275eb",
+        "8bf5ce5e-c73b-422d-9393-d126a43aff15"
+      ]
+    },
+    {
+      "question_id": "h10",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "cbd19567-8215-420c-8db4-0b9a181e388d",
+        "9a500875-0414-4d65-9fe1-2981c55da69f",
+        "45305f72-7366-4e47-a02b-dea9e604f467",
+        "181f23d8-47e6-4d1e-975c-4cb9db0b19c0",
+        "491b5bdf-4b5e-4037-a448-d5afbc8896f8"
+      ]
+    },
+    {
+      "question_id": "h11",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 15,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "80c06309-1fa3-41d9-b5fd-ea5898a60563",
+        "4e5805cd-27ea-40fe-bc1e-33beb89d8e13",
+        "54ac3fd5-005b-4983-9eeb-ea7fec5b9312",
+        "8c54db88-471c-49af-a826-955171a62b6b",
+        "19b5d92b-b9a1-4600-9285-646c5c354df9"
+      ]
+    },
+    {
+      "question_id": "h12",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "fff9191a-cf95-4c4d-96cf-bfe96d741541",
+        "9af97d38-7ef5-446b-ae3f-1a65b00c98c4",
+        "6f38b5bf-c11e-4823-8dcc-347f050cb93f",
+        "cd1f3f2e-13c5-4662-a89a-428aff33adcc",
+        "308a26e3-5cf1-4139-bb50-02c9e547969d"
+      ]
+    },
+    {
+      "question_id": "h13",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 20,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "dbae2f0a-af20-47d0-b7dc-cd8acadcb2d2",
+        "7b88f060-7d31-4946-acda-0ad8cc154c8e",
+        "327d3e34-9296-48e6-8131-a9cbd0d1b561",
+        "d0a59b69-e55c-4c98-a192-5d3b3cac5fb0",
+        "23338842-b2e9-4da6-bdb8-79e61e89ed59"
+      ]
+    },
+    {
+      "question_id": "h14",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "3f9f0e49-db9b-414d-b796-1437d2ba13fb",
+        "4e5805cd-27ea-40fe-bc1e-33beb89d8e13",
+        "5a751cd5-42b4-47f0-8d0f-12e987ca4027",
+        "19b5d92b-b9a1-4600-9285-646c5c354df9",
+        "86d05b66-05ee-4cb6-bee8-55d81b44f74f"
+      ]
+    },
+    {
+      "question_id": "h15",
+      "type": "definition",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "af098070-bdeb-4727-b771-18c2c7e6b77f",
+        "f5eb1cb5-ff03-4cc9-a9ac-1a95035a227e",
+        "0384ba57-de4f-4682-bd7c-d0e301ed799a",
+        "b0cbf6a6-003a-4c8a-abe4-69c8d30ad807",
+        "f7c06e93-d65f-432f-a56f-47fef86b871f"
+      ]
+    },
+    {
+      "question_id": "h16",
+      "type": "exact_lookup",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 0.4307,
+        "recall@10": 1.0,
+        "ndcg@10": 0.4307,
+        "recall@20": 1.0,
+        "ndcg@20": 0.4307,
+        "mrr@10": 0.25
+      },
+      "top_5_chunk_ids": [
+        "65198e02-4c31-458b-aca0-dcb736c6430e",
+        "85457516-4ce8-4916-abee-7d52d83eed92",
+        "159493f4-7898-4302-97af-881b0d903627",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "474fea40-bf71-4871-81af-eee457867c8e"
+      ]
+    },
+    {
+      "question_id": "h17",
+      "type": "exact_lookup",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "a0fc1ad4-daae-4daa-a8de-71a6e6f83373",
+        "3f9f0e49-db9b-414d-b796-1437d2ba13fb",
+        "a5f23b50-72e6-4c3b-aadf-9b657d61291f",
+        "4ec2cac9-2902-40c5-b3ef-9c09d41511cb",
+        "83cb9e33-0823-4b47-820d-003cf49417a5"
+      ]
+    },
+    {
+      "question_id": "h18",
+      "type": "exact_lookup",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "8d55cc28-1131-486c-998a-d5e1e5f62d04",
+        "19b5d92b-b9a1-4600-9285-646c5c354df9",
+        "bd0d0882-0be1-456d-968b-ac5c0e611565",
+        "d6d4787f-de37-4464-9e28-a09b42579799",
+        "5eccea4c-c82e-4c7d-93b2-f3d36a7f556f"
+      ]
+    },
+    {
+      "question_id": "h19",
+      "type": "exact_lookup",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "f5f26cb1-120d-405c-990d-69abe7043f6a",
+        "0295c5e6-b34d-4bb4-bfff-06185fa60641",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "0e1eafe5-cbc6-41e4-91a8-d76305166022",
+        "65198e02-4c31-458b-aca0-dcb736c6430e"
+      ]
+    },
+    {
+      "question_id": "h21",
+      "type": "exact_lookup",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 15,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "5eccea4c-c82e-4c7d-93b2-f3d36a7f556f",
+        "ceef6bea-334b-4327-be9e-916b62bb0ffc",
+        "97cea0b8-dde1-4eff-9904-b600d1ea987a",
+        "f6958f09-b4d1-4d99-aac4-8c2338cf9d68",
+        "f230169a-8150-4baa-9c2a-8c2b5b42687e"
+      ]
+    },
+    {
+      "question_id": "h22",
+      "type": "exact_lookup",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "bd0d0882-0be1-456d-968b-ac5c0e611565",
+        "a0fc1ad4-daae-4daa-a8de-71a6e6f83373",
+        "74beda65-cb08-4b6b-9426-4574077ddfa2",
+        "b0529424-cd89-438c-9f2f-1c70216ee60d",
+        "159493f4-7898-4302-97af-881b0d903627"
+      ]
+    },
+    {
+      "question_id": "h25",
+      "type": "exact_lookup",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 0.6309,
+        "recall@10": 1.0,
+        "ndcg@10": 0.6309,
+        "recall@20": 1.0,
+        "ndcg@20": 0.6309,
+        "mrr@10": 0.5
+      },
+      "top_5_chunk_ids": [
+        "e88cc770-9ac3-41e4-acd0-4393a10f15f8",
+        "d424d4cc-7694-4bac-a557-7c00b17d4a82",
+        "9733b839-e89b-494a-8d2b-bd0cea5e81a8",
+        "6d6e5581-0292-4c92-af9a-57c56a9c238e",
+        "391ef3e7-4416-4251-ac0e-da9f04ce7f25"
+      ]
+    },
+    {
+      "question_id": "h26",
+      "type": "formula",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 14,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "dbc6dd6f-3bf4-4b47-b902-a2b03e7c0013",
+        "8e5897d2-c474-4897-a191-2bff71895903",
+        "b86a733f-28fb-41cd-995d-1214b97795c5",
+        "181f23d8-47e6-4d1e-975c-4cb9db0b19c0",
+        "b70e46ae-7685-4c61-9b66-897a20801767"
+      ]
+    },
+    {
+      "question_id": "h27",
+      "type": "formula",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "23b531f8-ce44-48fe-8f11-0f84f0b6ac99",
+        "68c6c136-843e-4eca-9013-205b473fc886",
+        "a0fc1ad4-daae-4daa-a8de-71a6e6f83373",
+        "85457516-4ce8-4916-abee-7d52d83eed92",
+        "4a624488-0a2d-4133-95ee-db56d44f7937"
+      ]
+    },
+    {
+      "question_id": "h29",
+      "type": "formula",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 0.4307,
+        "recall@10": 1.0,
+        "ndcg@10": 0.4307,
+        "recall@20": 1.0,
+        "ndcg@20": 0.4307,
+        "mrr@10": 0.25
+      },
+      "top_5_chunk_ids": [
+        "86d05b66-05ee-4cb6-bee8-55d81b44f74f",
+        "b26ee434-fae2-43e7-bf74-d167a73a5401",
+        "a8b05510-bb87-4c2c-bfea-75f480c797a8",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "ceef6bea-334b-4327-be9e-916b62bb0ffc"
+      ]
+    },
+    {
+      "question_id": "h30",
+      "type": "formula",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "0a2bc993-6045-4479-a245-4b1763a95480",
+        "a0fc1ad4-daae-4daa-a8de-71a6e6f83373",
+        "cdafff8b-27a5-4ee0-a15b-e367c47a0aa6",
+        "68c6c136-843e-4eca-9013-205b473fc886",
+        "8c14101a-62db-4e83-bbda-3fceb6903f1b"
+      ]
+    },
+    {
+      "question_id": "h31",
+      "type": "formula",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "54ac3fd5-005b-4983-9eeb-ea7fec5b9312",
+        "8c54db88-471c-49af-a826-955171a62b6b",
+        "30084de1-ccf8-48d5-ae2d-9988dc67ca51",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "86d05b66-05ee-4cb6-bee8-55d81b44f74f"
+      ]
+    },
+    {
+      "question_id": "h32",
+      "type": "formula",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "f7d9fb04-2bb0-4147-9095-3a1560a6e16e",
+        "a8b05510-bb87-4c2c-bfea-75f480c797a8",
+        "65198e02-4c31-458b-aca0-dcb736c6430e",
+        "40aa0fb7-1c30-4c67-9a78-af81bce88fe2",
+        "97cea0b8-dde1-4eff-9904-b600d1ea987a"
+      ]
+    },
+    {
+      "question_id": "h34",
+      "type": "table",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "89ed4428-5c17-4dcc-9cb2-89595ef2aa25",
+        "d0a59b69-e55c-4c98-a192-5d3b3cac5fb0",
+        "5edf287e-59e4-431a-a050-7846073b6492",
+        "23722198-aeaa-4ee7-859b-c5ffee771e1b",
+        "327d3e34-9296-48e6-8131-a9cbd0d1b561"
+      ]
+    },
+    {
+      "question_id": "h35",
+      "type": "table",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 15,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "94ce52f8-0cd2-4bf2-9aa3-e93595c213d3",
+        "ceef6bea-334b-4327-be9e-916b62bb0ffc",
+        "65198e02-4c31-458b-aca0-dcb736c6430e",
+        "3f4376ea-1947-4bae-b1b1-4f338abd6232",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f"
+      ]
+    },
+    {
+      "question_id": "h37",
+      "type": "table",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "c7872e9d-e772-4647-8d83-4340aea18b1c",
+        "22561891-ae47-4cf8-8880-6308eb8a96ba",
+        "3479c90c-e3e7-4dd6-8ccb-5baf0c0275eb",
+        "23338842-b2e9-4da6-bdb8-79e61e89ed59",
+        "4f61cfe1-107d-423b-a8a0-55f1a0ab2c0a"
+      ]
+    },
+    {
+      "question_id": "h39",
+      "type": "table",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "ac0e770a-79d5-4458-9684-ac8c262007e1",
+        "8c54db88-471c-49af-a826-955171a62b6b",
+        "54ac3fd5-005b-4983-9eeb-ea7fec5b9312",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "30084de1-ccf8-48d5-ae2d-9988dc67ca51"
+      ]
+    },
+    {
+      "question_id": "h40",
+      "type": "table",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "63165062-d671-4093-9f9c-0d4993809cd3",
+        "5edf287e-59e4-431a-a050-7846073b6492",
+        "b521c034-0daa-4a0b-81f1-0330ea2cc3ab",
+        "9d574248-0af0-4a4e-a591-289e502c90c7",
+        "173db952-a12f-4492-91eb-06ac1a9a92a7"
+      ]
+    },
+    {
+      "question_id": "h41",
+      "type": "multi_hop",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 14,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "a5f23b50-72e6-4c3b-aadf-9b657d61291f",
+        "19b5d92b-b9a1-4600-9285-646c5c354df9",
+        "ce6b4efc-3e69-4782-872b-635fa1954179",
+        "74beda65-cb08-4b6b-9426-4574077ddfa2",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f"
+      ]
+    },
+    {
+      "question_id": "h43",
+      "type": "multi_hop",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "9a8ce2e7-ba65-4fb2-a876-3108e15e85b3",
+        "1ef85cc3-5f09-437c-931d-19e8211dc84c",
+        "1a1e26da-ba1f-44d8-bad5-f43f6f623db7",
+        "6aa55ffc-625e-4193-b451-b0027d07e8ed",
+        "54ac3fd5-005b-4983-9eeb-ea7fec5b9312"
+      ]
+    },
+    {
+      "question_id": "h45",
+      "type": "multi_hop",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "4e5805cd-27ea-40fe-bc1e-33beb89d8e13",
+        "6cdc5861-7d12-4163-9f86-71318122ab1c",
+        "a98d6664-ccd1-4a26-a514-9759fad8a4f2",
+        "0384ba57-de4f-4682-bd7c-d0e301ed799a",
+        "8d50e3bb-5fd5-4f2b-98fd-cb52a264154f"
+      ]
+    },
+    {
+      "question_id": "h47",
+      "type": "chapter_synthesis",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "9b692321-654b-414c-9a69-508a297749bc",
+        "181f23d8-47e6-4d1e-975c-4cb9db0b19c0",
+        "b86a733f-28fb-41cd-995d-1214b97795c5",
+        "491b5bdf-4b5e-4037-a448-d5afbc8896f8",
+        "9a8ce2e7-ba65-4fb2-a876-3108e15e85b3"
+      ]
+    },
+    {
+      "question_id": "h49",
+      "type": "chapter_synthesis",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "19b5d92b-b9a1-4600-9285-646c5c354df9",
+        "a5f23b50-72e6-4c3b-aadf-9b657d61291f",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "b86a733f-28fb-41cd-995d-1214b97795c5",
+        "f8a7488b-0ee9-4cf7-b44b-a84e12607d57"
+      ]
+    },
+    {
+      "question_id": "n03",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "8c14101a-62db-4e83-bbda-3fceb6903f1b",
+        "f2cfc428-3eda-424a-8315-3630ea419902",
+        "762225e6-e9c1-43a4-af11-b8e1a37aa4ff",
+        "6749bc46-152a-4126-9655-98af346297cb",
+        "59c1b322-894a-4165-9a23-dcc39da74194"
+      ]
+    },
+    {
+      "question_id": "n05",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "c295e94e-3d11-404e-92fd-34728c8a6b3f",
+        "b86a733f-28fb-41cd-995d-1214b97795c5",
+        "181f23d8-47e6-4d1e-975c-4cb9db0b19c0",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "e88cc770-9ac3-41e4-acd0-4393a10f15f8"
+      ]
+    },
+    {
+      "question_id": "n06",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "3d98b1c2-7871-4734-89ed-d7e95b68acc8",
+        "6a9fdf68-67fd-4970-8aac-fb8e4529d73f",
+        "40aa0fb7-1c30-4c67-9a78-af81bce88fe2",
+        "1bea65ad-be43-4d73-8d9c-a797edd2fce7",
+        "ceef6bea-334b-4327-be9e-916b62bb0ffc"
+      ]
+    },
+    {
+      "question_id": "n12",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 0.0,
+        "ndcg@5": 0.0,
+        "recall@10": 1.0,
+        "ndcg@10": 0.3155,
+        "recall@20": 1.0,
+        "ndcg@20": 0.3155,
+        "mrr@10": 0.125
+      },
+      "top_5_chunk_ids": [
+        "73a8f76a-4405-4bbe-bf5f-99e4c257e742",
+        "123d421c-1d56-4825-8232-1b43b21aa99f",
+        "3479c90c-e3e7-4dd6-8ccb-5baf0c0275eb",
+        "22561891-ae47-4cf8-8880-6308eb8a96ba",
+        "1cd99cbb-dafc-425d-96fe-3e20893deb13"
+      ]
+    },
+    {
+      "question_id": "n15",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "de659194-8446-4c12-a6da-ad1182f89248",
+        "83cb9e33-0823-4b47-820d-003cf49417a5",
+        "b3407e8e-7b62-4611-981b-8d57c73a4401",
+        "98d7321b-dd4a-4578-b95a-55c3dd66c1b4",
+        "747361f0-5ce2-419a-8bff-442ad884ee58"
+      ]
+    },
+    {
+      "question_id": "n17",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 20,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "ee09e7f2-11b6-450f-9170-86cc52e93ef9",
+        "f6a97e3e-5cfb-4abc-bd1d-87481106ba29",
+        "d6d4787f-de37-4464-9e28-a09b42579799",
+        "92ac5039-da88-44b5-a6f8-882e41d78845",
+        "e88cc770-9ac3-41e4-acd0-4393a10f15f8"
+      ]
+    },
+    {
+      "question_id": "n19",
+      "type": "needle",
+      "language": "en",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 0.4307,
+        "recall@10": 1.0,
+        "ndcg@10": 0.4307,
+        "recall@20": 1.0,
+        "ndcg@20": 0.4307,
+        "mrr@10": 0.25
+      },
+      "top_5_chunk_ids": [
+        "4ec2cac9-2902-40c5-b3ef-9c09d41511cb",
+        "b0529424-cd89-438c-9f2f-1c70216ee60d",
+        "83cb9e33-0823-4b47-820d-003cf49417a5",
+        "f3e172c3-13c4-4a7b-afbc-f1d20a7b1574",
+        "81b838a8-56e7-4ce0-9920-5d4677c1528c"
+      ]
+    },
+    {
+      "question_id": "m01",
+      "type": "definition",
+      "language": "de",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "51210690-e39c-4ea5-a052-c59e097c7b97",
+        "127a25a9-a995-4e27-8c43-6be3308c10f7",
+        "8bf5ce5e-c73b-422d-9393-d126a43aff15",
+        "2b92fbdf-7549-4425-9d06-218397534952",
+        "86d05b66-05ee-4cb6-bee8-55d81b44f74f"
+      ]
+    },
+    {
+      "question_id": "m02",
+      "type": "exact_lookup",
+      "language": "de",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "8873f3ae-e4dc-49f4-b397-c6a4d1bdc6d8",
+        "8e5897d2-c474-4897-a191-2bff71895903",
+        "403c443d-1188-4fb9-8b2b-85dc6a5907bd",
+        "ceef6bea-334b-4327-be9e-916b62bb0ffc",
+        "5eccea4c-c82e-4c7d-93b2-f3d36a7f556f"
+      ]
+    },
+    {
+      "question_id": "m03",
+      "type": "formula",
+      "language": "de",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "61472b90-89ed-418e-aaed-24bb9c6c1ecd",
+        "6f38b5bf-c11e-4823-8dcc-347f050cb93f",
+        "65198e02-4c31-458b-aca0-dcb736c6430e",
+        "2b92fbdf-7549-4425-9d06-218397534952",
+        "79a802bc-03ef-41ff-8b73-6351902ddecc"
+      ]
+    },
+    {
+      "question_id": "m04",
+      "type": "multi_hop",
+      "language": "de",
+      "evidence_group_count": 1,
+      "retrieved_count": 19,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "3bdee32d-bf7b-43fd-839c-f4de6a159838",
+        "2b92fbdf-7549-4425-9d06-218397534952",
+        "265a69da-5646-4bf3-ad41-804056069c13",
+        "4f61cfe1-107d-423b-a8a0-55f1a0ab2c0a",
+        "127a25a9-a995-4e27-8c43-6be3308c10f7"
+      ]
+    },
+    {
+      "question_id": "m05",
+      "type": "contract_clause",
+      "language": "de",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "d854ef6b-da4f-42c6-a2e1-9d71171942c5",
+        "cec5c79d-83d2-4f6e-ad0f-5933643ff486",
+        "b2dd183e-cd2d-4109-8433-434ceb9fba24",
+        "3de5dc45-e235-4d8a-a23e-0008c1d2dd87",
+        "4e5805cd-27ea-40fe-bc1e-33beb89d8e13"
+      ]
+    },
+    {
+      "question_id": "m06",
+      "type": "policy_procedure",
+      "language": "de",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "3de5dc45-e235-4d8a-a23e-0008c1d2dd87",
+        "127a25a9-a995-4e27-8c43-6be3308c10f7",
+        "0118a2b7-8f53-49cd-87c9-f3560341a7c9",
+        "35f48e5a-606e-4012-93d6-b44319ab9934",
+        "61472b90-89ed-418e-aaed-24bb9c6c1ecd"
+      ]
+    },
+    {
+      "question_id": "m08",
+      "type": "chapter_synthesis",
+      "language": "de",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "2b92fbdf-7549-4425-9d06-218397534952",
+        "436b7813-fed7-4295-8f5e-98e6e41e4dd6",
+        "127a25a9-a995-4e27-8c43-6be3308c10f7",
+        "f24f3c2f-23bc-4ee2-aac5-047458290362",
+        "1035ca83-e306-4e40-b448-4b2d578c2175"
+      ]
+    },
+    {
+      "question_id": "m09",
+      "type": "definition",
+      "language": "pt",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "68309edb-d89d-456b-b74b-9d7c328e065e",
+        "fff9191a-cf95-4c4d-96cf-bfe96d741541",
+        "cd1f3f2e-13c5-4662-a89a-428aff33adcc",
+        "50219bc4-e903-4fe9-9dca-e088c3591e83",
+        "abf3b2ad-beb0-4fde-9836-5ac9d3a988a5"
+      ]
+    },
+    {
+      "question_id": "m10",
+      "type": "exact_lookup",
+      "language": "pt",
+      "evidence_group_count": 1,
+      "retrieved_count": 14,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "68c6c136-843e-4eca-9013-205b473fc886",
+        "0a2bc993-6045-4479-a245-4b1763a95480",
+        "8bf5ce5e-c73b-422d-9393-d126a43aff15",
+        "85457516-4ce8-4916-abee-7d52d83eed92",
+        "474fea40-bf71-4871-81af-eee457867c8e"
+      ]
+    },
+    {
+      "question_id": "m11",
+      "type": "multi_hop",
+      "language": "pt",
+      "evidence_group_count": 1,
+      "retrieved_count": 15,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "37a60cd8-dd0f-465a-9f97-9dd4a8632d53",
+        "5a751cd5-42b4-47f0-8d0f-12e987ca4027",
+        "68309edb-d89d-456b-b74b-9d7c328e065e",
+        "db341aae-736a-481b-80a8-e1691d662a10",
+        "265a69da-5646-4bf3-ad41-804056069c13"
+      ]
+    },
+    {
+      "question_id": "m12",
+      "type": "formula",
+      "language": "pt",
+      "evidence_group_count": 1,
+      "retrieved_count": 12,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "6ddea396-7431-4fb7-9aff-2de9069de9c8",
+        "a0fc1ad4-daae-4daa-a8de-71a6e6f83373",
+        "1cd99cbb-dafc-425d-96fe-3e20893deb13",
+        "85457516-4ce8-4916-abee-7d52d83eed92",
+        "37a60cd8-dd0f-465a-9f97-9dd4a8632d53"
+      ]
+    },
+    {
+      "question_id": "m13",
+      "type": "contract_clause",
+      "language": "pt",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "b2dd183e-cd2d-4109-8433-434ceb9fba24",
+        "80c06309-1fa3-41d9-b5fd-ea5898a60563",
+        "6749bc46-152a-4126-9655-98af346297cb",
+        "cec5c79d-83d2-4f6e-ad0f-5933643ff486",
+        "747361f0-5ce2-419a-8bff-442ad884ee58"
+      ]
+    },
+    {
+      "question_id": "m14",
+      "type": "policy_procedure",
+      "language": "pt",
+      "evidence_group_count": 1,
+      "retrieved_count": 18,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "0118a2b7-8f53-49cd-87c9-f3560341a7c9",
+        "3de5dc45-e235-4d8a-a23e-0008c1d2dd87",
+        "3db139d9-8c80-414c-932b-b52af424683c",
+        "127a25a9-a995-4e27-8c43-6be3308c10f7",
+        "68c6c136-843e-4eca-9013-205b473fc886"
+      ]
+    },
+    {
+      "question_id": "m16",
+      "type": "table",
+      "language": "pt",
+      "evidence_group_count": 1,
+      "retrieved_count": 12,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "22b44868-9c43-4110-9fe2-a8875250dbb0",
+        "5eccea4c-c82e-4c7d-93b2-f3d36a7f556f",
+        "37a60cd8-dd0f-465a-9f97-9dd4a8632d53",
+        "ceef6bea-334b-4327-be9e-916b62bb0ffc",
+        "9d574248-0af0-4a4e-a591-289e502c90c7"
+      ]
+    },
+    {
+      "question_id": "m18",
+      "type": "exact_lookup",
+      "language": "mixed",
+      "evidence_group_count": 1,
+      "retrieved_count": 17,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "cec5c79d-83d2-4f6e-ad0f-5933643ff486",
+        "b2dd183e-cd2d-4109-8433-434ceb9fba24",
+        "80c06309-1fa3-41d9-b5fd-ea5898a60563",
+        "d854ef6b-da4f-42c6-a2e1-9d71171942c5",
+        "aeeac6d2-e514-4d9c-a633-91ee4fef3801"
+      ]
+    },
+    {
+      "question_id": "m19",
+      "type": "comparison",
+      "language": "mixed",
+      "evidence_group_count": 1,
+      "retrieved_count": 16,
+      "metrics": {
+        "recall@5": 1.0,
+        "ndcg@5": 1.0,
+        "recall@10": 1.0,
+        "ndcg@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@20": 1.0,
+        "mrr@10": 1.0
+      },
+      "top_5_chunk_ids": [
+        "8bf5ce5e-c73b-422d-9393-d126a43aff15",
+        "5a751cd5-42b4-47f0-8d0f-12e987ca4027",
+        "51210690-e39c-4ea5-a052-c59e097c7b97",
+        "127a25a9-a995-4e27-8c43-6be3308c10f7",
+        "3bdee32d-bf7b-43fd-839c-f4de6a159838"
+      ]
+    }
+  ]
+}

@@ -57,6 +57,12 @@ def get_parent_chunks_by_child_ids(*, child_chunk_ids: list[str]) -> dict[str, d
     if not child_chunk_ids:
         return {}
 
+    # SQLAlchemy's Uuid type stores raw hex (no hyphens) on SQLite while
+    # retrieval hits carry canonical hyphenated UUIDs — normalize the lookup
+    # (mirroring get_source_slice_by_chunk_id) and key the result by the
+    # caller's original id form.
+    original_by_hex = {_to_uuid_hex(child_id): child_id for child_id in child_chunk_ids}
+
     with session_factory() as session:
         if session.bind is None:
             raise RuntimeError(
@@ -78,14 +84,14 @@ def get_parent_chunks_by_child_ids(*, child_chunk_ids: list[str]) -> dict[str, d
             )
             .select_from(child.join(parent, parent.c.id == child.c.parent_id))
             .where(
-                child.c.id.in_(child_chunk_ids),
+                child.c.id.in_(list(original_by_hex.keys())),
                 child.c.is_tombstoned.is_(False),
                 parent.c.is_tombstoned.is_(False),
             )
         )
 
         return {
-            str(row.child_id): {
+            original_by_hex.get(_to_uuid_hex(str(row.child_id)), str(row.child_id)): {
                 "chunk_id": _normalize_identifier(row.parent_id),
                 "document_id": _normalize_identifier(row.document_id),
                 "text": row.text,

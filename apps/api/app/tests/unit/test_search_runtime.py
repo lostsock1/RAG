@@ -114,3 +114,29 @@ def test_search_runtime_builds_real_reranker_when_enabled(monkeypatch) -> None:
     assert retriever._reranker.model_name == "fake-model"
     assert retriever._reranker.batch_size == 4
     assert retriever._reranker.max_length == 256
+
+
+def test_search_runtime_wires_parent_expansion_settings(monkeypatch) -> None:
+    monkeypatch.setattr("app.services.retrieval.runtime.OpenSearch", lambda **kwargs: _FakeOpenSearchClient())
+    monkeypatch.setattr("app.services.retrieval.runtime.QdrantClient", lambda **kwargs: _FakeQdrantClient())
+    monkeypatch.setattr("app.services.retrieval.runtime.BgeM3QueryEmbedder", _FakeQueryEmbedder)
+
+    default_retriever = build_search_retriever(
+        settings=Settings(search_backend="hybrid"),
+        state=SimpleNamespace(),
+    )
+    assert default_retriever is not None
+    assert default_retriever._parent_expansion_enabled is True
+    assert default_retriever._parent_expansion_max_characters == 2048
+
+    disabled_retriever = build_search_retriever(
+        settings=Settings(
+            search_backend="hybrid",
+            retrieval_parent_expansion=False,
+            retrieval_parent_expansion_max_characters=512,
+        ),
+        state=SimpleNamespace(),
+    )
+    assert disabled_retriever is not None
+    assert disabled_retriever._parent_expansion_enabled is False
+    assert disabled_retriever._parent_expansion_max_characters == 512
