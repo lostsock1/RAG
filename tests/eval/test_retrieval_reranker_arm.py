@@ -146,7 +146,7 @@ def test_retrieval_reranker_arm(eval_stack: EvalStack):
         "retriever": {
             "dense": "BGE-M3 (real) via in-memory Qdrant",
             "lexical": "disabled (stub) — dense-only eval fixture",
-            "reranker": "BAAI/bge-reranker-v2-m3 (real, CPU, FlagEmbedding), candidates=20",
+            "reranker": "BAAI/bge-reranker-v2-m3 (real, CPU, plain transformers), candidates=20",
             "parent_expansion": "ENABLED (E1 shape: after-rerank, leaf ids, capped windows)",
             "top_k": TOP_K,
         },

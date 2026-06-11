@@ -525,6 +525,25 @@ ADR-0014 reranker (config-off today) — measured as the
 `tests/eval/test_retrieval_reranker_arm.py`); latency bars are CPU bars,
 re-verified on the VPS before SLA-relevant flips ship.
 
+**✅ RERANKER ARM MEASURED — 2026-06-11: NO FLIP.** Prerequisite fix landed
+first: `BgeRerankerV2M3` reimplemented on plain transformers
+(`AutoModelForSequenceClassification`, official model-card scoring) because
+FlagEmbedding 1.4.0's reranker calls `tokenizer.prepare_for_model`, removed
+in transformers 5.x — the real path crashed on first rerank while unit
+tests stayed green on a monkeypatched fake (FlagEmbedding-free regression
+guard added; real-model smoke sane; suite **511 passed, 3 skipped**).
+Frozen rule applied to `tests/eval/reports/retrieval_reranker_arm.json`:
+quality MRR@10 +0.0132 / nDCG@10 +0.0109 — net positive (two rank-4
+questions fixed to rank 1, two perfect ones dropped to rank 2) but below
+the +0.02 bar on the topically-distinct C5 corpus; latency mean overhead
+**2436 ms/query** (157 → 2593 ms, P95 4084 ms) vs the 1000 ms bar on
+optimistic dev-Mac CPU — fails independently of corpus difficulty.
+**`reranker_backend` default stays `disabled`.** Reopen paths recorded in
+ADR-0014: distractor corpus for the quality side; ONNX CPU serving (~5×
+per the ADR's DeepEye note) and/or a smaller rerank candidate pool for the
+latency side (same model — freeze-compatible, unscheduled). Next in line:
+the distractor corpus, which gates every further ranking/recall eval.
+
 ### E1 — Parent-child expansion: audit and wire (M)
 - **Files**: `apps/api/app/services/retrieval/hybrid_retriever.py`, possibly new
   `expansion.py`, `apps/api/app/repositories/chunks.py`, tests

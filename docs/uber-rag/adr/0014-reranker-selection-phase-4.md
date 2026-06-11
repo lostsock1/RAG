@@ -84,6 +84,48 @@ Independent DeepEye research unanimously confirmed this decision. Key new data:
 - MIRACL multilingual gap between v2-m3 and v2-gemma is only +0.6 nDCG@10, negligible for Uber-RAG trilingual corpus.
 - `trust_remote_code` risk is worse than originally documented: CVE-2026-27893 (HIGH 8.8), demonstrated RCE PoCs, and a 2026 arxiv empirical study confirming arbitrary code execution capability.
 
+### Enablement measurement (2026-06-11) — production default stays `disabled`
+
+The selection above was never the production *runtime* default
+(`reranker_backend="disabled"`, stub reranker). Under the 2026-06-11 models
+freeze (CPU-only VPS, API generation, no GPU), enabling the accepted model
+was the one in-freeze ranking lever, so it was measured as an eval arm
+(`tests/eval/test_retrieval_reranker_arm.py`; 60 questions, C5 corpus, E1
+expansion ON, candidates=20, dev-Mac CPU; report
+`tests/eval/reports/retrieval_reranker_arm.json`) against a decision rule
+frozen before measurement: flip iff (MRR@10 or nDCG@10 lift ≥ +0.02 AND
+recall@10 drop ≤ 0.02) AND mean overhead ≤ 1000 ms/query.
+
+- **Quality — below the bar.** MRR@10 0.9270 → 0.9403 (+0.0132), nDCG@10
+  0.9440 → 0.9554 (+0.0109); recall@10 unchanged at 1.000 (recall@5
+  0.9833 → 1.000). Per-question: two rank-4 questions fixed to rank 1
+  (h04, h16), two nudged up (h29, n12), two previously-perfect regressed
+  to rank 2 (h12, h19) — net positive but sub-significance on the
+  topically-distinct C5 corpus (its recorded caveat applies).
+- **Latency — fails decisively.** Mean overhead **+2436 ms/query**
+  (157 → 2593 ms; P95 4084 ms) vs the 1000 ms bar, measured on hardware
+  *optimistic* relative to the production VPS. Stacked on the measured
+  3.11 s P50 first-verified-token, this breaks the ADR-0017 5 s budget.
+
+**Outcome: no flip — `reranker_backend` default stays `disabled`.** The
+model selection itself is unaffected; v2-m3 remains the accepted,
+config-selectable model. Enablement reopen paths: (a) the harder distractor
+corpus (Phase E backlog) may lift quality past the bar, but latency fails
+independently of corpus difficulty; (b) ONNX-optimized CPU serving (DeepEye
+note above: ~400–530 ms / 20 pairs, ≈5× faster than the eager-PyTorch
+number measured here) and/or a smaller rerank candidate count could pass
+the latency bar — same model, freeze-compatible in principle, unscheduled.
+
+Implementation note (same date): `BgeRerankerV2M3` was reimplemented on
+plain transformers (`AutoModelForSequenceClassification` +
+`AutoTokenizer`, official model-card scoring) because FlagEmbedding 1.4.0's
+reranker path calls `tokenizer.prepare_for_model`, which transformers 5.x
+removed for slow tokenizers — the previous implementation crashed on first
+real rerank under the pinned stack (transformers 5.8.1). Class interface
+and config knobs are unchanged; a regression guard in
+`apps/api/app/tests/unit/test_bge_reranker.py` keeps FlagEmbedding out of
+the module.
+
 ## References
 
 Access date for all external sources: 2026-05-21.
