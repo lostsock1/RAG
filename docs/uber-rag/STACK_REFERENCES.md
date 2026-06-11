@@ -197,6 +197,16 @@ Implementation impact:
 - Build internal goldsets first.
 - Include exact, semantic, book hierarchy, table, formula, negative, cross-lingual, and ACL leakage tests.
 
+### Grounding verifiers (Phase D entry, verified 2026-06-11)
+
+- MiniCheck (paper, EMNLP 2024): https://arxiv.org/abs/2404.10774 — sentence-level grounding fact-checker family
+- `lytang/MiniCheck-Flan-T5-Large`: https://huggingface.co/lytang/MiniCheck-Flan-T5-Large — **MIT**, 783M, plain transformers (no trust_remote_code); LLM-AggreFact best-under-1B per card. **ADR-0019 default.**
+- `lytang/MiniCheck-RoBERTa-Large`: MIT, 0.4B — faster fallback candidate.
+- `bespokelabs/Bespoke-MiniCheck-7B`: **no license on card** + custom_code — disqualified for commercial default.
+- `vectara/hallucination_evaluation_model` (HHEM-2.x): Apache-2.0 but requires `trust_remote_code=True` (HHEMv2 custom architecture) — rejected for default per the ADR-0014 trust_remote_code posture; revisit if standard-architecture release appears.
+- `ibm-granite/granite-guardian-3.1/3.2`: Apache-2.0, 2–3B, generation-style judging — GPU-era reopen candidates.
+- Full comparison + extracted inference recipe: `docs/uber-rag/research/2026-06-11-phase-d-entry.md`.
+
 ## DeepEye and workflow-centric agent research
 
 - DeepEye project: https://deepeye.tech/deepeye.html
