@@ -340,22 +340,31 @@ new is being adopted.
 **Phase C exit criteria**: committed retrieval baseline on ≥ 60 questions; CI
 advisory gate live; the sentence "retrieval quality is unmeasured" is dead.
 
-**Progress 2026-06-11: C0–C4 COMPLETE** (`838a141`..`0302b46`); **C5 remains**
-(the ≥ 60-question + multilingual half of the exit criteria). Implementation
-notes for C5 and later phases: (1) ground truth is span-anchored — questions
-carry `evidence: [{doc, span}]`, resolved at runtime to chunk-ID equivalence
-groups via `tests/eval/harness/ground_truth.py`; zero-match raises (rot guard);
-every C5 question must follow this pattern with spans verified against the
-authored fixture docs. (2) Metrics are grouped per-span — see
-`grouped_*_at_k` in `scorer.py`; the naive chunk-level variants exist but
-penalize leaf/parent duplication. (3) **First baseline reading: recall@10 =
-1.000 but nDCG@10 = 0.778 / MRR@10 = 0.708 — ranking, not recall, is the
-measured weakness** (eval fixture is dense-only with a stub reranker). Phase
-D/E should add real-reranker and hybrid-lexical eval arms and measure the
-ranking lift; contextual augmentation (E2) targets recall, which this corpus
-does not yet stress — C5's larger corpus may change that. (4) The CI gate
-(`.github/workflows/eval.yml`) is advisory; flip `ADVISORY_FLAG` to "" after
-two clean weeks.
+**✅ PHASE C COMPLETE — 2026-06-11** (`838a141`..`bf236ca`). C0–C4 built the rig;
+C5 scaled the corpus to 16 docs / 60 evidence-backed questions (de=7, pt=7).
+Final baseline (`tests/eval/reports/retrieval_baseline.json`, BGE-M3 dense, stub
+reranker, lexical off): **recall@10 1.000, nDCG@10 0.944, MRR@10 0.927; DE+PT
+both 1.000**. Notes that bind D/E:
+1. Ground truth is span-anchored — `evidence: [{doc, span}]`, runtime-resolved
+   to chunk-ID equivalence groups via `tests/eval/harness/ground_truth.py`;
+   zero-match raises (rot guard). Metrics are grouped per-span
+   (`grouped_*_at_k` in `scorer.py`); naive chunk-level variants exist but
+   penalize leaf/parent duplication — use the grouped ones.
+2. **Ranking, not recall, is the measured weakness** (recall saturated at 1.000;
+   5 questions place first-relevant beyond rank 3). D/E should add real-reranker
+   and hybrid-lexical eval arms and measure the ranking lift.
+3. **The corpus is "easy"** — topically distinct docs, so recall has no headroom.
+   **E2 contextual augmentation is recall-oriented and CANNOT show a win on this
+   corpus**; either add distractor/near-duplicate docs first (a small eval-corpus
+   task) or evaluate E2 on nDCG/MRR ranking lift, not recall. Logged in the entry
+   note.
+4. Multilingual *retrieval* is de-risked (DE/PT 1.000); multilingual *generation*
+   is still open (D/E5).
+5. CI gate (`.github/workflows/eval.yml`) is advisory; flip `ADVISORY_FLAG` to ""
+   after two clean weeks. The committed baseline is now the 60-question one.
+6. 110 heldout questions remain skeletal — they target corpora (contracts,
+   reports, emails, version-history) that do not exist as fixtures yet; backfill
+   when those corpora are authored, not before.
 
 ---
 
