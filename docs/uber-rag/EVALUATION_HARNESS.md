@@ -25,6 +25,24 @@ tests/
       sample_corpus/     # Small synthetic corpus for harness CI smoke tests
 ```
 
+## LLM-as-judge calibration (eval-only)
+
+`tests/eval/harness/judge.py` provides a per-sentence YES/NO support judge over
+an OpenAI-compatible endpoint plus a Cohen's-kappa implementation. It is
+**never used in production verification** — it calibrates trust in the cheap
+production verifier and audits verifier swaps:
+
+- Input reuse: the judge consumes the answers persisted by the D3-style
+  comparison report (`grounding_vs_nli.json`) — answers are generated once and
+  every evaluator scores the identical text.
+- Sampling: a seeded 30-question subsample bounds cost and keeps runs
+  reproducible (`tests/eval/test_judge_calibration.py`).
+- Output: per-sentence agreement, Cohen's kappa, support-rate per evaluator,
+  and the full disagreement list (`tests/eval/reports/judge_calibration.json`).
+- Circularity guard (Phase C entry note): judge conclusions inform ADR
+  decisions; they never gate production traffic, and the judge model choice is
+  tracked independently of the production answering model.
+
 ## Report artifact policy
 
 Canonical evaluation results are **committed JSON files** under `tests/eval/reports/`.

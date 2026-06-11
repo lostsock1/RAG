@@ -89,7 +89,7 @@ Implemented backend slices:
 
 Honest caveats:
 
-- The current headline “faithfulness” number is measured with ADR-0016 `not_contradicted` mode. That is a contradiction guardrail, not a true source-support metric. A grounding-specific verifier is master plan Phase D.
+- The current headline “faithfulness” number is measured with ADR-0016 `not_contradicted` mode. That is a contradiction guardrail, not a true source-support metric. The Phase D grounding-verifier candidate (MiniCheck, ADR-0019) was measured 2026-06-11 and **rejected with data**: it catches 100% of fabrications the guardrail misses (the blind spot is real and total), but answer meta-discourse (incl. a `rank=N` label leak from the prompt into user-visible answers — logged for fixing) and ~4 s/sentence CPU latency failed the frozen promotion bars. The grounding backend remains config-selectable, and a hallucination canary suite now guards the blind spot in nightly CI.
 - Streaming latency (5 concurrent, real ppq + NLI, 2026-06-10 after ADR-0018): **P50 first-verified-token 3.11s, P95 3.22s — ADR-0017 SLA (5s/10s) passing**, with every emitted sentence individually verified. “First token” means “first verified sentence.” The ADR-0008 ~2s ambition remains provider-bound (local LLM serving is master plan Phase G).
 - The streaming path is deliberately stricter than blocking `/chat`: it gates every sentence, while blocking tolerates up to `nli_unsupported_ratio` unsupported sentences (ADR-0016/0018).
 - Qdrant payload ACL filtering now enforces expiry via a numeric `expires_at_ts` field (2026-06-10). Fail-closed: corpora indexed before that date (including the VPS) return no Qdrant results until re-ingested.

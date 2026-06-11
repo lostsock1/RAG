@@ -443,6 +443,30 @@ Record findings in `docs/uber-rag/research/2026-XX-XX-phase-d-entry.md` +
 **Phase D exit criteria**: a support-metric verifier measured against the guardrail
 with frozen criteria; canary suite in CI; production default decided by data.
 
+**✅ PHASE D COMPLETE — 2026-06-11** (`8acffc7`..closing commit). Outcome:
+**ADR-0019 Rejected with data** — exactly the "either outcome is a success of the
+rig" branch. Criteria applied mechanically: c2 PASS (canary catch 1.00; the
+`not_contradicted` blind spot is total — 10/10 plausible fabrications pass it),
+c1 FAIL (0.578 vs ≥ 0.85), c3 FAIL (3964 ms vs ≤ 500 ms). Judge calibration:
+kappa 0.563/91 pairs; disagreements concentrate on the two known artifacts.
+`not_contradicted` stays production default; the grounding backend is merged and
+config-selectable; canaries run nightly in CI as the standing blind-spot guard.
+
+**Bindings for Phase E (do these early):**
+1. **E0a — answer-style fix (NEW, small, high-value):** `llm_backend.py:204`
+   renders `rank={block.rank}` into prompt block headers; the LLM parrots it
+   into user-visible answers (incl. a garbled `rank=!!!…2` artifact). Replace
+   with human-oriented source labels (`[Source N: title]`), add a
+   system-instruction rule against echoing labels/meta-discourse, update the
+   affected unit tests. This is a user-facing quality bug independent of any
+   verifier — and the **primary ADR-0019 reopen path**: re-run the D3
+   measurement (c1) after it lands. Optional c3 path if c1 then passes:
+   measure MiniCheck-RoBERTa-Large latency.
+2. The D3/D5 reports persist generated answers — reuse them for any
+   answer-style before/after comparison.
+3. C5's "easy corpus" caveat still binds E2 (recall-oriented upgrades can't
+   show a win on this corpus; judge by nDCG/MRR or author distractor docs).
+
 ---
 
 ## Phase E — Retrieval quality upgrades (each one eval-gated by Phase C)

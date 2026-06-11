@@ -1,6 +1,12 @@
 # ADR-0019: Grounding Verifier — MiniCheck-Flan-T5-Large
 
-Status: Proposed (criteria frozen; promotion pending D3 measurement)
+Status: **Rejected (with data), 2026-06-11** — frozen criteria applied
+mechanically: criterion 2 passed (canary catch rate 1.00), criteria 1 and 3
+failed (faithfulness 0.578 vs ≥ 0.85; per-sentence latency 3964 ms vs
+≤ 500 ms). `not_contradicted` (ADR-0016) remains the production default. The
+`grounding` backend stays merged and config-selectable, and the canary suite
+runs nightly in CI as the standing blind-spot guard. See "Measurement results"
+below — the failure analysis surfaced two real generation-quality findings.
 Date: 2026-06-11
 
 ## Context
@@ -85,6 +91,49 @@ criterion fails: this ADR moves to Rejected-with-data, `not_contradicted`
 stays, and the measurement is committed anyway — either outcome is a success of
 the rig.
 
+## Measurement results (D3 + D4, 2026-06-11)
+
+| Criterion | Frozen bar | Measured | Verdict |
+|---|---|---|---|
+| 1. Grounding faithfulness (60 q, identical LLM answers) | ≥ 0.85 | **0.578** | FAIL |
+| 2. Canary catch rate on the `not_contradicted` blind spot | ≥ 0.80 | **1.00** (10/10; controls clean) | PASS |
+| 3. Mean per-sentence verify latency (CPU, this hardware) | ≤ 500 ms | **3964 ms** | FAIL |
+
+Reference: `not_contradicted` on the same answers: faithfulness 0.9985, accept
+rate 1.00. Reports: `tests/eval/reports/grounding_vs_nli.json`,
+`tests/eval/reports/hallucination_canaries.json`.
+
+### Failure taxonomy (criterion 1)
+
+The 0.578 is **not** primarily verifier blindness — it decomposes into:
+
+1. **Meta-discourse in answers (54 of 81 rejected sentences).** The production
+   LLM wraps facts in citation meta-language — *"According to the biology
+   textbook (rank=1), homeostasis is …"*, *"(Evidence block rank=4)"*, *"This
+   is stated in the text of rank=1."* MiniCheck (correctly, strictly) cannot
+   ground the wrapper against block text; pure meta-sentences contain no
+   groundable claim at all. The NLI guardrail passes all of it silently.
+2. **Splitter fragmentation of numbered lists** — fragments like
+   `"f(a) is defined\n2."` are not checkable claims (e.g., h18).
+3. Residual strictness on heavily-reworded composites.
+
+**Product findings surfaced by this measurement (the real value of the run):**
+- `rank=N` is leaked internal jargon: `llm_backend.py:204` renders
+  `rank={block.rank}` into prompt block headers and the LLM parrots it into
+  user-visible answers. Fix candidate (small, logged in the master plan):
+  human-oriented source labels + a system-instruction rule against echoing
+  them. The h16 "CODATA 2018" suspicion was checked and cleared — the fixture
+  genuinely contains that text; no parametric fabrication observed in this run.
+- Re-measurement of criterion 1 is only meaningful **after** the answer-style
+  fix; the current number measures the style mismatch as much as the verifier.
+
+### Criterion 3 note
+
+783M seq2seq × (sentences × blocks) pairs at max-length 2048 is ~8× over the
+streaming budget on this CPU. Paths if reopened: `MiniCheck-RoBERTa-Large`
+(0.4B classifier head), ONNX int8, top-2-block prefiltering before grounding,
+or GPU-era hardware.
+
 ## Consequences
 
 ### Positive
@@ -112,7 +161,10 @@ the rig.
 
 ## Revisit triggers
 
+- **The answer-style fix lands** (no meta-discourse / rank-leak in answers) →
+  re-run D3; criterion 1 becomes meaningful. This is the primary reopen path.
+- Criterion 3 path identified (RoBERTa variant measured fast enough, ONNX
+  int8, block prefiltering, or GPU hardware) → re-run latency measurement.
 - HHEM ships a standard-architecture (no trust_remote_code) release → re-bench.
 - GPU hardware arrives → granite-guardian / Bespoke-class models re-enter.
 - DE/PT grounding measured weak → multilingual grounding verifier search.
-- MiniCheck-RoBERTa-Large needed if criterion 3 (latency) fails marginally.

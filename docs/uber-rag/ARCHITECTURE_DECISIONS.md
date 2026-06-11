@@ -61,7 +61,7 @@ Full ADRs live in `adr/`. Index:
 - [ADR-0016 — Faithfulness Metric Selection](adr/0016-faithfulness-metric-selection.md) — Accepted (revised after measurement) 2026-05-23
 - [ADR-0017 — Streaming First-Token SLA Under Load](adr/0017-streaming-latency-sla.md) — Accepted 2026-05-23; SLA failing by design since 2026-06-10 re-measurement, remediation = ADR-0018
 - [ADR-0018 — Sentence-Incremental Verified Streaming](adr/0018-incremental-verified-streaming.md) — Accepted 2026-06-10
-- [ADR-0019 — Grounding Verifier: MiniCheck-Flan-T5-Large](adr/0019-grounding-verifier.md) — Proposed 2026-06-11 (criteria frozen; promotion pending D3 measurement)
+- [ADR-0019 — Grounding Verifier: MiniCheck-Flan-T5-Large](adr/0019-grounding-verifier.md) — Rejected with data 2026-06-11 (canary criterion passed 1.00; faithfulness 0.578 + latency 3964 ms failed frozen bars; backend stays config-selectable; canaries guard the blind spot nightly)
 
 ## Proposed / Deferred decisions
 

@@ -115,6 +115,16 @@ Full per-question data: `tests/eval/reports/nli_both_modes.json`
 - Architecture invariant #5: evidence discipline (`AGENTS.md`, `_shared.md`)
 - Model card: https://huggingface.co/cross-encoder/nli-deberta-v3-base
 
+**2026-06-11 update (ADR-0019 measured and rejected):** the grounding-verifier
+candidate (MiniCheck-Flan-T5-Large) was implemented and measured per frozen
+criteria — canary catch rate 1.00 on this ADR's documented blind spot (10/10
+fabrications that `not_contradicted` passes), but faithfulness 0.578 (dominated
+by answer meta-discourse, see ADR-0019 failure taxonomy) and CPU latency ~4 s
+per sentence. `not_contradicted` therefore **remains the production default**.
+New standing mitigation for the blind spot: the hallucination canary suite runs
+nightly in CI (`tests/eval/test_hallucination_canaries.py`). Primary reopen
+path: the answer-style fix (rank-leak / meta-discourse), then re-measure.
+
 ## Revisit triggers
 
 Reopen this ADR if any of the following happens:

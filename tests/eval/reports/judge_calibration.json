@@ -1,0 +1,130 @@
+{
+  "report": "judge_calibration",
+  "measured_at": "2026-06-11T10:20:49+00:00",
+  "judge_model": "meta-llama/Llama-3.3-70B-Instruct",
+  "subsample": {
+    "size": 30,
+    "seed": 20260611
+  },
+  "sentence_pairs": 91,
+  "raw_agreement": 0.7912,
+  "cohens_kappa": 0.5626,
+  "judge_support_rate": 0.6374,
+  "grounding_support_rate": 0.5824,
+  "disagreements": [
+    {
+      "question_id": "n19",
+      "sentence": "Since the question asks about the textbook's index entry, and the evidence blocks do not provide a direct answer, it is unclear what paradox the index entry points to.",
+      "grounding": 1,
+      "judge": 0
+    },
+    {
+      "question_id": "n19",
+      "sentence": "The evidence only discusses the content of page 312 in the companion volume, not the index entry in the main textbook.",
+      "grounding": 1,
+      "judge": 0
+    },
+    {
+      "question_id": "h19",
+      "sentence": "Electromagnetic force\n3.",
+      "grounding": 1,
+      "judge": 0
+    },
+    {
+      "question_id": "h35",
+      "sentence": "The provided evidence blocks do not contain a table of physical constants in an appendix, but they do contain information about the melting point of tungsten in two different evidence blocks.",
+      "grounding": 1,
+      "judge": 0
+    },
+    {
+      "question_id": "m18",
+      "sentence": "The Portuguese text (rank=!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!2) talks about the delivery period and penalties for late delivery, but does not mention Haftung.",
+      "grounding": 1,
+      "judge": 0
+    },
+    {
+      "question_id": "m05",
+      "sentence": "Laut dem ersten Evidence-Block ist die K\u00fcndigungsfrist im deutschen Arbeitsvertrag auf vier Wochen zum F\u00fcnfzehnten oder zum Ende eines Kalendermonats festgelegt.",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "h49",
+      "sentence": "3.",
+      "grounding": 1,
+      "judge": 0
+    },
+    {
+      "question_id": "h49",
+      "sentence": "- The second law constrains which energy transformations are possible.",
+      "grounding": 1,
+      "judge": 0
+    },
+    {
+      "question_id": "h16",
+      "sentence": "The value of the gravitational constant G stated in the textbook is 6.67430(15) \u00d7 10\u207b\u00b9\u00b9 N m\u00b2/kg\u00b2, with a relative standard uncertainty of 2.2 \u00d7 10\u207b\u2075, according to the CODATA recommended value as of 2018 (Evidence block rank=1).",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "h16",
+      "sentence": "Alternatively, a simpler value of G = 6.674 \u00d7 10\u207b\u00b9\u00b9 N m\u00b2/kg\u00b2 is also mentioned (Evidence block rank=4).",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "m16",
+      "sentence": "De acordo com o texto do documento de rank=1, o n\u00famero at\u00f4mico do oxig\u00eanio \u00e9 8.",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "m16",
+      "sentence": "Al\u00e9m disso, o documento de rank=2 tamb\u00e9m confirma que o n\u00famero at\u00f4mico do oxig\u00eanio \u00e9 8, na tabela peri\u00f3dica apresentada.",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "h11",
+      "sentence": "According to the provided evidence, specifically the text from \"Law Textbook Ch1 Foundations\" (rank=1), civil liability is defined as \"the legal responsibility of a person or entity to compensate another for harm caused by a wrongful act or omission, enforced through private law remedies rather than criminal punishment.\"",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "h04",
+      "sentence": "It works by providing an alternative reaction pathway with a lower activation energy, and it is regenerated in its original form by the end of the catalytic cycle, allowing a small amount of catalyst to facilitate the transformation of large quantities of reactants.",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "h37",
+      "sentence": "Block rank=1 states, \"The atomic number of gold is 79, meaning each gold atom carries 79 protons in its nucleus.\" Block rank=2 provides a table that includes gold with an atomic number of 79.",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "m19",
+      "sentence": "No livro de direito internacional (rank=1), a soberania \u00e9 definida como a autoridade suprema de um Estado para se governar dentro do seu pr\u00f3prio territ\u00f3rio, sem interfer\u00eancia externa de outros Estados.",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "m19",
+      "sentence": "No entanto, podemos encontrar uma defini\u00e7\u00e3o semelhante de soberania em outro texto de direito internacional (rank=2), que define a soberania como a autoridade suprema de um Estado para governar-se dentro do seu pr\u00f3prio territ\u00f3rio, livre de interfer\u00eancia externa por outros Estados.",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "h21",
+      "sentence": "To answer the question, we need to find the boiling point of water at standard pressure in both Celsius and Kelvin.",
+      "grounding": 0,
+      "judge": 1
+    },
+    {
+      "question_id": "h21",
+      "sentence": "Therefore, the boiling point of water at standard pressure stated in the chemistry textbook is 100 \u00b0C and, by calculation, 373.15 K.",
+      "grounding": 0,
+      "judge": 1
+    }
+  ]
+}
