@@ -42,6 +42,9 @@ jobs:
       - name: Run negative-answer compliance (stub LLM, CPU-only)
         run: python -m pytest tests/eval/test_negative_populated_corpus.py -v --tb=short
 
+      - name: Run hallucination canary suite (ADR-0019 criterion 2, CPU-only)
+        run: python -m pytest tests/eval/test_hallucination_canaries.py -v --tb=short
+
       - name: Compare fresh run against committed baseline
         run: |
           python -m tests.eval.harness.cli \
