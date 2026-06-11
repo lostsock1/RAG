@@ -183,3 +183,14 @@ Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-an
 - [x] Add recall@k measurement to harness — done 2026-06-11 (recall@{5,10,20}, MRR@10, nDCG@{5,10,20}, grouped per-span semantics).
 - [x] Run multilingual subset (German, Portuguese) — done 2026-06-11. DE n=7, PT n=7; both 1.000 recall@10/nDCG@10/MRR@10 on the C5 corpus (retrieval-only, BGE-M3 dense).
 - [ ] Add metrics dashboard.
+
+## Master plan Phase E: eval-gated retrieval upgrades (2026-06-11 →)
+
+Canonical specs: `docs/superpowers/plans/2026-06-10-sota-master-plan.md` § Phase E.
+
+- [x] E0a — answer-style fix: replace `rank=N` machine prompt headers with human `[Source N: title — locator]` labels + anti-meta-discourse system rule — done 2026-06-11 (`llm_backend.py`, suite 494 passed). Follow-up: re-run D3 c1 measurement (ADR-0019 reopen path).
+- [ ] E1 — parent-child expansion: audit and wire (eval-gated).
+- [ ] E2 — ADR-0020 + contextual chunk augmentation (breadcrumb + LLM arms, bake-off). Blocked on harder distractor corpus or nDCG/MRR-based judging (C5 caveat).
+- [ ] E3 — ADR-0021 + query understanding (multi-query + decomposition, route-gated).
+- [ ] E4 — reindex CLI + conditional embedder/reranker bake-offs.
+- [ ] E5 — answering-LLM bake-off (ADR-0004 scheduled reopen).

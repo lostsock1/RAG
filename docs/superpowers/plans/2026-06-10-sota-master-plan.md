@@ -462,6 +462,13 @@ config-selectable; canaries run nightly in CI as the standing blind-spot guard.
    verifier — and the **primary ADR-0019 reopen path**: re-run the D3
    measurement (c1) after it lands. Optional c3 path if c1 then passes:
    measure MiniCheck-RoBERTa-Large latency.
+   **✅ E0a DONE 2026-06-11**: `_render_user_message` now emits
+   `[Source N: title — heading path, page(s)]` + raw text (machine keys
+   `rank=`/`citation_id=`/`chunk_id=`/`heading_path=`/`page_*=`/`text=`
+   removed — citations are verifier-attached, never parsed from answers);
+   `SYSTEM_INSTRUCTION` gains an anti-parroting/meta-discourse rule scoped
+   to answered questions. TDD: 3 red on old rendering → 7/7 targeted →
+   suite 494 passed, 3 skipped. c1 re-measurement queued next.
 2. The D3/D5 reports persist generated answers — reuse them for any
    answer-style before/after comparison.
 3. C5's "easy corpus" caveat still binds E2 (recall-oriented upgrades can't
