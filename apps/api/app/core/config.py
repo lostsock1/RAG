@@ -81,11 +81,14 @@ class Settings(BaseSettings):
     server_host: str = "127.0.0.1"
     ingestion_recover_orphaned: bool = False
     ingestion_stale_threshold_seconds: int = Field(default=300, ge=0)
-    verifier_backend: Literal["substring", "nli", "disabled"] = "substring"
+    verifier_backend: Literal["substring", "nli", "grounding", "disabled"] = "substring"
     nli_entailment_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     nli_scoring_mode: Literal["entailment", "not_contradicted"] = "not_contradicted"  # ADR-0016
     nli_unsupported_ratio: float = Field(default=0.2, ge=0.0, le=1.0)  # ADR-0016
     stream_verification_policy: Literal["retract", "truncate"] = "retract"  # ADR-0018
+    grounding_model_name: str = "lytang/MiniCheck-Flan-T5-Large"  # ADR-0019
+    grounding_threshold: float = Field(default=0.5, ge=0.0, le=1.0)  # ADR-0019
+    grounding_unsupported_ratio: float = Field(default=0.0, ge=0.0, le=1.0)  # ADR-0019
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

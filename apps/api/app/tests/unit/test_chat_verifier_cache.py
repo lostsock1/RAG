@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from app.api.routes.chat import _cached_nli_verifier
+from app.api.routes.chat import _cached_grounding_verifier, _cached_nli_verifier
 
 
 def test_nli_verifier_is_process_cached_per_configuration():
@@ -16,4 +16,14 @@ def test_nli_verifier_is_process_cached_per_configuration():
     assert a is b
 
     c = _cached_nli_verifier(0.5, "entailment", 0.0)
+    assert c is not a
+
+
+def test_grounding_verifier_is_process_cached_per_configuration():
+    """ADR-0019: same caching requirement — FT5-Large weights are ~3 GB."""
+    a = _cached_grounding_verifier("lytang/MiniCheck-Flan-T5-Large", 0.5, 0.0)
+    b = _cached_grounding_verifier("lytang/MiniCheck-Flan-T5-Large", 0.5, 0.0)
+    assert a is b
+
+    c = _cached_grounding_verifier("lytang/MiniCheck-RoBERTa-Large", 0.5, 0.0)
     assert c is not a

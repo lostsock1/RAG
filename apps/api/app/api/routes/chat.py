@@ -10,6 +10,7 @@ from app.core.request_context import RequestContext
 from app.core.security import require_scopes
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.answer_verifier import AnswerVerifier
+from app.services.answer_verifier_grounding import GroundingAnswerVerifier
 from app.services.answer_verifier_nli import NliAnswerVerifier
 from app.services.chat_service import ChatService
 from app.services.citation_resolver import CitationResolver
@@ -47,6 +48,19 @@ class _PassThroughVerifier:
             insufficient_evidence_sentence_count=0,
             sentences=results,
         )
+
+
+@lru_cache(maxsize=4)
+def _cached_grounding_verifier(
+    model_name: str, threshold: float, unsupported_ratio: float
+) -> GroundingAnswerVerifier:
+    """Process-cached grounding verifier (ADR-0018 §6 applies identically:
+    per-request construction would reload ~3 GB of weights per chat call)."""
+    return GroundingAnswerVerifier(
+        model_name=model_name,
+        threshold=threshold,
+        unsupported_ratio=unsupported_ratio,
+    )
 
 
 @lru_cache(maxsize=8)
@@ -88,7 +102,13 @@ def _build_chat_service(request: Request) -> ChatService:
         )
 
     # Select answer verifier backend based on configuration.
-    if settings.verifier_backend == "nli":
+    if settings.verifier_backend == "grounding":
+        answer_verifier = _cached_grounding_verifier(
+            settings.grounding_model_name,
+            settings.grounding_threshold,
+            settings.grounding_unsupported_ratio,
+        )
+    elif settings.verifier_backend == "nli":
         answer_verifier = _cached_nli_verifier(
             settings.nli_entailment_threshold,
             settings.nli_scoring_mode,
