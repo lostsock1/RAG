@@ -39,6 +39,31 @@ else new is being adopted in Phase C.
    production model choice to avoid the circularity risk Clarke et al. flag
    (relevant later for master plan D5/E5).
 
+## C5 outcome note (2026-06-11)
+
+Scaled the evidence-backed set from 15 to **60** questions by authoring 8 new
+fixture documents (16 total), including 2 German and 2 Portuguese docs, and
+backfilling span-anchored evidence for previously-skeletal questions. All spans
+verified verbatim before commit; no LLM labeling was needed at this scale because
+the fixtures are authored (the UMBRELA-pattern assistance from the methodology
+above is held for a future, larger, non-authored corpus).
+
+Multilingual finding (retrieval-only, BGE-M3 dense): **German and Portuguese
+subsets score recall@10 = nDCG@10 = MRR@10 = 1.000** (n=7 each) — the
+"multilingual quality unverified" open risk is materially reduced for *retrieval*
+(generation quality in DE/PT is a separate, still-open question for Phase D/E5).
+
+**Honest caveat — the corpus is currently easy.** recall@10 = 1.000 and
+nDCG@10 = 0.944 at 60 questions reflect a corpus of topically *distinct*
+documents: each question's evidence lives in one obviously-matching doc, so dense
+retrieval rarely has to discriminate between confusable passages. This is a
+ceiling artifact, not proof the retriever is excellent. Two consequences: (1) the
+measured weakness is *ranking* (5 questions place first-relevant beyond rank 3),
+not recall, so contextual augmentation (E2, recall-oriented) cannot show a win on
+this corpus and must be evaluated on a harder one; (2) a future eval-corpus task
+should add near-duplicate / same-topic / distractor documents so recall@k has
+headroom to move. Logged for Phase E planning.
+
 Sources:
 - [UMBRELA (arXiv:2406.06519)](https://arxiv.org/pdf/2406.06519)
 - [A Large-Scale Study of Relevance Assessments with LLMs (arXiv:2411.08275)](https://arxiv.org/pdf/2411.08275)

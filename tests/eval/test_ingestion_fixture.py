@@ -9,8 +9,13 @@ class TestIngestionFixture:
     """Verify the full pipeline fixture ingests corpus and produces searchable chunks."""
 
     def test_fixture_ingests_all_documents(self, eval_stack):
-        """All 8 corpus documents should be ingested."""
-        assert len(eval_stack.document_ids) == 8
+        """Every markdown file in the corpus directory is ingested."""
+        from tests.eval.conftest import CORPUS_DIR
+
+        expected = len(list(CORPUS_DIR.glob("*.md")))
+        assert expected >= 16, "corpus shrank unexpectedly"
+        assert len(eval_stack.document_ids) == expected
+        assert len(eval_stack.document_ids_by_slug) == expected
 
     def test_search_returns_results_for_corpus_content(self, eval_stack):
         """A query about thermodynamics should return results from the physics textbook."""

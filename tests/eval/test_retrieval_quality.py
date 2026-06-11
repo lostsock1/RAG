@@ -34,7 +34,9 @@ def test_retrieval_quality_baseline(eval_stack: EvalStack):
 
     dataset = load_dataset(HELDOUT_PATH)
     questions = [q for q in dataset.questions if q.evidence]
-    assert questions, "No evidence-backed questions found in the heldout set"
+    assert len(questions) >= 60, (
+        f"Phase C exit criterion: expected >= 60 evidence-backed questions, got {len(questions)}"
+    )
 
     per_question: list[dict] = []
     for question in questions:
@@ -67,12 +69,21 @@ def test_retrieval_quality_baseline(eval_stack: EvalStack):
             "top_5_chunk_ids": ranked_ids[:5],
         })
 
-    def _mean(metric: str) -> float:
-        return round(sum(q["metrics"][metric] for q in per_question) / len(per_question), 4)
+    def _mean_over(rows: list[dict], metric: str) -> float:
+        return round(sum(r["metrics"][metric] for r in rows) / len(rows), 4) if rows else 0.0
 
-    aggregates = {f"recall@{k}": _mean(f"recall@{k}") for k in K_VALUES}
-    aggregates.update({f"ndcg@{k}": _mean(f"ndcg@{k}") for k in K_VALUES})
-    aggregates["mrr@10"] = _mean("mrr@10")
+    metric_keys = [f"recall@{k}" for k in K_VALUES] + [f"ndcg@{k}" for k in K_VALUES] + ["mrr@10"]
+    aggregates = {m: _mean_over(per_question, m) for m in metric_keys}
+
+    # Per-language breakdown (multilingual subset is a Phase C exit deliverable).
+    by_language: dict[str, dict] = {}
+    languages = sorted({q["language"] for q in per_question})
+    for lang in languages:
+        rows = [q for q in per_question if q["language"] == lang]
+        by_language[lang] = {
+            "question_count": len(rows),
+            **{m: _mean_over(rows, m) for m in metric_keys},
+        }
 
     report = {
         "report": "retrieval_baseline",
@@ -92,11 +103,17 @@ def test_retrieval_quality_baseline(eval_stack: EvalStack):
             "penalized; duplicate members of a satisfied group earn nothing)"
         ),
         "aggregates": aggregates,
+        "by_language": by_language,
         "per_question": per_question,
     }
     REPORT_PATH.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(f"\nRetrieval baseline written: {REPORT_PATH}")
-    print(json.dumps(aggregates, indent=2))
+    print(f"\nRetrieval baseline written: {REPORT_PATH} ({len(per_question)} questions)")
+    print("aggregate:", json.dumps(aggregates))
+    print("by language:", json.dumps({k: {m: v[m] for m in ("question_count", "recall@10", "mrr@10")} for k, v in by_language.items()}))
+
+    # German and Portuguese must both be represented (multilingual exit deliverable).
+    assert by_language.get("de", {}).get("question_count", 0) >= 2
+    assert by_language.get("pt", {}).get("question_count", 0) >= 2
 
     # Sanity floor, not a tuned threshold: dense retrieval must find *something*.
     assert aggregates["recall@20"] > 0.0

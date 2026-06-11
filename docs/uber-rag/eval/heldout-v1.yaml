@@ -102,6 +102,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: economics_textbook_ch3_micro
+        span: "the responsiveness of one economic variable to a change in another"
 
   - id: "h04"
     type: definition
@@ -130,6 +133,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: law_textbook_ch1_foundations
+        span: "sovereignty is the supreme authority of a state to govern itself within its own territory"
 
   - id: "h06"
     type: definition
@@ -142,6 +148,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: mathematics_textbook_ch2_definitions
+        span: "a finite, ordered sequence of unambiguous instructions that transforms a given input"
 
   - id: "h07"
     type: definition
@@ -154,6 +163,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: biology_textbook_ch6_processes
+        span: "the maintenance of a stable internal environment by an organism despite changes in external conditions"
 
   - id: "h08"
     type: definition
@@ -166,6 +178,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: economics_textbook_ch3_micro
+        span: "the value of the next-best alternative that must be given up when a choice is made"
 
   - id: "h09"
     type: definition
@@ -178,6 +193,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: law_textbook_ch1_foundations
+        span: "a monarch serves as head of state within the boundaries set by a written or unwritten constitution"
 
   - id: "h10"
     type: definition
@@ -205,6 +223,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: law_textbook_ch1_foundations
+        span: "the legal responsibility of a person or entity to compensate another for harm caused by a wrongful act"
 
   - id: "h12"
     type: definition
@@ -247,6 +268,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: law_textbook_ch1_foundations
+        span: "courts are bound to follow the legal rulings of earlier decisions made by higher courts"
 
   - id: "h15"
     type: definition
@@ -261,6 +285,9 @@ questions:
       expected_recall_k: 2
 
   # ── Exact Lookups (10) ────────────────────────────────────────
+    evidence:
+      - doc: economics_textbook_ch3_micro
+        span: "the quantity supplied equals the quantity demanded at the prevailing market price"
   - id: "h16"
     type: exact_lookup
     category: textbook
@@ -287,6 +314,9 @@ questions:
       page_range: null
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: physics_textbook_ch7_mechanics
+        span: "The principle of superposition is first introduced on page 204"
 
   - id: "h18"
     type: exact_lookup
@@ -299,6 +329,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: mathematics_textbook_ch2_definitions
+        span: "f(a) is defined; second, the limit of f(x) as x approaches a exists"
 
   - id: "h19"
     type: exact_lookup
@@ -338,6 +371,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: chemistry_reference_tables
+        span: "boiling point of water at standard atmospheric pressure (1 atm) is 100 °C, which is equal to 212 °F"
 
   - id: "h22"
     type: exact_lookup
@@ -350,6 +386,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: mathematics_textbook_ch2_definitions
+        span: "A vector space is a set of objects called vectors together with two operations"
 
   - id: "h23"
     type: exact_lookup
@@ -402,6 +441,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: physics_textbook_ch7_mechanics
+        span: "KE = ½mv²"
 
   - id: "h27"
     type: formula
@@ -414,6 +456,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: mathematics_textbook_ch2_definitions
+        span: "x = (−b ± √(b² − 4ac)) / 2a"
 
   - id: "h28"
     type: formula
@@ -453,6 +498,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: mathematics_textbook_ch2_definitions
+        span: "The area of a circle is given by A = πr²"
 
   - id: "h31"
     type: formula
@@ -480,6 +528,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: mathematics_textbook_ch2_definitions
+        span: "σ = √( Σ(xᵢ − μ)² / N )"
 
   - id: "h33"
     type: formula
@@ -505,6 +556,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: chemistry_reference_tables
+        span: "Fluorine has the highest electronegativity of all elements"
 
   - id: "h35"
     type: table
@@ -517,6 +571,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: chemistry_reference_tables
+        span: "Tungsten has the highest melting point of all metals, at 3422 °C"
 
   - id: "h36"
     type: table
@@ -541,6 +598,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: chemistry_reference_tables
+        span: "The atomic number of gold is 79"
 
   - id: "h38"
     type: table
@@ -565,6 +625,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: chemistry_reference_tables
+        span: "The SI base unit of electric current is the ampere, with the symbol A"
 
   - id: "h40"
     type: table
@@ -579,6 +642,9 @@ questions:
       expected_recall_k: 1
 
   # ── Multi-Hop Questions (5) ───────────────────────────────────
+    evidence:
+      - doc: chemistry_reference_tables
+        span: "Silver chloride (AgCl) is insoluble in water"
   - id: "h41"
     type: multi_hop
     category: textbook
@@ -590,6 +656,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 5
+    evidence:
+      - doc: physics_textbook_ch3_thermodynamics
+        span: "This law establishes a preferred direction for natural processes — often called the **arrow of time**"
 
   - id: "h42"
     type: multi_hop
@@ -614,6 +683,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 5
+    evidence:
+      - doc: biology_textbook_ch6_processes
+        span: "these proteins are packaged into transport vesicles that bud from the ER and travel to the Golgi apparatus"
 
   - id: "h44"
     type: multi_hop
@@ -640,6 +712,9 @@ questions:
       expected_recall_k: 5
 
   # ── Chapter Synthesis (5) ─────────────────────────────────────
+    evidence:
+      - doc: economics_textbook_ch3_micro
+        span: "for every percentage point by which the unemployment rate exceeds its natural rate, real GDP falls roughly two percentage points"
   - id: "h46"
     type: chapter_synthesis
     category: textbook
@@ -663,6 +738,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 8
+    evidence:
+      - doc: biology_textbook_ch6_processes
+        span: "Mitosis produces two genetically identical diploid daughter cells"
 
   - id: "h48"
     type: chapter_synthesis
@@ -687,6 +765,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 10
+    evidence:
+      - doc: physics_textbook_ch7_mechanics
+        span: "the three laws of thermodynamics as a connected hierarchy"
 
   - id: "h50"
     type: chapter_synthesis
@@ -1371,6 +1452,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: biology_textbook_ch6_processes
+        span: "the marine iguana of the Galápagos Islands"
 
   - id: "n06"
     type: needle
@@ -1524,6 +1608,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: biology_textbook_ch6_processes
+        span: "lysozyme, an enzyme that strains its bound substrate toward the transition state"
 
   - id: "n18"
     type: needle
@@ -1863,6 +1950,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: de_rechtslehrbuch_kapitel1
+        span: "einen Staat, dessen gesamtes Handeln dem Gesetz unterworfen ist und in dem niemand über dem Gesetz steht"
 
   - id: "m02"
     type: exact_lookup
@@ -1875,6 +1965,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: de_chemie_wirtschaft
+        span: "hat Ethanol bei normalem atmosphärischem Druck einen Siedepunkt von 78,37 °C"
 
   - id: "m03"
     type: formula
@@ -1887,6 +1980,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: de_rechtslehrbuch_kapitel1
+        span: "BMI = Körpergewicht in Kilogramm geteilt durch das Quadrat der Körpergröße in Metern"
 
   - id: "m04"
     type: multi_hop
@@ -1899,6 +1995,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 5
+    evidence:
+      - doc: de_rechtslehrbuch_kapitel1
+        span: "Die deutsche Wiedervereinigung führte zur Umstellung der ostdeutschen Planwirtschaft"
 
   - id: "m05"
     type: contract_clause
@@ -1911,6 +2010,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: de_rechtslehrbuch_kapitel1
+        span: "Kündigungsfrist von vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats"
 
   - id: "m06"
     type: policy_procedure
@@ -1923,6 +2025,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: de_rechtslehrbuch_kapitel1
+        span: "personenbezogene Daten nur auf einer rechtmäßigen Grundlage, zweckgebunden"
 
   - id: "m07"
     type: negative
@@ -1945,6 +2050,9 @@ questions:
       expected_recall_k: 8
 
   # ── Portuguese queries (8) ────────────────────────────────────
+    evidence:
+      - doc: de_chemie_wirtschaft
+        span: "Für den Euro sprechen der Wegfall von Wechselkursrisiken und Umtauschkosten"
   - id: "m09"
     type: definition
     category: textbook
@@ -1956,6 +2064,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: pt_economia_matematica
+        span: "o aumento generalizado e contínuo dos preços de bens e serviços numa economia"
 
   - id: "m10"
     type: exact_lookup
@@ -1968,6 +2079,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: pt_economia_matematica
+        span: "o teorema de Pitágoras é apresentado pela fórmula a² + b² = c²"
 
   - id: "m11"
     type: multi_hop
@@ -1980,6 +2094,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 5
+    evidence:
+      - doc: pt_historia_contratos
+        span: "um marco simbólico que antecipou em mais de três décadas a ruptura com Portugal em 1822"
 
   - id: "m12"
     type: formula
@@ -1992,6 +2109,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 2
+    evidence:
+      - doc: pt_economia_matematica
+        span: "P + ½ρv² + ρgh = constante"
 
   - id: "m13"
     type: contract_clause
@@ -2004,6 +2124,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 1
+    evidence:
+      - doc: pt_historia_contratos
+        span: "o prazo de entrega das mercadorias é de trinta dias corridos a contar da data de confirmação"
 
   - id: "m14"
     type: policy_procedure
@@ -2016,6 +2139,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 3
+    evidence:
+      - doc: pt_historia_contratos
+        span: "o tratamento de dados pessoais seja realizado mediante base legal adequada"
 
   - id: "m15"
     type: negative
@@ -2038,6 +2164,9 @@ questions:
       expected_recall_k: 1
 
   # ── Mixed-language queries (4) ─────────────────────────────────
+    evidence:
+      - doc: pt_economia_matematica
+        span: "o número atômico do oxigênio é 8"
   - id: "m17"
     type: multi_hop
     category: cross_corpus
@@ -2061,6 +2190,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 5
+    evidence:
+      - doc: de_chemie_wirtschaft
+        span: "der Lieferant für Schäden aus der Verletzung wesentlicher Vertragspflichten unbeschränkt haftet"
 
   - id: "m19"
     type: comparison
@@ -2073,6 +2205,9 @@ questions:
       chunk_ids: [null]
     retrieval:
       expected_recall_k: 8
+    evidence:
+      - doc: pt_historia_contratos
+        span: "a soberania é definida como a autoridade suprema de um Estado para se governar dentro do seu próprio território"
 
   - id: "m20"
     type: negative

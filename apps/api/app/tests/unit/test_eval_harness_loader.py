@@ -354,11 +354,18 @@ class TestEvidenceSpans:
         with pytest.raises(ValueError, match="q06.*doc"):
             load_dataset(_write_yaml(tmp_path, yaml_content))
 
-    def test_real_heldout_has_fifteen_evidence_backed_questions(self):
+    def test_real_heldout_has_evidence_backed_subset(self):
         ds = load_dataset(Path("docs/uber-rag/eval/heldout-v1.yaml"))
         with_evidence = {q.id for q in ds.questions if q.evidence}
-        assert with_evidence == {
+        # Original C1 fixture-corpus subset must remain backed.
+        assert {
             "h01", "h04", "h10", "h12", "h13",
             "h16", "h19", "h25", "h29", "h31",
             "n03", "n06", "n12", "n15", "n19",
-        }
+        } <= with_evidence
+        # C5 grew the usable set past the Phase C exit floor.
+        assert len(with_evidence) >= 60
+        # Multilingual subset present (German + Portuguese question IDs).
+        backed = {q.id: q for q in ds.questions if q.evidence}
+        assert sum(1 for q in backed.values() if q.language == "de") >= 2
+        assert sum(1 for q in backed.values() if q.language == "pt") >= 2
