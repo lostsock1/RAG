@@ -2,9 +2,110 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 
 from tests.eval.harness.loader import EvalQuestion
+
+
+# ---------------------------------------------------------------------------
+# Retrieval metrics (master plan C2) — pure functions over ranked chunk IDs.
+# Binary relevance; ``relevant_ids`` comes from span-anchored ground truth.
+# ---------------------------------------------------------------------------
+
+def recall_at_k(ranked_ids: list[str], relevant_ids: set[str], k: int) -> float:
+    """Fraction of relevant chunks present in the top-k ranking."""
+    if not relevant_ids:
+        raise ValueError("recall_at_k requires a non-empty relevant set")
+    if k <= 0:
+        raise ValueError("k must be positive")
+    top_k = set(ranked_ids[:k])
+    return len(top_k & relevant_ids) / len(relevant_ids)
+
+
+def mrr_at_k(ranked_ids: list[str], relevant_ids: set[str], k: int) -> float:
+    """Reciprocal rank of the first relevant chunk within the top-k, else 0."""
+    if not relevant_ids:
+        raise ValueError("mrr_at_k requires a non-empty relevant set")
+    if k <= 0:
+        raise ValueError("k must be positive")
+    for rank, chunk_id in enumerate(ranked_ids[:k], start=1):
+        if chunk_id in relevant_ids:
+            return 1.0 / rank
+    return 0.0
+
+
+def ndcg_at_k(ranked_ids: list[str], relevant_ids: set[str], k: int) -> float:
+    """Normalized discounted cumulative gain with binary gains.
+
+    DCG = sum over top-k positions i (1-based) of rel_i / log2(i + 1);
+    IDCG places all relevant chunks at the top (capped at k positions).
+    """
+    if not relevant_ids:
+        raise ValueError("ndcg_at_k requires a non-empty relevant set")
+    if k <= 0:
+        raise ValueError("k must be positive")
+    dcg = sum(
+        1.0 / math.log2(rank + 1)
+        for rank, chunk_id in enumerate(ranked_ids[:k], start=1)
+        if chunk_id in relevant_ids
+    )
+    ideal_hits = min(len(relevant_ids), k)
+    idcg = sum(1.0 / math.log2(rank + 1) for rank in range(1, ideal_hits + 1))
+    return dcg / idcg if idcg > 0 else 0.0
+
+
+# ---------------------------------------------------------------------------
+# Group-aware retrieval metrics: ground truth is a list of equivalence groups
+# (one per evidence span; a group = every chunk containing that span, e.g. a
+# leaf and its parent). A group is satisfied by retrieving ANY member; extra
+# members of an already-satisfied group contribute nothing.
+# ---------------------------------------------------------------------------
+
+def _validate_groups(groups: list[set[str]], k: int) -> None:
+    if not groups:
+        raise ValueError("grouped metrics require a non-empty group list")
+    if any(not g for g in groups):
+        raise ValueError("grouped metrics require non-empty groups")
+    if k <= 0:
+        raise ValueError("k must be positive")
+
+
+def grouped_recall_at_k(ranked_ids: list[str], groups: list[set[str]], k: int) -> float:
+    """Fraction of evidence groups with at least one member in the top-k."""
+    _validate_groups(groups, k)
+    top_k = set(ranked_ids[:k])
+    satisfied = sum(1 for g in groups if g & top_k)
+    return satisfied / len(groups)
+
+
+def grouped_mrr_at_k(ranked_ids: list[str], groups: list[set[str]], k: int) -> float:
+    """Reciprocal rank of the first chunk belonging to any group, within top-k."""
+    _validate_groups(groups, k)
+    union = set().union(*groups)
+    for rank, chunk_id in enumerate(ranked_ids[:k], start=1):
+        if chunk_id in union:
+            return 1.0 / rank
+    return 0.0
+
+
+def grouped_ndcg_at_k(ranked_ids: list[str], groups: list[set[str]], k: int) -> float:
+    """nDCG where gain 1 is earned at the rank each group is FIRST satisfied.
+
+    IDCG places one member of each group at the top ranks (capped at k).
+    """
+    _validate_groups(groups, k)
+    remaining = [set(g) for g in groups]
+    dcg = 0.0
+    for rank, chunk_id in enumerate(ranked_ids[:k], start=1):
+        for group in remaining:
+            if chunk_id in group:
+                dcg += 1.0 / math.log2(rank + 1)
+                remaining.remove(group)
+                break
+    ideal_hits = min(len(groups), k)
+    idcg = sum(1.0 / math.log2(rank + 1) for rank in range(1, ideal_hits + 1))
+    return dcg / idcg if idcg > 0 else 0.0
 
 
 # ---------------------------------------------------------------------------
