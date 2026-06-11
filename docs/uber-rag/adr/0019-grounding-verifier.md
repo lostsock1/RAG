@@ -28,6 +28,22 @@ answers, c2 on the canary suite, c3 latency — no LLM calls required. Report:
 `tests/eval/reports/grounding_vs_nli.json` (before-run preserved at git
 `HEAD~1`).
 
+**c3 path executed 2026-06-11 — REJECTION CONFIRMED, now on dual grounds.**
+`MiniCheck-RoBERTa-Large` (MIT, `RobertaForSequenceClassification`, entry
+gate re-verified via HF API; official recipe verified upstream: single-string
+`chunk</s>claim`, 512-token window, doc chunked to `max_len − 300` tokens,
+max-aggregated, `P = softmax(logits)[:, 1]`) measured offline on the
+identical persisted answers (`tests/eval/reports/grounding_roberta_offline.json`):
+**c1 0.7632 FAIL** (vs FT5-L 0.9007 — "slightly weaker per paper" confirmed
+on our distribution), **c2 1.00 PASS** (10/10 blind-spot fabrications caught;
+paraphrase + contradiction controls clean), **c3 1918 ms/sentence FAIL**
+(2.4× faster than FT5-L's 4553 ms, still ~3.8× over the bar). No MiniCheck
+variant passes all three criteria on this CPU: FT5-L fails c3 only; RoBERTa-L
+fails c1 and c3. The classification recipe path is merged and
+config-selectable (`grounding_model_name`), so any future GPU/ONNX reopen
+can A/B both variants without code changes. Remaining c3 levers (ONNX int8,
+top-k-block prefiltering, GPU hardware) stay listed under Revisit triggers.
+
 ## Context
 
 ADR-0016 selected `not_contradicted` NLI scoring as the production faithfulness

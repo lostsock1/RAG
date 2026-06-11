@@ -165,6 +165,136 @@ def test_zero_blocks_is_insufficient_evidence():
     assert summary.insufficient_evidence_sentence_count == 1
 
 
+class _FakeClassificationTokenizer:
+    """Fake for the RoBERTa/DeBERTa recipe: single-string token counting
+    (1 token per whitespace word) plus batched tensor encoding."""
+
+    eos_token = "</s>"
+
+    def __init__(self) -> None:
+        self.last_texts: list[str] = []
+
+    def __call__(self, texts, **kwargs):
+        if isinstance(texts, str):
+            return {"input_ids": [0] * len(texts.split())}
+        self.last_texts = list(texts)
+        n = len(self.last_texts)
+        return {
+            "input_ids": torch.ones((n, 4), dtype=torch.long),
+            "attention_mask": torch.ones((n, 4), dtype=torch.long),
+        }
+
+
+class _FakeClassificationModel:
+    """2-class sequence-classification head: softmax(logits)[:, 1] must equal
+    score_fn(text) — the upstream MiniCheck recipe for roberta/deberta."""
+
+    device = "cpu"
+
+    def __init__(self, tokenizer: _FakeClassificationTokenizer, score_fn) -> None:
+        self._tokenizer = tokenizer
+        self._score_fn = score_fn
+
+    def eval(self):  # pragma: no cover - parity with real model API
+        return self
+
+    def __call__(self, *, input_ids, attention_mask):
+        from types import SimpleNamespace
+
+        n = input_ids.size(0)
+        logits = torch.zeros((n, 2))
+        for i, text in enumerate(self._tokenizer.last_texts):
+            p = min(max(self._score_fn(text), 1e-6), 1 - 1e-6)
+            logits[i, 0] = 0.0
+            logits[i, 1] = math.log(p / (1 - p))
+        return SimpleNamespace(logits=logits)
+
+
+def _classification_verifier(
+    score_fn,
+    *,
+    max_input_length: int | None = None,
+    threshold: float = 0.5,
+    unsupported_ratio: float = 0.0,
+) -> GroundingAnswerVerifier:
+    verifier = GroundingAnswerVerifier(
+        model_name="lytang/MiniCheck-RoBERTa-Large",
+        threshold=threshold,
+        max_input_length=max_input_length,
+        unsupported_ratio=unsupported_ratio,
+    )
+    tokenizer = _FakeClassificationTokenizer()
+    verifier._tokenizer = tokenizer
+    verifier._model = _FakeClassificationModel(tokenizer, score_fn)
+    return verifier
+
+
+def test_classification_recipe_input_format_has_no_predict_prefix():
+    """RoBERTa recipe (verified upstream): block + eos + claim, no 'predict: '
+    prefix, P(support) = softmax(2-class logits)[:, 1]."""
+    captured: list[str] = []
+
+    def score_fn(text: str) -> float:
+        captured.append(text)
+        return 0.9
+
+    verifier = _classification_verifier(score_fn)
+    summary = verifier.verify(
+        answer_text="Entropy never decreases.",
+        context_payload=_payload([_block("The second law says entropy never decreases.")]),
+    )
+    assert captured == [
+        "The second law says entropy never decreases.</s>Entropy never decreases."
+    ]
+    assert summary.status == "supported"
+
+
+def test_classification_recipe_chunks_long_blocks_and_max_aggregates():
+    """Blocks beyond the token budget (max_input_length - 300 reserve, per the
+    upstream recipe) are sentence-packed into chunks; the block score is the
+    max over its chunks and the citation maps back to the right block."""
+    def score_fn(text: str) -> float:
+        return 0.95 if text.startswith("The needle fact is here.") else 0.1
+
+    # budget = 310 - 300 = 10 fake tokens (words)
+    verifier = _classification_verifier(score_fn, max_input_length=310)
+    weak_block = _block(
+        "Filler one padding words here now. More filler padding words arrive now.",
+        citation_id="cite-weak",
+        rank=1,
+    )
+    strong_block = _block(
+        "Opening filler sentence with several padding words. The needle fact is here.",
+        citation_id="cite-strong",
+        rank=2,
+    )
+    summary = verifier.verify(
+        answer_text="The needle claim.",
+        context_payload=_payload([weak_block, strong_block]),
+    )
+    tokenizer_texts = verifier._tokenizer.last_texts
+    # each 12-word block exceeds the 10-token budget -> 2 chunks per block
+    assert len(tokenizer_texts) == 4
+    assert all(t.endswith("</s>The needle claim.") for t in tokenizer_texts)
+    assert summary.sentences[0].status == "supported"
+    assert summary.sentences[0].citation_ids == ["cite-strong"]
+
+
+def test_classification_recipe_default_max_input_length_is_512():
+    verifier = GroundingAnswerVerifier(model_name="lytang/MiniCheck-RoBERTa-Large")
+    assert verifier._max_input_length == 512
+
+
+def test_seq2seq_recipe_default_max_input_length_is_2048():
+    verifier = GroundingAnswerVerifier()
+    assert verifier._max_input_length == 2048
+
+
+def test_unknown_grounding_model_family_fails_loudly():
+    with pytest.raises(RuntimeError, match="grounding model family"):
+        GroundingAnswerVerifier(model_name="someorg/unknown-model")
+
+
 def test_sentence_splitting_matches_verifier_family():
     """Same regex family as the NLI/substring verifiers: split on [.!?]+ws."""
     seen: list[str] = []

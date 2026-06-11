@@ -188,7 +188,7 @@ Closed 2026-05-23. Source: `docs/superpowers/plans/2026-05-23-phase-1-2-audit-an
 
 Canonical specs: `docs/superpowers/plans/2026-06-10-sota-master-plan.md` § Phase E.
 
-- [x] E0a — answer-style fix: replace `rank=N` machine prompt headers with human `[Source N: title — locator]` labels + anti-meta-discourse system rule — done 2026-06-11 (`llm_backend.py`, suite 494 passed). Follow-up done same day: D3 c1 re-measured — grounding faithfulness 0.578 → **0.9007, c1 PASSES**; ADR-0019 rejection now rests on c3 latency alone; RoBERTa-L c3 path opened.
+- [x] E0a — answer-style fix: replace `rank=N` machine prompt headers with human `[Source N: title — locator]` labels + anti-meta-discourse system rule — done 2026-06-11 (`llm_backend.py`, suite 494 passed). Follow-up done same day: D3 c1 re-measured — grounding faithfulness 0.578 → **0.9007, c1 PASSES**; then the RoBERTa-L c3 path was executed offline (classification recipe path added to the verifier): c1 0.7632 FAIL / c2 1.00 PASS / c3 1918 ms FAIL — **ADR-0019 rejection confirmed on dual grounds, reopen paths exhausted** (GPU/ONNX-era triggers remain).
 - [ ] E1 — parent-child expansion: audit and wire (eval-gated).
 - [ ] E2 — ADR-0020 + contextual chunk augmentation (breadcrumb + LLM arms, bake-off). Blocked on harder distractor corpus or nDCG/MRR-based judging (C5 caveat).
 - [ ] E3 — ADR-0021 + query understanding (multi-query + decomposition, route-gated).

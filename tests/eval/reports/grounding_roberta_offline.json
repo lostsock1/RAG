@@ -1,0 +1,836 @@
+{
+  "report": "grounding_roberta_offline",
+  "measured_at": "2026-06-11T16:11:12+00:00",
+  "model": "lytang/MiniCheck-RoBERTa-Large",
+  "method": "offline re-scoring of the persisted answers from grounding_vs_nli.json (generated once by ppq Llama 3.3 70B post-E0a); canaries from the D4 suite; latency timed as whole verify() / sentence count, no warmup (D3 method)",
+  "config": {
+    "threshold": 0.5,
+    "unsupported_ratio": 0.0,
+    "max_input_length": 512
+  },
+  "aggregates": {
+    "answered_scored": 60,
+    "roberta": {
+      "faithfulness": 0.7632,
+      "accept_rate_ratio_0_0": 0.7167,
+      "mean_per_sentence_verify_ms": 1918.2,
+      "canary_catch_rate_on_nli_blind_spot": 1.0,
+      "nli_blind_spot_count": 10,
+      "paraphrase_controls_supported": true,
+      "contradiction_control_rejected": true
+    },
+    "flan_t5_reference": {
+      "faithfulness": 0.9007,
+      "mean_per_sentence_verify_ms": 4552.6
+    },
+    "adr_0019_criteria": {
+      "c1_faithfulness_ge_0_85": false,
+      "c2_canary_catch_ge_0_80": true,
+      "c3_mean_sentence_verify_le_500ms": false
+    }
+  },
+  "canaries": [
+    {
+      "kind": "fabrication",
+      "doc": "physics_textbook_ch3_thermodynamics",
+      "claim": "The second law of thermodynamics was first formulated by Isaac Newton in 1687.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "physics_textbook_ch3_thermodynamics",
+      "claim": "The gravitational constant was first measured with a torsion balance designed by Albert Einstein.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "chemistry_textbook_ch4_reactions",
+      "claim": "Catalysts also increase the equilibrium constant of a reaction by roughly a factor of ten.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "biology_textbook_ch5_cells",
+      "claim": "Photosynthesis was discovered by Marie Curie in 1903.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "economics_textbook_ch2_markets",
+      "claim": "The textbook reports that inflation in Germany reached 14 percent in 2019.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "psychology_textbook_ch8_grief",
+      "claim": "K\u00fcbler-Ross later added a sixth stage called renewal in 1975.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "geography_demographics_table",
+      "claim": "Liechtenstein's population grew by 12 percent between 2010 and 2020.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "history_textbook_ch12_treaties",
+      "claim": "Zeno also wrote a book titled On Motion which survives in full today.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "mineralogy_textbook_appendix",
+      "claim": "Grossular garnet was first identified in Brazil in 1822.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "fabrication",
+      "doc": "mathematics_textbook_ch2_definitions",
+      "claim": "Vector spaces were first introduced by Euclid in the Elements.",
+      "nli_not_contradicted": "supported",
+      "roberta": "unsupported"
+    },
+    {
+      "kind": "paraphrase_control",
+      "doc": "physics_textbook_ch3_thermodynamics",
+      "claim": "An isolated system's total entropy cannot go down over time.",
+      "roberta": "supported"
+    },
+    {
+      "kind": "paraphrase_control",
+      "doc": "chemistry_textbook_ch4_reactions",
+      "claim": "A catalyst speeds up a chemical reaction without being used up itself.",
+      "roberta": "supported"
+    },
+    {
+      "kind": "paraphrase_control",
+      "doc": "biology_textbook_ch6_processes",
+      "claim": "Homeostasis keeps an organism's internal conditions stable through feedback mechanisms.",
+      "roberta": "supported"
+    },
+    {
+      "kind": "contradiction_control",
+      "doc": "history_textbook_ch12_treaties",
+      "claim": "The United States Senate ratified the Treaty of Lausanne in 1924.",
+      "roberta": "unsupported"
+    }
+  ],
+  "per_question": [
+    {
+      "question_id": "h01",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h03",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h04",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.5,
+        "sentence_count": 2,
+        "unsupported_sentences": [
+          "It works by providing an alternative reaction pathway with a lower activation energy, and although it may participate in intermediate steps, it is regenerated in its original form by the end of the catalytic cycle."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.5
+    },
+    {
+      "question_id": "h05",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 2,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h06",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h07",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h08",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h09",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h10",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 2,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h11",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h12",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 2,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h13",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h14",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h15",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 2,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h16",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 1,
+        "unsupported_sentences": [
+          "The value of the gravitational constant G is 6.67430(15) \u00d7 10\u207b\u00b9\u00b9 N m\u00b2/kg\u00b2, with a relative standard uncertainty of 2.2 \u00d7 10\u207b\u2075, although a simpler value of 6.674 \u00d7 10\u207b\u00b9\u00b9 N m\u00b2/kg\u00b2 is also mentioned."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.0
+    },
+    {
+      "question_id": "h17",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h18",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 1,
+        "unsupported_sentences": [
+          "A function is continuous at a point when three conditions hold simultaneously: first, the function is defined at that point; second, the limit of the function as it approaches that point exists; and third, that limit equals the function's value at that point."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.0
+    },
+    {
+      "question_id": "h19",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h21",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.5,
+        "sentence_count": 2,
+        "unsupported_sentences": [
+          "To convert this to Kelvin, we need to add 273.15, so the boiling point in Kelvin is 373.15 K."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.5
+    },
+    {
+      "question_id": "h22",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h25",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h26",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h27",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h29",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h30",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h31",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 1,
+        "unsupported_sentences": [
+          "Ohm's law describes the linear relationship between voltage, current, and resistance in an electrical circuit, and it is stated as V = IR."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h32",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h34",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 2,
+        "unsupported_sentences": [
+          "The table is actually found in the Chemistry Reference Tables, not Chapter 4.",
+          "According to the table, Fluorine has the highest electronegativity, with a value of 3.98."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.5
+    },
+    {
+      "question_id": "h35",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h37",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h39",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h40",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 1,
+        "unsupported_sentences": [
+          "The provided sources do not contain a solubility table, but according to the information given, silver chloride (AgCl) is insoluble in water, with a solubility product constant (Ksp) of only 1.77 \u00d7 10\u207b\u00b9\u2070 at 25 \u00b0C."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.0
+    },
+    {
+      "question_id": "h41",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 2,
+        "unsupported_sentences": [
+          "The textbook states that the second law of thermodynamics, which establishes that the total entropy of an isolated system never decreases over time, also establishes a preferred direction for natural processes, often called the arrow of time.",
+          "This law distinguishes between reversible and irreversible processes, indicating that entropy plays a key role in determining the direction of spontaneous processes, and thus, the direction of time."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h43",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 4,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h45",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h47",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 3,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "h49",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 4,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "n03",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "n05",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "n06",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "n12",
+      "language": "en",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 3,
+        "unsupported_sentences": [
+          "The textbook does not mention a specific rare mineral as an example of a crystal structure with true 8-fold symmetry.",
+          "It discusses octagonal quasicrystals as having 8-fold symmetry, but does not provide a specific mineral example.",
+          "Grossular garnet is mentioned as displaying apparent 8-fold symmetry when viewed along specific directions, but this is not the same as true 8-fold symmetry."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.6667
+    },
+    {
+      "question_id": "n15",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "n17",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "n19",
+      "language": "en",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m01",
+      "language": "de",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 3,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m02",
+      "language": "de",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m03",
+      "language": "de",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m04",
+      "language": "de",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.6667,
+        "sentence_count": 3,
+        "unsupported_sentences": [
+          "Der Mauerfall hatte laut dem Geschichtslehrbuch weitreichende wirtschaftliche Folgen, darunter die Umstellung der ostdeutschen Planwirtschaft auf die soziale Marktwirtschaft, die Privatisierung volkseigener Betriebe durch die Treuhandanstalt und einen massiven Transfer \u00f6ffentlicher Mittel von West nach Ost."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m05",
+      "language": "de",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.5,
+        "sentence_count": 2,
+        "unsupported_sentences": [
+          "F\u00fcr den Arbeitgeber verl\u00e4ngert sich diese Frist jedoch mit zunehmender Betriebszugeh\u00f6rigkeit des Arbeitnehmers."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m06",
+      "language": "de",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 2,
+        "unsupported_sentences": [
+          "Die Datenschutzanforderungen laut der DSGVO-Richtlinie des Unternehmens verlangen, dass personenbezogene Daten nur auf einer rechtm\u00e4\u00dfigen Grundlage, zweckgebunden und in dem f\u00fcr den Zweck erforderlichen Mindestumfang verarbeitet werden.",
+          "Dies umfasst die Einholung einer ausdr\u00fccklichen Einwilligung, sofern keine andere Rechtsgrundlage besteht, die Wahrung der Betroffenenrechte auf Auskunft, Berichtigung und L\u00f6schung, die Meldung von Datenschutzverletzungen an die Aufsichtsbeh\u00f6rde innerhalb von 72 Stunden sowie technische und organisatorische Ma\u00dfnahmen zum Schutz der Daten."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m08",
+      "language": "de",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 3,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m09",
+      "language": "pt",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 2,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m10",
+      "language": "pt",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m11",
+      "language": "pt",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 1,
+        "unsupported_sentences": [
+          "O livro de hist\u00f3ria descreve a Inconfid\u00eancia Mineira como um marco simb\u00f3lico que antecipou em mais de tr\u00eas d\u00e9cadas a ruptura com Portugal em 1822, apresentando-a como um movimento que semeou a ideia de soberania nacional que mais tarde amadureceu no processo de independ\u00eancia conduzido por Dom Pedro I."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m12",
+      "language": "pt",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m13",
+      "language": "pt",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 1,
+        "unsupported_sentences": [
+          "O prazo de entrega estipulado no contrato de fornecimento \u00e9 de trinta dias corridos a contar da data de confirma\u00e7\u00e3o do pedido pelo fornecedor."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m14",
+      "language": "pt",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.5,
+        "sentence_count": 2,
+        "unsupported_sentences": [
+          "Isso inclui a obten\u00e7\u00e3o do consentimento do titular quando n\u00e3o houver outra base legal, a garantia dos direitos de acesso, corre\u00e7\u00e3o e elimina\u00e7\u00e3o dos dados, a comunica\u00e7\u00e3o de incidentes de seguran\u00e7a \u00e0 autoridade nacional, e a ado\u00e7\u00e3o de medidas t\u00e9cnicas e administrativas para proteger os dados contra acessos n\u00e3o autorizados."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m16",
+      "language": "pt",
+      "roberta": {
+        "status": "supported",
+        "faithfulness": 1.0,
+        "sentence_count": 1,
+        "unsupported_sentences": []
+      },
+      "flan_t5_faithfulness_reference": 1.0
+    },
+    {
+      "question_id": "m18",
+      "language": "mixed",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.0,
+        "sentence_count": 2,
+        "unsupported_sentences": [
+          "The German version of the supplier contract states that the supplier is liable for damages resulting from the breach of essential contractual obligations without limitation, and for non-essential obligations, the liability is limited to the typical, foreseeable damage in cases of simple negligence.",
+          "This differs from the Portuguese version in that the German version explicitly only allows a monetary liability limit for simple negligence and mandates unlimited liability for intent and gross negligence."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.5
+    },
+    {
+      "question_id": "m19",
+      "language": "mixed",
+      "roberta": {
+        "status": "unsupported",
+        "faithfulness": 0.125,
+        "sentence_count": 8,
+        "unsupported_sentences": [
+          "O conceito de 'soberania' no livro de direito internacional e 'Souver\u00e4nit\u00e4t' no Lehrbuch deutsches Verfassungsrecht n\u00e3o s\u00e3o diretamente comparados nos textos fornecidos.",
+          "No entanto, \u00e9 poss\u00edvel comparar as defini\u00e7\u00f5es de soberania apresentadas nos textos de direito internacional.",
+          "A dimens\u00e3o interna se refere \u00e0 compet\u00eancia exclusiva de criar e aplicar leis dentro das fronteiras, enquanto a dimens\u00e3o externa se refere \u00e0 igualdade formal entre os Estados e \u00e0 capacidade de celebrar tratados.",
+          "J\u00e1 o texto do Lehrbuch deutsches Verfassungsrecht n\u00e3o aborda diretamente o conceito de 'Souver\u00e4nit\u00e4t'.",
+          "Em vez disso, ele define o que \u00e9 um Rechtsstaat, que \u00e9 um Estado em que a exerc\u00edcio do poder estatal est\u00e1 vinculado ao direito e \u00e0 lei, e os direitos fundamentais dos cidad\u00e3os s\u00e3o protegidos por tribunais independentes.",
+          "Portanto, n\u00e3o \u00e9 poss\u00edvel comparar diretamente os conceitos de 'soberania' e 'Souver\u00e4nit\u00e4t' com base nos textos fornecidos, pois eles tratam de temas diferentes.",
+          "No entanto, \u00e9 poss\u00edvel notar que a ideia de soberania est\u00e1 relacionada \u00e0 autonomia e \u00e0 autoridade do Estado, enquanto o conceito de Rechtsstaat est\u00e1 relacionado \u00e0 limita\u00e7\u00e3o do poder estatal pelo direito e \u00e0 prote\u00e7\u00e3o dos direitos fundamentais."
+        ]
+      },
+      "flan_t5_faithfulness_reference": 0.375
+    }
+  ]
+}

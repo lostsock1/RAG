@@ -478,6 +478,13 @@ config-selectable; canaries run nightly in CI as the standing blind-spot guard.
    now stands on c3 alone; the optional c3 path (MiniCheck-RoBERTa-Large,
    offline c1+c2+c3, zero LLM calls) is open. Report committed; before-run
    at git HEAD~1.
+   **✅ c3 PATH EXECUTED 2026-06-11 — REJECTION CONFIRMED**: RoBERTa-L
+   offline on identical persisted answers: c1 0.7632 FAIL / c2 1.00 PASS /
+   c3 1918 ms FAIL (2.4× faster than FT5-L, ~3.8× over budget). No MiniCheck
+   variant passes all three on CPU. Classification recipe path merged +
+   config-selectable (`grounding_model_name`) for GPU/ONNX-era reopen.
+   `not_contradicted` stays; ADR-0019 reopen paths exhausted for Phase E —
+   proceed to E1.
 2. The D3/D5 reports persist generated answers — reuse them for any
    answer-style before/after comparison.
 3. C5's "easy corpus" caveat still binds E2 (recall-oriented upgrades can't
