@@ -9,6 +9,25 @@ runs nightly in CI as the standing blind-spot guard. See "Measurement results"
 below — the failure analysis surfaced two real generation-quality findings.
 Date: 2026-06-11
 
+**Re-measurement 2026-06-11 (post-E0a, primary reopen path executed):** after
+the answer-style fix (`1f41e40` — human source labels, anti-meta-discourse
+rule), criterion 1 was re-run on freshly generated answers per the revisit
+trigger: **criterion 1 now PASSES — grounding faithfulness 0.9007** (was
+0.578), accept rate at production ratio 0.0 = 0.85 (was 0.3667); 60/60
+answered; NLI reference faithfulness 1.0. The meta-discourse rejection class
+is gone; the 9 remaining rejected answers decompose into derived-inference
+strictness (e.g. an explicit °C→K addition), residual source-narration
+sentences, and comparative synthesis across blocks — no substantive
+fabrication observed. Criterion 3 still FAILS (4553 ms/sentence CPU, measured
+with light concurrent load; same ~9× over budget as D3's 3964 ms).
+**Rejection stands on criterion 3 alone.** The optional c3 path from the
+Phase-D bindings is now justified: measure `MiniCheck-RoBERTa-Large`
+(0.4B classifier; same family, kept as faster-CPU fallback in the selection
+table) offline against all three criteria — c1 by re-scoring the persisted
+answers, c2 on the canary suite, c3 latency — no LLM calls required. Report:
+`tests/eval/reports/grounding_vs_nli.json` (before-run preserved at git
+`HEAD~1`).
+
 ## Context
 
 ADR-0016 selected `not_contradicted` NLI scoring as the production faithfulness

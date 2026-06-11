@@ -469,6 +469,15 @@ config-selectable; canaries run nightly in CI as the standing blind-spot guard.
    `SYSTEM_INSTRUCTION` gains an anti-parroting/meta-discourse rule scoped
    to answered questions. TDD: 3 red on old rendering → 7/7 targeted →
    suite 494 passed, 3 skipped. c1 re-measurement queued next.
+   **✅ c1 RE-MEASURED 2026-06-11 — PASSES post-E0a**: grounding
+   faithfulness **0.578 → 0.9007** (bar ≥ 0.85), accept@ratio-0.0
+   0.3667 → 0.85, 60/60 answered, NLI reference 1.0. Meta-discourse
+   rejection class eliminated; 9 residual rejections are inference
+   strictness / residual narration / cross-block synthesis, no substantive
+   fabrication. c3 still fails (4553 ms/sentence CPU) — ADR-0019 rejection
+   now stands on c3 alone; the optional c3 path (MiniCheck-RoBERTa-Large,
+   offline c1+c2+c3, zero LLM calls) is open. Report committed; before-run
+   at git HEAD~1.
 2. The D3/D5 reports persist generated answers — reuse them for any
    answer-style before/after comparison.
 3. C5's "easy corpus" caveat still binds E2 (recall-oriented upgrades can't
