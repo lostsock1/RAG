@@ -38,6 +38,7 @@ class EvalStack:
     document_ids_by_slug: dict[str, UUID] | None = None  # fixture slug -> doc id (span resolution, C1)
     search_service_parent_expansion: object = None  # E1 ON-arm: real parent lookup + expansion
     parent_expansion_repo: object = None  # E1 positive control (lookup/resolution counters)
+    search_service_real_reranker: object = None  # reranker arm: BgeRerankerV2M3 + expansion ON
 
 
 class _MarkdownParser(DocumentParser):
@@ -259,6 +260,24 @@ def eval_stack():
         )
         search_service_parent_expansion = SearchService(retriever=retriever_parent_expansion)
 
+        # Real-reranker arm: the accepted ADR-0014 cross-encoder (current
+        # model, config-off in production) over the same stack, expansion ON.
+        # BgeRerankerV2M3 is lazy — weights load only when this arm is used.
+        from app.services.retrieval.bge_reranker import BgeRerankerV2M3
+
+        reranker_arm_repo = _CountingSearchSourcesRepo()
+        retriever_real_reranker = HybridSearchRetriever(
+            router=QueryRouter(),
+            lexical_retriever=opensearch_retriever,
+            vector_retriever=qdrant_retriever,
+            query_embedder=query_embedder,
+            search_sources_repository=reranker_arm_repo,
+            reranker=BgeRerankerV2M3(),
+            rerank_candidate_limit=20,
+            parent_expansion_enabled=True,
+        )
+        search_service_real_reranker = SearchService(retriever=retriever_real_reranker)
+
         # 9. Build ChatService with StubLlmBackend
         chat_service = ChatService(
             search_service=search_service,
@@ -288,6 +307,7 @@ def eval_stack():
             document_ids_by_slug=document_ids_by_slug,
             search_service_parent_expansion=search_service_parent_expansion,
             parent_expansion_repo=parent_expansion_repo,
+            search_service_real_reranker=search_service_real_reranker,
         )
 
         # Cleanup

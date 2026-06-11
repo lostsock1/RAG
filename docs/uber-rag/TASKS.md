@@ -190,7 +190,8 @@ Canonical specs: `docs/superpowers/plans/2026-06-10-sota-master-plan.md` § Phas
 
 - [x] E0a — answer-style fix: replace `rank=N` machine prompt headers with human `[Source N: title — locator]` labels + anti-meta-discourse system rule — done 2026-06-11 (`llm_backend.py`, suite 494 passed). Follow-up done same day: D3 c1 re-measured — grounding faithfulness 0.578 → **0.9007, c1 PASSES**; then the RoBERTa-L c3 path was executed offline (classification recipe path added to the verifier): c1 0.7632 FAIL / c2 1.00 PASS / c3 1918 ms FAIL — **ADR-0019 rejection confirmed on dual grounds, reopen paths exhausted** (GPU/ONNX-era triggers remain).
 - [x] E1 — parent-child expansion: audit and wire (eval-gated) — done 2026-06-11. Audit: expansion existed in production but pre-rerank, id-replacing (whole-doc parents!), uncapped, ungated, eval-stubbed-off. Conformed to spec (after-rerank, leaf chunk_id kept, 2048-char leaf-centered window, content-true dedupe, `retrieval_parent_expansion=True`); repo id-normalization fixed. Eval gate caught parent-id dedupe regression (recall@10 1.0→0.9), content-true dedupe restored parity: ON vs baseline all deltas 0.0000, positive control 1200 parents resolved. Suite 507 passed.
-- [ ] E2 — ADR-0020 + contextual chunk augmentation (breadcrumb + LLM arms, bake-off). Blocked on harder distractor corpus or nDCG/MRR-based judging (C5 caveat).
-- [ ] E3 — ADR-0021 + query understanding (multi-query + decomposition, route-gated).
-- [ ] E4 — reindex CLI + conditional embedder/reranker bake-offs.
-- [ ] E5 — answering-LLM bake-off (ADR-0004 scheduled reopen).
+- [ ] Reranker arm (pre-E2, models-freeze compatible): measure `bge-reranker-v2-m3` (accepted ADR-0014 model, config-off in production) on the C3 rig — quality lift + CPU latency, frozen decision rule in `tests/eval/test_retrieval_reranker_arm.py`.
+- [ ] E2 — ADR-0020 + contextual chunk augmentation (breadcrumb + LLM arms via existing seams, bake-off). Blocked on harder distractor corpus or nDCG/MRR-based judging (C5 caveat).
+- [ ] E3 — ADR-0021 + query understanding (multi-query + decomposition, route-gated; existing LLM seam).
+- [ ] E4 — reindex CLI (still in scope). Conditional embedder/reranker bake-offs **deferred 2026-06-11 (models frozen per user directive — CPU-only VPS, API generation, no GPU)**.
+- [ ] E5 — answering-LLM bake-off (ADR-0004 scheduled reopen) — **deferred 2026-06-11 (models frozen)**; reactivates when the freeze lifts.

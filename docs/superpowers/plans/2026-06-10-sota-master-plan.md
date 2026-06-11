@@ -511,6 +511,20 @@ required), ppq.ai/OpenAI-compat availability, and local-serving footprint
 Qwen3 32B-class, OpenAI gpt-oss MoE, Gemma 3 27B, Mistral Small 3.x, plus the
 incumbent Llama 3.3 70B and Hermes fallback as baselines.
 
+**DESCOPED 2026-06-11 (user directive — models frozen):** stay with current
+models (BGE-M3, bge-reranker-v2-m3, ppq Llama 3.3 70B; MiniCheck variants
+config-only); the platform lives on the CPU-only VPS with API-based
+generation — no GPU. Consequences: the entry gate's model-survey portion,
+E4's conditional embedder/reranker bake-offs, and E5's answering-LLM bake-off
+are **deferred** (not cancelled — they reactivate when the freeze lifts).
+E2/E3 proceed on technique merits using existing seams; technique sources
+(contextual retrieval, late chunking) remain in scope for the E2 ADR. The
+one ranking lever inside the freeze is enabling the already-accepted
+ADR-0014 reranker (config-off today) — measured as the
+`retrieval_reranker_arm` eval (frozen decision rule in
+`tests/eval/test_retrieval_reranker_arm.py`); latency bars are CPU bars,
+re-verified on the VPS before SLA-relevant flips ship.
+
 ### E1 — Parent-child expansion: audit and wire (M)
 - **Files**: `apps/api/app/services/retrieval/hybrid_retriever.py`, possibly new
   `expansion.py`, `apps/api/app/repositories/chunks.py`, tests
