@@ -23,3 +23,18 @@ class Chunk(BaseModel):
     text: str
     parent_id: UUID | None = None
     chunk_index: int
+    # ADR-0020: situating context (breadcrumb or LLM-generated) prepended to
+    # ``text`` for the *searchable* representation only. None => no augmentation.
+    context_prefix: str | None = None
+
+    @property
+    def search_text(self) -> str:
+        """Text used for embedding and BM25 indexing.
+
+        Equals ``context_prefix + "\\n" + text`` when augmentation is present,
+        else ``text`` verbatim — so the disabled path is byte-identical to the
+        unaugmented pipeline. ``text`` always stays the display/citation text.
+        """
+        if self.context_prefix:
+            return f"{self.context_prefix}\n{self.text}"
+        return self.text

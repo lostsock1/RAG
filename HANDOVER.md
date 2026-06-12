@@ -1,162 +1,214 @@
-# HANDOVER — Phase E in progress; reranker arm + distractor corpus closed, resume at E2 (written 2026-06-11, end of fourth session)
+# HANDOVER — Phase E in progress; E2 foundation landed, resume at ADR-0020 + E2 tests/bake-off (written 2026-06-11, end of fifth session)
 
 For a fresh session continuing the master plan. Read in this order:
 
 1. `AGENTS.md` — startup protocol (mandatory: read PROJECT_STATE.md + TASKS.md first).
 2. `docs/superpowers/plans/2026-06-10-sota-master-plan.md` — **the canonical
    forward plan**. Phases A–D carry ✅ COMPLETE blocks; Phase E carries ✅
-   blocks for E0a (+ both ADR-0019 reopen follow-ups), E1, the reranker
-   arm, and the distractor corpus, plus the dated **DESCOPED** note (models
-   frozen).
+   blocks for E0a (+ both ADR-0019 follow-ups), E1, the reranker arm, and
+   the distractor corpus, plus the dated **DESCOPED** note (models frozen).
+   E2's spec is at "### E2 — ADR-0020 + contextual chunk augmentation".
 3. `docs/uber-rag/PROJECT_STATE.md` — status header + Recent-changes rows.
 
 ## Binding user directive (2026-06-11)
 
 **Models are frozen.** Stay with the current stack: BGE-M3, bge-reranker-v2-m3,
 ppq.ai Llama 3.3 70B (MiniCheck verifier variants config-only). The platform
-lives on the **CPU-only VPS** for testing and building, generation via **API
-calls, no GPU**. Consequences (recorded in the plan + PROJECT_STATE
-assumptions + auto-memory): E4's conditional embedder/reranker bake-offs and
-E5's answering-LLM bake-off are deferred; the Phase E researcher entry gate
-reduces to technique sources; latency bars are CPU bars and dev-Mac numbers
-need VPS re-verification before SLA-relevant defaults ship.
+lives on the **CPU-only VPS**, generation via **API calls, no GPU**. E4
+bake-offs and E5 are deferred; latency bars are CPU bars; dev-Mac numbers
+need VPS re-verification before SLA-relevant defaults ship. E2/E3 proceed on
+technique merits via existing seams (both arms below are freeze-compatible).
 
 ## Where things stand
 
-All on `main`. Backend suite: **511 passed, 3 skipped**
-(`python -m pytest apps/api/app/tests/ -q`). The reranker fix is pushed
-(`c3b0f1a`); the distractor-corpus commit is local unless the user has said
-"push" (push only when they do).
+Backend suite: **511 passed, 3 skipped** (verified on this exact tree).
+Commits: `c3b0f1a` (reranker fix + arm) is **pushed**; `6f875cb` (distractor
+corpus) and the E2-foundation handover commit are **local — push only when
+the user says "push"**.
 
-### This session — distractor corpus (C5 caveat resolved)
+Earlier sessions (all recorded in PROJECT_STATE rows): reranker reimplemented
+on plain transformers (FlagEmbedding 1.4.0 incompatible with transformers
+5.x) and measured — NO FLIP; distractor corpus (8 hard-negative docs) reset
+the baseline to **MRR@10 0.834 / nDCG@10 0.875 / recall@10 1.000** and
+re-running the reranker arm flipped its quality verdict to PASS (+0.0413
+MRR@10), leaving latency as the only blocker (ADR-0014 updated).
 
-8 same-topic hard-negative docs added under
-`tests/eval/fixtures/sample_corpus/` (EN×6: physics/chem/econ/law/math/bio
-study-guides; + `de_pruefungsleitfaden`, `pt_guia_de_estudo`). Each section
-echoes a target query's **exact subject phrase** ("The gravitational
-constant G…", "Inflação é medida por…") but states a **sibling fact** (a
-neighbouring constant / definition / element) and contains **no evidence
-span** — verified programmatically across all 60 spans (a distractor that
-contained a span would silently join its relevance group and defeat the
-purpose). Key lesson: the first attempt used sibling *terms* (deflation vs
-inflation) and BGE-M3 distinguished them easily (MRR moved −0.002);
-**echoing the query's exact phrasing is what creates dense-retrieval
-confusion** (MRR moved −0.093).
+## E2 — what THIS session finished (committed, suite-green)
 
-Outcome — baseline re-measured and **superseded** (corpus now 27 docs):
-- **MRR@10 0.927 → 0.834, nDCG@10 0.944 → 0.875, nDCG@5 0.939 → 0.870.**
-  Recall@10 stays **1.000** by design — confusables push true evidence down
-  a few ranks, not past k; ranking (the measured weakness) now has headroom,
-  recall does not (recall headroom would need far higher distractor density,
-  deferred — recall was never the weakness). EN MRR 0.898→0.785, DE 1.0→0.929,
-  PT held 1.0 (BGE-M3 ranks the PT evidence very robustly).
-- **The reranker arm, re-run against the harder baseline, now CLEARS the
-  quality bar**: MRR@10 +0.0413, nDCG@10 +0.0314 (both > +0.02), recall flat
-  → `quality_pass=true`, recovering ~half the introduced headroom
-  (MRR→0.875, nDCG→0.907). Flip still blocked on latency alone (2222 ms
-  overhead vs 1000 ms bar). The easy-corpus "+0.013, not worth it" verdict
-  was a saturation artifact; ADR-0014's reopen now rests on the latency path
-  only (ONNX / smaller candidate pool). ADR-0014 updated with this.
-- Reports re-baselined and mutually consistent (baseline aggregates ==
-  reranker `baseline_reference`): `retrieval_baseline.json` (gained a
-  test-owned `corpus` descriptor), `retrieval_parent_expansion.json`
-  (re-passes, positive control 1200 parent rows), `retrieval_reranker_arm.json`.
-  Ingestion fixture 3 passed (27-doc count guard auto-adjusts).
+**Entry gate (done — reuse, don't redo).** Both technique sources verified
+2026-06-11:
 
-### Earlier this day (commit `c3b0f1a`, pushed) — reranker arm closed:
+- Anthropic Contextual Retrieval (Tier 2,
+  https://www.anthropic.com/news/contextual-retrieval): prepend an
+  LLM-generated chunk-situating context (prompt = whole document + chunk,
+  "short succinct context… for the purposes of improving search retrieval",
+  50–100 tokens) before embedding AND BM25. Reported top-20 retrieval
+  failure-rate reductions: embeddings-only 35% (5.7%→3.7%), + contextual
+  BM25 49% (5.7%→2.9%), + reranking 67% (5.7%→1.9%). Cost note: $1.02 per
+  million document tokens with prompt caching (ppq has no caching — cost
+  scales linearly; fine at fixture scale).
+- Jina late chunking (Tier 1, arXiv:2409.04701): different mechanism —
+  embed the long text once, pool token embeddings into chunk embeddings
+  afterward; needs long-context mean-pooling embedder. Relevant to the ADR
+  as the architectural alternative NOT chosen (BGE-M3 could support it, but
+  it bypasses our chunk-persistence/index pipeline; record as rejected
+  alternative with reason).
 
-- **Reranker unblocked**: `BgeRerankerV2M3`
-  (`apps/api/app/services/retrieval/bge_reranker.py`) reimplemented on plain
-  transformers — `AutoModelForSequenceClassification` + `AutoTokenizer`,
-  official model-card scoring (one raw relevance logit per (query, passage)
-  pair, batched, `max_length=512`, ordering-only consumption). Class
-  interface/config unchanged (`runtime.py` construction site untouched).
-  Reason: FlagEmbedding 1.4.0's reranker calls
-  `tokenizer.prepare_for_model`, removed for slow tokenizers in
-  transformers 5.x — the old path crashed on first real rerank while the
-  unit suite stayed green on a monkeypatched fake. TDD 4 red → 5 green;
-  `test_bge_reranker.py` now includes a FlagEmbedding-free source guard.
-  Real-model smoke: relevant +1.87 > partial −6.63 > irrelevant −11.03.
-- **Arm measured, frozen rule applied — NO FLIP**
-  (`tests/eval/reports/retrieval_reranker_arm.json`, canonical): quality
-  MRR@10 0.9270→0.9403 (+0.0132), nDCG@10 0.9440→0.9554 (+0.0109) — both
-  below the +0.02 bar (h04/h16 fixed rank 4→1; h12/h19 regressed 1→2;
-  recall@10 flat 1.000, recall@5 saturated to 1.000); latency stub 157 ms
-  vs real 2593 ms mean (P95 4084 ms) = **+2436 ms/query vs the 1000 ms
-  bar**, on dev-Mac CPU which is optimistic vs the VPS. The latency failure
-  is corpus-independent. **`reranker_backend` default stays `"disabled"`.**
-  Reopen paths recorded in ADR-0014's enablement-measurement note:
-  distractor corpus (quality side); ONNX CPU serving (~5× per the ADR's
-  DeepEye figures: ~400–530 ms/20 pairs) and/or smaller rerank candidate
-  pool (latency side) — same model, freeze-compatible, unscheduled.
-- Gates re-run green: retrieval baseline + E1 expansion arm — aggregates
-  bit-identical to committed reports (run-specific chunk-id churn reverted,
-  per policy).
+**LLM-arm calibration (done).** The 27-doc corpus chunks to **313 leaf
+chunks** (26 parents). One real ppq contextualization call (Llama 3.3 70B,
+the exact recipe prompt) ≈ **3.06 s, sane output** ("Description of the
+second law of thermodynamics.") → 313 calls ≈ **16 min serial** at ingest.
+This is the eval-arm budget, comparable to existing real-LLM eval runs.
 
-## NEXT — E2: ADR-0020 contextual augmentation (resume here)
+**Implementation foundation (done, disabled-path verified green):**
 
-The distractor corpus removed the blocker — the new baseline (MRR@10 0.834,
-nDCG@10 0.875, recall@10 still 1.000) has **ranking headroom**, so a
-recall-flat technique can still show a defensible win when judged on
-nDCG/MRR lift. **Judge E2 on ranking lift vs the new baseline, not recall**
-(recall stays saturated; that was never the weakness).
+- Migration `infra/migrations/versions/20260611_0010_chunk_context_prefix.py`
+  — nullable `chunks.context_prefix` (Text). Postgres CI's
+  alembic-upgrade-head job will exercise it.
+- `app/schemas/chunks.py` — `Chunk.context_prefix: str | None = None` +
+  **`search_text` property**: `context_prefix + "\n" + text` when present,
+  else `text` verbatim (the byte-identity guarantee for the disabled path).
+- `app/db/models/chunk.py` — column + `to_schema()` mapping.
+- `app/repositories/chunks.py` — `persist_chunks` round-trips the prefix
+  (parents + children); new `set_chunk_context_prefixes(prefixes={id: str|None})`
+  (idempotent, returns rowcount).
+- **New package `app/services/contextualizers/`**: `base.py`
+  (`ChunkContextualizer` Protocol + frozen `ContextualizeInput(document_title,
+  document_text, leaf_chunks)`), `breadcrumb.py` (no-LLM: "Title > heading >
+  path (p. N)"), `llm.py` (`LlmChunkContextualizer`, OpenAI-compatible POST,
+  Anthropic recipe prompt verbatim in `_PROMPT_TEMPLATE`, 12 000-char doc
+  budget, max_tokens 128, temp 0), `stub.py` (deterministic
+  `"[context: <title>]"` for tests).
+- `app/workflows/stages.py` — `run_contextualize_stage(...)` (skips when
+  already completed; details record `contextualized_count` + `rows_updated`
+  — use as the eval positive control); **`run_embed_stage` now embeds
+  `c.search_text`** (== `c.text` when unaugmented).
+- `app/services/indexers/opensearch_indexer.py` — BM25 `text` field now
+  indexes `chunk.search_text`; new un-indexed `display_text` field carries
+  the original; `app/services/retrieval/opensearch_retriever.py` maps hit
+  text from `display_text` (falls back to `text` for pre-E2 indices).
+  Qdrant payload `text` stays `chunk.text` (display) — augmentation reaches
+  the dense side only through the embed input, by design.
+- `app/core/config.py` —
+  `contextual_augmentation: Literal["disabled","breadcrumb","llm"] = "disabled"`,
+  `contextual_llm_max_output_tokens: int = 128`.
+- `app/workflows/pipeline_runner.py` — optional `contextualizer=` ctor
+  param; **dynamic `_stage_names`**: inserts `"contextualize"` before
+  `"embed"` ONLY when a contextualizer is injected (disabled pipeline stays
+  exactly 7 stages — `test_ingestion_dispatch` asserts `len(stages) == 7`
+  and passes); stage call sits between persist_chunks and embed;
+  `document_title` captured from the Document row.
 
-**Order, per the plan**:
+**Verified**: full backend suite 511/3 on this tree; targeted 47 tests
+(chunks repo, dispatcher, ingestion dispatch incl. the 7-stage assert,
+opensearch indexer/retriever, indexers) pass.
 
-1. **E2 — ADR-0020 contextual augmentation** (ADR first, docs-only):
-   breadcrumb arm (no LLM) + llm arm via the existing ppq seam — both
-   freeze-compatible. Technique sources for the ADR: Anthropic
-   contextual-retrieval post (Tier 2), Jina late-chunking arXiv:2409.04701
-   (Tier 1).
-2. **E3 — ADR-0021 query understanding** (existing LLM seam, route-gated).
-3. **E4 — reindex CLI only** (bake-offs deferred). **E5 deferred** (freeze).
+## NOT done — resume here, in this order
+
+1. **ADR-0020 (`docs/uber-rag/adr/0020-contextual-chunk-augmentation.md`) —
+   write it BEFORE the bake-off and freeze the decision rule in it.**
+   House discipline: rule frozen before measurement. The plan's suggested
+   margin (≥ +0.03 recall@10) **predates the distractor corpus and is
+   unachievable — recall@10 is saturated at 1.000**; judge on ranking lift
+   instead. Suggested frozen rule (mirror the reranker arm's): adopt an arm
+   as production default iff (MRR@10 or nDCG@10 lift ≥ +0.02 over the
+   committed post-distractor baseline) AND recall@10 drop ≤ 0.02 AND added
+   ingest cost is acknowledged (breadcrumb ~0; llm ~3 s/chunk ppq, one-time,
+   persisted). Breadcrumb beats llm at equal lift (no LLM, air-gap-free).
+   Include: context (ranking weakness, distractor-corpus numbers), the two
+   sources + their numbers (above), late chunking as rejected alternative,
+   cost note, reindex implication (embedding input changes ⇒ corpora must
+   re-ingest; E4 reindex CLI is the production path), rollout (config-off,
+   eval-gated like ADR-0014).
+2. **TDD tests for the new pieces** (the foundation is implementation-first;
+   the suite only proves the disabled path didn't regress — the new code
+   paths have NO dedicated tests yet). Cover: `search_text` property
+   (with/without prefix); breadcrumb output (title+path+page, empty-field
+   handling); stub determinism; llm contextualizer against a fake transport
+   (prompt contains document + chunk, strips whitespace, None on empty);
+   `set_chunk_context_prefixes` round-trip + clearing with None;
+   `run_contextualize_stage` (sets prefixes, records counts, skip-if-completed,
+   no-leaf short-circuit); pipeline with stub contextualizer → 8 stages,
+   prefix persisted, embed receives prefixed text (assert via fake embedder
+   capturing texts), OpenSearch `_last_bulk_body` shows `text` augmented +
+   `display_text` original; pipeline without contextualizer → 7 stages
+   byte-identical (existing tests already pin much of this).
+3. **Runtime/production wiring**: nothing constructs a contextualizer from
+   `Settings` yet. Find where the app factory / upload path builds
+   `InProcessDispatcher` (it passes embedder/indexers — likely
+   `app/main.py` or the uploads route module) and inject per
+   `settings.contextual_augmentation`: `"breadcrumb"` → BreadcrumbContextualizer;
+   `"llm"` → LlmChunkContextualizer from `llm_base_url/llm_api_key/llm_model_name`
+   + `contextual_llm_max_output_tokens`, **truthful startup failure** if
+   `"llm"` is selected without the llm_* settings (house rule: no silent
+   fallback — mirror how `reranker_backend`/`llm_backend` wire in
+   `runtime.py`/routes). Temporal path takes the same ctor param via
+   `build_temporal_worker`'s PipelineRunner construction — check it.
+4. **E2 bake-off on the C3 rig** (`tests/eval/`): three arms — committed
+   baseline (unaugmented; already exists), **breadcrumb**, **llm**. The
+   augmented arms need their OWN ingestion (embedding input changes), i.e.
+   build a second eval stack with `contextualizer=` injected rather than
+   reusing `eval_stack` (which must stay byte-identical for baseline
+   reproducibility — its conftest docstring says so). Suggested shape: a
+   separate module-scoped fixture in the arm test file that stands up
+   SQLite+Qdrant-in-memory+BGE-M3 with the contextualizer, mirroring
+   `eval_stack` construction (BGE-M3 weights are cached; ~40 s/arm embed
+   cost; llm arm adds ~16 min of ppq calls — pin one anyio backend, needs
+   `PPQ_API_KEY`). **Positive control mandatory** (E1 lesson): assert
+   `contextualized_count == 313`-ish > 0 AND that ≥ N chunks in the DB have
+   non-empty `context_prefix` AND `search_text != text` — a silently
+   unaugmented arm would fraudulently reproduce the baseline. Report:
+   `tests/eval/reports/retrieval_contextual_augmentation.json` with arms,
+   lifts vs committed baseline, decision per the ADR's frozen rule.
+   Decision: flip `contextual_augmentation` default + ADR Accepted-with-arm
+   if a rule passes (VPS caveat does NOT apply — this is ingest-time, not
+   query-time; note ingest cost instead), else ADR Accepted-with-data,
+   config stays "disabled", record the no-win.
+5. **Docs + commit per task**: PROJECT_STATE row + header, TASKS.md E2
+   checkbox, master plan E2 ✅ block, HANDOVER refresh.
 
 ## Environment & gotchas (this machine)
 
-- Python = conda base (`/opt/homebrew/Caskroom/miniconda/base/bin/python`),
-  no `.venv`. transformers **5.8.1**, FlagEmbedding **1.4.0** (still
-  installed — the BGE-M3 *embedder* uses it and works; only the reranker
-  path was broken and is now FlagEmbedding-free). Weights cached: BGE-M3,
-  NLI deberta, MiniCheck FT5-L + RoBERTa-L, bge-reranker-v2-m3 (~2.2 GB).
-- `PPQ_API_KEY` is set in the shell env (real-LLM tests skip without it;
-  ~60 calls ≈ 15–18 min for the grounding faithfulness suite). Never print it.
-- `api.github.com` times out; `github.com` + raw.githubusercontent.com work.
-  HF hub + HF API (`curl https://huggingface.co/api/models/<repo>`) work —
-  Tier-1 fallback.
+- Python = conda base (`/opt/homebrew/Caskroom/miniconda/base/bin/python`).
+  transformers 5.8.1; FlagEmbedding 1.4.0 stays installed (BGE-M3 embedder
+  uses it; the reranker is FlagEmbedding-free — keep it that way, a unit
+  test guards it). Weights cached: BGE-M3, NLI deberta, MiniCheck FT5-L +
+  RoBERTa-L, bge-reranker-v2-m3.
+- `PPQ_API_KEY` set in the shell env; never print it. ppq base URL in use:
+  `https://api.ppq.ai/v1`, model `meta-llama/Llama-3.3-70B-Instruct`
+  (settings default). ~3 s/call.
+- `api.github.com` times out; `github.com`, raw.githubusercontent.com,
+  anthropic.com, arxiv.org, HF hub all reachable.
 - Eval reports policy: canonical JSON committed under `tests/eval/reports/`;
-  `*.log` gitignored. Numbers without a committed report are not citable.
-  Re-running quality/expansion tests rewrites their reports with
-  run-specific chunk ids — aggregates must stay bit-identical; revert the
-  churn (`git checkout -- tests/eval/reports/<file>`) unless aggregates
-  legitimately changed.
-- The eval fixture's `eval_stack` is session-scoped and exposes THREE
-  services: `search_service` (baseline arm, expansion stubbed OFF),
-  `search_service_parent_expansion` (E1 production shape),
-  `search_service_real_reranker` (now actually works).
-- Nightly eval CI (`.github/workflows/eval.yml`) runs retrieval_quality,
-  negative_populated_corpus, hallucination_canaries — the arm tests
-  (reranker, parent-expansion) are on-demand only, NOT in CI.
+  numbers without a committed report are not citable. Re-running
+  quality/expansion tests rewrites reports with run-specific chunk ids —
+  aggregates must stay bit-identical; revert churn unless aggregates
+  legitimately changed. Committed baseline = post-distractor numbers
+  (MRR@10 0.8337, nDCG@10 0.8754, recall@10 1.000).
+- Corpus span-isolation invariant: no fixture doc may contain a heldout
+  evidence span verbatim (check before editing corpus docs).
+- `persist_chunks` deletes+reinserts on re-run; retries are safe only
+  because completed stages skip (`_is_stage_completed`) — do not call
+  persist_chunks outside the chunk-stage guard or prefixes get wiped.
+- The eval `eval_stack` is session-scoped, byte-identical-baseline-bearing;
+  augmented arms build their own stack (see step 4).
 - anyio pytest plugin: real-LLM tests must pin one backend or they run twice.
 - Commit style: conventional commits, trailer
   `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`; commit per task,
-  PROJECT_STATE row per task, push only when the user says "push".
+  PROJECT_STATE row per task; push ONLY when the user says "push".
 
 ## Verification commands
 
 ```bash
-python -m pytest apps/api/app/tests/ -q                        # backend suite (expect 511/3 skipped)
-python -m pytest tests/eval/test_retrieval_quality.py -q       # baseline arm (~38 s warm; MRR@10 0.834 — harder corpus; aggregates must match committed)
-python -m pytest tests/eval/test_retrieval_parent_expansion.py -q  # E1 gate (passes; no regression vs baseline)
-python -m pytest tests/eval/test_retrieval_reranker_arm.py -q -s   # reranker arm (~3.5 min; quality_pass=true, flip_default=false on latency)
-python -m pytest tests/eval/test_hallucination_canaries.py -q  # canary guard (CPU, models cached)
+python -m pytest apps/api/app/tests/ -q                           # 511 passed, 3 skipped on this tree
+python -m pytest tests/eval/test_retrieval_quality.py -q          # baseline (MRR@10 0.8337; aggregates must match committed)
+python -m pytest tests/eval/test_retrieval_parent_expansion.py -q # E1 gate
+python -m pytest tests/eval/test_retrieval_reranker_arm.py -q -s  # quality_pass=true, flip=false (latency)
+python -m pytest apps/api/app/tests/integration/test_ingestion_dispatch.py -q  # 7-stage disabled-path pin
 ```
 
-Do not regress: retrieval baseline aggregates (now the **post-distractor**
-numbers: MRR@10 0.834 / nDCG@10 0.875 / recall@10 1.000 — a future corpus
-change may reset them again, intentionally), the corpus span-isolation
-invariant (no distractor doc may contain a heldout evidence span — re-check
-with the one-off script in this session's notes if you touch the corpus),
-ADR-0017 SLA numbers, negative compliance 1.00, ACL leakage tests, canary
-catch-rate assertions, E1 containment-dedupe regression test, the
-FlagEmbedding-free reranker guard
-(`test_bge_reranker_does_not_import_flagembedding`).
+Do not regress: post-distractor baseline aggregates, the 7-stage disabled
+pipeline (`len(stages) == 7` assertions), OpenSearch `display_text` original
+text mapping, ADR-0017 SLA numbers, negative compliance 1.00, ACL leakage,
+canary catch-rate, E1 containment-dedupe test, FlagEmbedding-free reranker
+guard.

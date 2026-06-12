@@ -52,7 +52,9 @@ def _map_opensearch_hit(hit: dict) -> RetrievalHit:
         document_id=document_id,
         chunk_id=chunk_id,
         score=float(hit.get("_score", 0.0)),
-        text=source.get("text", ""),
+        # ADR-0020: display_text is the original; falls back to text when an
+        # index predates contextual augmentation (no display_text written).
+        text=source.get("display_text", source.get("text", "")),
         page_start=source.get("page_start"),
         page_end=source.get("page_end"),
         heading_path=source.get("heading_path", []),

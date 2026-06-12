@@ -70,6 +70,7 @@ class OpenSearchLexicalIndexer:
                             "unit_type": {"type": "keyword"},
                             "heading_path": {"type": "keyword"},
                             "text": {"type": "text", "analyzer": "standard"},
+                            "display_text": {"type": "text", "index": False},
                             "page_start": {"type": "integer"},
                             "page_end": {"type": "integer"},
                             "tenant_id": {"type": "keyword"},
@@ -115,7 +116,11 @@ class OpenSearchLexicalIndexer:
                     "chunk_index": chunk.chunk_index,
                     "unit_type": chunk.unit_type,
                     "heading_path": chunk.heading_path,
-                    "text": chunk.text,
+                    # BM25 analyzes the augmented representation; display_text
+                    # carries the original for citation (ADR-0020). When
+                    # unaugmented, search_text == text, so both equal text.
+                    "text": chunk.search_text,
+                    "display_text": chunk.text,
                     "page_start": chunk.page_start,
                     "page_end": chunk.page_end,
                     "tenant_id": acl_metadata.get("tenant_id", ""),

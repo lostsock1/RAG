@@ -67,6 +67,12 @@ class Settings(BaseSettings):
     llm_model_name: str = "meta-llama/Llama-3.3-70B-Instruct"
     llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     llm_max_output_tokens: int = Field(default=512, ge=1)
+    # ADR-0020 contextual chunk augmentation. "breadcrumb" prepends title +
+    # heading path + page anchor (no LLM); "llm" generates a chunk-situating
+    # context per chunk at ingest via the llm_* provider. Affects the
+    # searchable representation only; "disabled" is byte-identical to today.
+    contextual_augmentation: Literal["disabled", "breadcrumb", "llm"] = "disabled"
+    contextual_llm_max_output_tokens: int = Field(default=128, ge=1)
     ocr_engine: str = "tesseract"
     postgres_user: str = "uber_rag"
     postgres_password: str = "uber_rag"

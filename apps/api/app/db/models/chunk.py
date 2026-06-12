@@ -28,6 +28,7 @@ class Chunk(Base):
     page_start: Mapped[int | None] = mapped_column(Integer(), nullable=True)
     page_end: Mapped[int | None] = mapped_column(Integer(), nullable=True)
     text: Mapped[str] = mapped_column(Text(), nullable=False)
+    context_prefix: Mapped[str | None] = mapped_column(Text(), nullable=True)
     parent_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("chunks.id"), nullable=True, index=True
     )
@@ -51,6 +52,7 @@ class Chunk(Base):
             page_start=self.page_start,
             page_end=self.page_end,
             text=self.text,
+            context_prefix=self.context_prefix,
             parent_id=self.parent_id,
             chunk_index=self.chunk_index,
         )

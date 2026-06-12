@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import select
@@ -24,6 +25,7 @@ from app.workflows.stages import (
     run_parse_stage,
     run_persist_artifact_stage,
     run_chunk_stage,
+    run_contextualize_stage,
     run_embed_stage,
     run_index_qdrant_stage,
     run_index_opensearch_stage,
@@ -35,6 +37,9 @@ from app.services.embedders.base import Embedder
 from app.services.embedders.stub import StubEmbedder
 from app.services.indexers.base import VectorIndexer, LexicalIndexer
 from app.services.indexers.stub import StubVectorIndexer, StubLexicalIndexer
+
+if TYPE_CHECKING:
+    from app.services.contextualizers.base import ChunkContextualizer
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +72,7 @@ class PipelineRunner:
         embedder: Embedder | None = None,
         vector_indexer: VectorIndexer | None = None,
         lexical_indexer: LexicalIndexer | None = None,
+        contextualizer: "ChunkContextualizer | None" = None,
         worker_id: UUID | None = None,
     ) -> None:
         self._parser = parser
@@ -77,7 +83,19 @@ class PipelineRunner:
         self._embedder = embedder or StubEmbedder()
         self._vector_indexer = vector_indexer or StubVectorIndexer()
         self._lexical_indexer = lexical_indexer or StubLexicalIndexer()
+        # ADR-0020: contextual augmentation is enabled iff a contextualizer is
+        # injected; when None the pipeline omits the stage entirely and is
+        # byte-identical to the unaugmented path.
+        self._contextualizer = contextualizer
         self._worker_id = worker_id
+
+    @property
+    def _stage_names(self) -> list[str]:
+        if self._contextualizer is None:
+            return STAGE_NAMES
+        names = list(STAGE_NAMES)
+        names.insert(names.index("embed"), "contextualize")
+        return names
 
     def run(self, run_id: UUID) -> None:
         """Execute the full ingestion pipeline for a single run.
@@ -103,8 +121,9 @@ class PipelineRunner:
             object_key = doc.object_key if doc else ""
             content_type = "application/octet-stream"
             source_type = doc.source_type if doc else "loose_document"
+            document_title = doc.title if doc else ""
 
-        stages = ensure_ingestion_stages(run_id=run_id, tenant_id=tenant_id, stage_names=STAGE_NAMES)
+        stages = ensure_ingestion_stages(run_id=run_id, tenant_id=tenant_id, stage_names=self._stage_names)
         stage_map = {s.stage_name: s for s in stages}
 
         # Materialize object for parsing if storage adapter is available
@@ -181,6 +200,18 @@ class PipelineRunner:
                         document_id=document_id,
                         chunks=chunks,
                     )
+
+            # Stage 3b: Contextualize (ADR-0020) — only present when a
+            # contextualizer is injected; sets each leaf chunk's search prefix.
+            if artifact is not None and self._contextualizer is not None:
+                run_contextualize_stage(
+                    run_id=run_id,
+                    stage_id=stage_map["contextualize"].id,
+                    document_id=document_id,
+                    chunks=get_chunks_as_schemas(document_id=document_id),
+                    contextualizer=self._contextualizer,
+                    document_title=document_title,
+                )
 
             # Stage 4: Embed
             embeddings = None

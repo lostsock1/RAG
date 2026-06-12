@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from app.services.contextualizers.base import ChunkContextualizer
 
 from app.repositories.ingestion import (
     get_stages_for_run,
@@ -196,6 +200,63 @@ def run_chunk_stage(
     return chunks
 
 
+def run_contextualize_stage(
+    *,
+    run_id: UUID,
+    stage_id: UUID,
+    document_id: UUID,
+    chunks: list[Chunk],
+    contextualizer: "ChunkContextualizer",
+    document_title: str,
+) -> int | None:
+    """Set each leaf chunk's situating context prefix (ADR-0020).
+
+    Runs between ``chunk`` and ``embed`` only when contextual augmentation is
+    enabled (the runner omits this stage entirely when disabled, keeping the
+    pipeline byte-identical to the unaugmented path). Persists the prefix so
+    downstream stages reload chunks whose ``search_text`` carries it. Returns
+    None if already completed.
+    """
+    from app.repositories.chunks import set_chunk_context_prefixes
+    from app.services.contextualizers.base import ContextualizeInput
+
+    if _is_stage_completed(run_id=run_id, stage_name="contextualize"):
+        logger.info("Stage contextualize already completed for run %s, skipping.", run_id)
+        return None
+
+    update_stage_status(stage_id=stage_id, status="running")
+
+    leaf_chunks = [c for c in chunks if c.parent_id is not None]
+    if not leaf_chunks:
+        update_stage_status(stage_id=stage_id, status="completed", details={"contextualized_count": 0})
+        return 0
+
+    document_text = "\n\n".join(c.text for c in chunks if c.parent_id is None) or "\n\n".join(
+        c.text for c in leaf_chunks
+    )
+    prefixes = contextualizer.contextualize(
+        ContextualizeInput(
+            document_title=document_title,
+            document_text=document_text,
+            leaf_chunks=leaf_chunks,
+        )
+    )
+    typed_prefixes = {
+        chunk.id: prefixes.get(chunk.id)
+        for chunk in leaf_chunks
+        if chunk.id is not None
+    }
+    updated = set_chunk_context_prefixes(prefixes=typed_prefixes)
+    non_empty = sum(1 for v in typed_prefixes.values() if v)
+
+    update_stage_status(
+        stage_id=stage_id,
+        status="completed",
+        details={"contextualized_count": non_empty, "rows_updated": updated},
+    )
+    return non_empty
+
+
 def run_embed_stage(
     *,
     run_id: UUID,
@@ -223,7 +284,9 @@ def run_embed_stage(
                 "Chunk embedding requires persisted chunk IDs. Re-run chunk persistence before embedding."
             )
         chunk_ids.append(chunk.id)
-    texts = [c.text for c in leaf_chunks]
+    # search_text == text when unaugmented (ADR-0020); the augmented prefix
+    # enriches the embedding without changing the stored display text.
+    texts = [c.search_text for c in leaf_chunks]
     results = embedder.embed(chunk_ids=chunk_ids, texts=texts)
 
     update_stage_status(

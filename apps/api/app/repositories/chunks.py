@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 from app.db.base import session_factory
 from app.db.models.chunk import Chunk as ChunkModel
@@ -59,6 +59,7 @@ def persist_chunks(
                     page_start=chunk.page_start,
                     page_end=chunk.page_end,
                     text=chunk.text,
+                    context_prefix=chunk.context_prefix,
                     parent_id=None,
                     chunk_index=chunk.chunk_index,
                 )
@@ -89,6 +90,7 @@ def persist_chunks(
                     page_start=chunk.page_start,
                     page_end=chunk.page_end,
                     text=chunk.text,
+                    context_prefix=chunk.context_prefix,
                     parent_id=resolved_parent_id,
                     chunk_index=chunk.chunk_index,
                 )
@@ -100,6 +102,32 @@ def persist_chunks(
         except Exception:
             session.rollback()
             raise
+
+
+def set_chunk_context_prefixes(*, prefixes: dict[UUID, str | None]) -> int:
+    """Persist the situating context prefix for each chunk id (ADR-0020).
+
+    Called by the contextualize stage after chunk persistence and before
+    embedding. Idempotent and re-runnable: passing ``None`` clears a prefix.
+    Returns the number of rows updated.
+    """
+    if not prefixes:
+        return 0
+    with session_factory() as session:
+        if session.bind is None:
+            raise RuntimeError(
+                "Chunk persistence is not configured: session_factory has no database bind."
+            )
+        updated = 0
+        for chunk_id, prefix in prefixes.items():
+            result = session.execute(
+                update(ChunkModel)
+                .where(ChunkModel.id == chunk_id)
+                .values(context_prefix=prefix)
+            )
+            updated += result.rowcount or 0
+        session.commit()
+        return updated
 
 
 def get_chunks_for_document(*, document_id: UUID) -> list[ChunkModel]:
