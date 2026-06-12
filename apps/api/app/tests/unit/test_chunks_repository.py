@@ -19,7 +19,12 @@ from app.db.models.ingestion import IngestionRun
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.db.acl_models import AclGrant, AclAllowedUser
-from app.repositories.chunks import persist_chunks, get_chunks_for_document
+from app.repositories.chunks import (
+    get_chunks_as_schemas,
+    get_chunks_for_document,
+    persist_chunks,
+    set_chunk_context_prefixes,
+)
 from app.schemas.chunks import Chunk
 
 
@@ -261,3 +266,122 @@ def test_persist_chunks_rolls_back_on_child_insert_failure(seeded_db):
         "Original leaf A",
         "Original leaf B",
     }
+
+
+def _seed_two_chunks(doc_id, run_id) -> None:
+    parent_id = uuid4()
+    persist_chunks(
+        run_id=run_id,
+        document_id=doc_id,
+        chunks=[
+            Chunk(
+                document_id=doc_id,
+                unit_type="document",
+                heading_path=[],
+                page_start=1,
+                page_end=1,
+                text="Parent text",
+                parent_id=None,
+                chunk_index=0,
+            ),
+            Chunk(
+                document_id=doc_id,
+                unit_type="paragraph",
+                heading_path=[],
+                page_start=1,
+                page_end=1,
+                text="Leaf text",
+                parent_id=parent_id,
+                chunk_index=1,
+            ),
+        ],
+    )
+
+
+def test_persist_chunks_round_trips_context_prefix(seeded_db):
+    """ADR-0020: a chunk persisted with a context_prefix keeps it through
+    the DB row and the schema mapping."""
+    doc_id = seeded_db["document_id"]
+    run_id = seeded_db["run_id"]
+
+    persist_chunks(
+        run_id=run_id,
+        document_id=doc_id,
+        chunks=[
+            Chunk(
+                document_id=doc_id,
+                unit_type="document",
+                heading_path=[],
+                page_start=1,
+                page_end=1,
+                text="Parent text",
+                parent_id=None,
+                chunk_index=0,
+            ),
+            Chunk(
+                document_id=doc_id,
+                unit_type="paragraph",
+                heading_path=[],
+                page_start=1,
+                page_end=1,
+                text="Leaf text",
+                parent_id=uuid4(),
+                chunk_index=1,
+                context_prefix="Doc > Section (p. 1)",
+            ),
+        ],
+    )
+
+    leaf_row = next(
+        r for r in get_chunks_for_document(document_id=doc_id) if r.parent_id is not None
+    )
+    assert leaf_row.context_prefix == "Doc > Section (p. 1)"
+    leaf_schema = next(
+        c for c in get_chunks_as_schemas(document_id=doc_id) if c.parent_id is not None
+    )
+    assert leaf_schema.context_prefix == "Doc > Section (p. 1)"
+    assert leaf_schema.search_text == "Doc > Section (p. 1)\nLeaf text"
+
+
+def test_set_chunk_context_prefixes_round_trip(seeded_db):
+    """ADR-0020: prefixes set after persistence land on the rows and the
+    returned rowcount reflects the updates."""
+    doc_id = seeded_db["document_id"]
+    run_id = seeded_db["run_id"]
+    _seed_two_chunks(doc_id, run_id)
+
+    rows = get_chunks_for_document(document_id=doc_id)
+    leaf = next(r for r in rows if r.parent_id is not None)
+
+    updated = set_chunk_context_prefixes(prefixes={leaf.id: "Situating context"})
+    assert updated == 1
+
+    schemas = get_chunks_as_schemas(document_id=doc_id)
+    leaf_schema = next(c for c in schemas if c.parent_id is not None)
+    parent_schema = next(c for c in schemas if c.parent_id is None)
+    assert leaf_schema.context_prefix == "Situating context"
+    assert leaf_schema.search_text == "Situating context\nLeaf text"
+    assert parent_schema.context_prefix is None
+
+
+def test_set_chunk_context_prefixes_none_clears(seeded_db):
+    doc_id = seeded_db["document_id"]
+    run_id = seeded_db["run_id"]
+    _seed_two_chunks(doc_id, run_id)
+
+    leaf = next(
+        r for r in get_chunks_for_document(document_id=doc_id) if r.parent_id is not None
+    )
+    assert set_chunk_context_prefixes(prefixes={leaf.id: "Prefix"}) == 1
+    assert set_chunk_context_prefixes(prefixes={leaf.id: None}) == 1
+
+    reloaded = next(
+        r for r in get_chunks_for_document(document_id=doc_id) if r.parent_id is not None
+    )
+    assert reloaded.context_prefix is None
+
+
+def test_set_chunk_context_prefixes_empty_and_unknown_ids(seeded_db):
+    assert set_chunk_context_prefixes(prefixes={}) == 0
+    # Unknown chunk ids update zero rows rather than failing.
+    assert set_chunk_context_prefixes(prefixes={uuid4(): "Prefix"}) == 0

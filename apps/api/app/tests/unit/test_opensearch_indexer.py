@@ -120,3 +120,34 @@ def test_opensearch_indexer_verifies_certs_by_default(monkeypatch):
 
     OpenSearchLexicalIndexer(index_name="tls_default")._ensure_client()
     assert _FakeOpenSearch.captured["verify_certs"] is True
+
+
+def test_opensearch_indexer_augmented_chunk_splits_search_and_display_text():
+    """ADR-0020: BM25 `text` carries the augmented search representation while
+    `display_text` preserves the original verbatim chunk text."""
+    indexer = OpenSearchLexicalIndexer(index_name="test_augmented", _mock=True)
+    chunk = _make_chunk(uuid4(), 0, uuid4()).model_copy(
+        update={"context_prefix": "Doc Title > Section (p. 1)"}
+    )
+    acl = {"tenant_id": str(uuid4()), "owner_user_id": str(uuid4()), "allowed_user_ids": [], "group_ids": [], "allowed_group_ids": [], "visibility": "private", "sensitivity": "internal", "sensitivity_rank": 200, "expires_at": None, "acl_policy_id": str(uuid4()), "acl_policy_version": 1, "allowed_role_ids": [], "allowed_org_unit_ids": [], "allowed_project_ids": []}
+
+    indexer.upsert(chunks=[chunk], acl_metadata=acl)
+
+    source = indexer._last_bulk_body[1]
+    assert source["text"] == (
+        "Doc Title > Section (p. 1)\n"
+        "This is a test paragraph for OpenSearch BM25 indexing."
+    )
+    assert source["display_text"] == "This is a test paragraph for OpenSearch BM25 indexing."
+
+
+def test_opensearch_indexer_unaugmented_chunk_text_fields_identical():
+    """Disabled path: search and display text are byte-identical."""
+    indexer = OpenSearchLexicalIndexer(index_name="test_unaugmented", _mock=True)
+    chunk = _make_chunk(uuid4(), 0, uuid4())
+    acl = {"tenant_id": str(uuid4()), "owner_user_id": str(uuid4()), "allowed_user_ids": [], "group_ids": [], "allowed_group_ids": [], "visibility": "private", "sensitivity": "internal", "sensitivity_rank": 200, "expires_at": None, "acl_policy_id": str(uuid4()), "acl_policy_version": 1, "allowed_role_ids": [], "allowed_org_unit_ids": [], "allowed_project_ids": []}
+
+    indexer.upsert(chunks=[chunk], acl_metadata=acl)
+
+    source = indexer._last_bulk_body[1]
+    assert source["text"] == source["display_text"] == chunk.text

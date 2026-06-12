@@ -416,3 +416,122 @@ def test_full_pipeline_produces_embeddings_and_indexes(client):
     # Verify stubs tracked the upserts
     assert vector_indexer.upserted_count > 0
     assert lexical_indexer.upserted_count > 0
+
+
+def test_pipeline_with_contextualizer_runs_eight_stages_and_augments(client):
+    """ADR-0020: with a contextualizer injected the pipeline gains exactly one
+    stage (contextualize, between chunk and embed), persists leaf prefixes,
+    embeds the augmented search_text, and indexes augmented text alongside the
+    original display_text."""
+    from app.services.embedders.stub import StubEmbedder
+    from app.services.indexers.opensearch_indexer import OpenSearchLexicalIndexer
+    from app.services.indexers.stub import StubVectorIndexer
+    from app.services.contextualizers.stub import StubChunkContextualizer
+    from app.workflows.pipeline_runner import PipelineRunner
+
+    class CapturingEmbedder(StubEmbedder):
+        def __init__(self) -> None:
+            super().__init__()
+            self.seen_texts: list[str] = []
+
+        def embed(self, *, chunk_ids, texts):
+            self.seen_texts.extend(texts)
+            return super().embed(chunk_ids=chunk_ids, texts=texts)
+
+    rich_artifact = ParsedArtifact(
+        document_id=uuid4(),
+        pages=[
+            ParsedPage(
+                page_number=1,
+                text="First paragraph with enough text to exceed the minimum threshold.\n\n"
+                     "Second paragraph also with sufficient length to be included as a chunk.",
+                blocks=[],
+            ),
+        ],
+        tables=[],
+        provenance=ParserProvenance(
+            parser_backend="docling-local", parser_version="1.0.0", profile="local-cpu"
+        ),
+    )
+    parser = DoclingDocumentParser(converter=lambda req: rich_artifact)
+    embedder = CapturingEmbedder()
+    lexical_indexer = OpenSearchLexicalIndexer(index_name="ctx_e2e", _mock=True)
+    runner = PipelineRunner(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        embedder=embedder,
+        vector_indexer=StubVectorIndexer(),
+        lexical_indexer=lexical_indexer,
+        contextualizer=StubChunkContextualizer(),
+    )
+    dispatcher = InProcessDispatcher(
+        parser=parser,
+        parser_backend="docling-local",
+        parser_profile="local-cpu",
+        runner=runner,
+    )
+    app.state._test_dispatcher = dispatcher
+
+    response = client.post(
+        "/api/v1/documents/upload",
+        headers={"Authorization": "Bearer test-token"},
+        files={"file": ("ctx-doc.txt", b"paragraph one\n\nparagraph two", "text/plain")},
+        data={"title": "Ctx Doc", "source_type": "loose_document"},
+    )
+    assert response.status_code == 201
+    run_id = UUID(response.json()["ingestion_run_id"])
+
+    dispatcher._execute_pipeline(run_id)
+
+    expected_prefix = "[context: Ctx Doc]"
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == run_id))
+        assert run is not None
+        assert run.status == "completed"
+
+        stages = list(
+            session.scalars(
+                select(IngestionStage)
+                .where(IngestionStage.run_id == run_id)
+                .order_by(IngestionStage.created_at.asc())
+            ).all()
+        )
+        assert [s.stage_name for s in stages] == [
+            "parse",
+            "persist_artifact",
+            "chunk",
+            "contextualize",
+            "embed",
+            "index_qdrant",
+            "index_opensearch",
+            "quality_report",
+        ]
+        assert all(s.status == "completed" for s in stages)
+
+        ctx_stage = next(s for s in stages if s.stage_name == "contextualize")
+        assert ctx_stage.details["contextualized_count"] > 0
+        assert ctx_stage.details["rows_updated"] >= ctx_stage.details["contextualized_count"]
+
+        chunks = list(
+            session.scalars(
+                select(ChunkModel).where(ChunkModel.document_id == run.document_id)
+            ).all()
+        )
+        leaves = [c for c in chunks if c.parent_id is not None]
+        parents = [c for c in chunks if c.parent_id is None]
+        assert leaves and parents
+        assert all(c.context_prefix == expected_prefix for c in leaves)
+        assert all(c.context_prefix is None for c in parents)
+
+    # Embedder received the augmented search_text, not the bare text.
+    assert embedder.seen_texts
+    assert all(t.startswith(f"{expected_prefix}\n") for t in embedder.seen_texts)
+
+    # OpenSearch indexed augmented `text` and original `display_text`.
+    sources = [d for d in lexical_indexer._last_bulk_body if "text" in d]
+    assert sources
+    for source in sources:
+        assert source["text"].startswith(f"{expected_prefix}\n")
+        assert not source["display_text"].startswith(expected_prefix)
+        assert source["text"] == f"{expected_prefix}\n{source['display_text']}"
