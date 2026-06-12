@@ -140,3 +140,97 @@ def test_search_runtime_wires_parent_expansion_settings(monkeypatch) -> None:
     assert disabled_retriever is not None
     assert disabled_retriever._parent_expansion_enabled is False
     assert disabled_retriever._parent_expansion_max_characters == 512
+
+
+def _patch_search_clients(monkeypatch) -> None:
+    monkeypatch.setattr("app.services.retrieval.runtime.OpenSearch", lambda **kwargs: _FakeOpenSearchClient())
+    monkeypatch.setattr("app.services.retrieval.runtime.QdrantClient", lambda **kwargs: _FakeQdrantClient())
+    monkeypatch.setattr("app.services.retrieval.runtime.BgeM3QueryEmbedder", _FakeQueryEmbedder)
+
+
+def test_search_runtime_query_understanding_disabled_wires_none(monkeypatch) -> None:
+    """ADR-0021: disabled default leaves the retriever single-query path
+    byte-identical (no understander object at all)."""
+    _patch_search_clients(monkeypatch)
+
+    retriever = build_search_retriever(
+        settings=Settings(search_backend="hybrid"),
+        state=SimpleNamespace(),
+    )
+    assert retriever is not None
+    assert retriever._query_understander is None
+
+
+def test_search_runtime_query_understanding_decompose_needs_no_llm(monkeypatch) -> None:
+    _patch_search_clients(monkeypatch)
+
+    retriever = build_search_retriever(
+        settings=Settings(search_backend="hybrid", query_understanding="decompose"),
+        state=SimpleNamespace(),
+    )
+    assert retriever is not None
+    assert retriever._query_understander.__class__.__name__ == "HeuristicQueryDecomposer"
+
+
+def test_search_runtime_query_understanding_multi_query_wires_llm_settings(monkeypatch) -> None:
+    _patch_search_clients(monkeypatch)
+
+    retriever = build_search_retriever(
+        settings=Settings(
+            search_backend="hybrid",
+            query_understanding="multi_query",
+            llm_base_url="https://ppq.example/v1",
+            llm_api_key="secret",
+            llm_model_name="fake-model",
+            query_understanding_max_expansions=2,
+            query_understanding_llm_max_output_tokens=64,
+        ),
+        state=SimpleNamespace(),
+    )
+    assert retriever is not None
+    understander = retriever._query_understander
+    assert understander.__class__.__name__ == "LlmMultiQueryExpander"
+    assert understander._model_name == "fake-model"
+    assert understander._max_expansions == 2
+    assert understander._max_output_tokens == 64
+    assert retriever._max_query_expansions == 2
+
+
+def test_search_runtime_query_understanding_both_composes_decomposer_first(monkeypatch) -> None:
+    _patch_search_clients(monkeypatch)
+
+    retriever = build_search_retriever(
+        settings=Settings(
+            search_backend="hybrid",
+            query_understanding="both",
+            llm_base_url="https://ppq.example/v1",
+            llm_api_key="secret",
+        ),
+        state=SimpleNamespace(),
+    )
+    assert retriever is not None
+    understander = retriever._query_understander
+    assert understander.__class__.__name__ == "CompositeQueryUnderstander"
+    inner = [u.__class__.__name__ for u in understander._understanders]
+    assert inner == ["HeuristicQueryDecomposer", "LlmMultiQueryExpander"]
+
+
+def test_search_runtime_llm_backed_understanding_fails_truthfully_without_creds(monkeypatch) -> None:
+    _patch_search_clients(monkeypatch)
+    import pytest
+
+    with pytest.raises(RuntimeError, match="requires llm_base_url"):
+        build_search_retriever(
+            settings=Settings(search_backend="hybrid", query_understanding="multi_query"),
+            state=SimpleNamespace(),
+        )
+
+    with pytest.raises(RuntimeError, match="requires llm_api_key"):
+        build_search_retriever(
+            settings=Settings(
+                search_backend="hybrid",
+                query_understanding="both",
+                llm_base_url="https://ppq.example/v1",
+            ),
+            state=SimpleNamespace(),
+        )
