@@ -39,6 +39,11 @@ class EvalStack:
     search_service_parent_expansion: object = None  # E1 ON-arm: real parent lookup + expansion
     parent_expansion_repo: object = None  # E1 positive control (lookup/resolution counters)
     search_service_real_reranker: object = None  # reranker arm: BgeRerankerV2M3 + expansion ON
+    # Shared retrieval components so arm tests (e.g. E3 query understanding)
+    # can compose additional retriever variants over the SAME index/embedder
+    # without rebuilding the stack: {opensearch_retriever, qdrant_retriever,
+    # query_embedder}.
+    retrieval_components: dict | None = None
 
 
 class _MarkdownParser(DocumentParser):
@@ -308,6 +313,11 @@ def eval_stack():
             search_service_parent_expansion=search_service_parent_expansion,
             parent_expansion_repo=parent_expansion_repo,
             search_service_real_reranker=search_service_real_reranker,
+            retrieval_components={
+                "opensearch_retriever": opensearch_retriever,
+                "qdrant_retriever": qdrant_retriever,
+                "query_embedder": query_embedder,
+            },
         )
 
         # Cleanup

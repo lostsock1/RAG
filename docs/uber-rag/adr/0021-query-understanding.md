@@ -1,10 +1,9 @@
 # ADR-0021: Query Understanding — Route-Gated Multi-Query + Heuristic Decomposition
 
-Status: **Proposed — decision rule frozen 2026-06-11, eval arm pending.**
-Committed before measurement per house discipline (the rule must not be
-shaped by the numbers it judges). The measurement table and the final
-outcome will be appended below without altering the frozen rule.
-Date: 2026-06-11
+Status: **Accepted (with data) 2026-06-12 — NO WIN; default stays
+`"disabled"`.** Decision rule frozen 2026-06-11 BEFORE measurement and
+applied unaltered to the 2026-06-12 bake-off (see Measurement results).
+Date: 2026-06-11 (rule frozen) / 2026-06-12 (measured)
 
 ## Context
 
@@ -116,9 +115,11 @@ triggers below stand.
 
 ## Decision
 
-Pending the eval arm. The implementation ships **config-off** (`"disabled"`
-default), merged and config-selectable, eval-gated — the ADR-0014/0020
-rollout pattern. Truthful failure: selecting `multi_query`/`both` without
+**No arm is adopted; the production `query_understanding` default stays
+`"disabled"`** (frozen rule applied mechanically to the 2026-06-12
+bake-off — all three arms `no_win`; see Measurement results). The
+implementation stays **config-off** (`"disabled"` default), merged and
+config-selectable, eval-gated — the ADR-0014/0020 rollout pattern. Truthful failure: selecting `multi_query`/`both` without
 the `llm_*` provider settings fails at startup in the search-runtime
 construction (no silent fallback, mirrors the reranker/LLM/contextualizer
 wiring); `decompose` alone requires no LLM and must not demand one.
@@ -146,6 +147,73 @@ wiring); `decompose` alone requires no LLM and must not demand one.
   and ranking bars measure.
 - decompose's heuristic is deliberately narrow; it will under-trigger
   (recorded, not hidden — see positive controls).
+
+## Measurement results (2026-06-12)
+
+Report: `tests/eval/reports/retrieval_query_understanding.json`
+(60 evidence-backed heldout questions; session eval stack — same
+corpus/index/embedder, no re-ingestion since query understanding changes
+nothing at ingest; production retrieval shape: parent expansion ON, stub
+reranker, dense-only stub lexical retriever, top_k=20; paired
+no-understander control on the same stack for latency and pool-diff;
+lifts vs the committed post-distractor baseline aggregates). Rig
+equivalence verified per-question: the arms reproduce the committed
+baseline metrics exactly on every question whose candidate pool the
+understander did not perturb.
+
+**Positive controls (all arms exercised — no silent no-op):**
+multi_query fired on 60/60 questions producing 180 paraphrases
+(3.0/question, all distinct from the original, cap respected) and the
+fused result set differed from the control on **60/60** questions; both:
+60/60 fired, result set differed on 59/60; decompose triggered on **1/60**
+(exercised, barely — see analysis).
+
+| metric | baseline | decompose | lift | multi_query | lift | both | lift |
+|---|---|---|---|---|---|---|---|
+| MRR@10 | 0.8337 | 0.8421 | +0.0084 | 0.8325 | −0.0012 | 0.8353 | +0.0016 |
+| nDCG@10 | 0.8754 | 0.8815 | +0.0061 | 0.8746 | −0.0008 | 0.8768 | +0.0014 |
+| recall@5 | 0.9833 | 0.9833 | 0.0 | 0.9833 | 0.0 | 0.9833 | 0.0 |
+| recall@10 | 1.000 | 1.000 | 0.0 | 1.000 | 0.0 | 1.000 | 0.0 |
+| added P50 (gated) | — | +1.5 ms | | **+3030 ms** | | **+2735 ms** | |
+| added mean | — | −8.5 ms | | +3920 ms | | +3187 ms | |
+| verdict | | **no_win** (sub-bar) | | **no_win** (quality AND latency) | | **no_win** | |
+
+Control latency on this rig: P50 77 ms / mean 93 ms per search
+(dev-Mac CPU — optimistic vs the VPS, which only strengthens the latency
+verdict).
+
+**Analysis:**
+
+- **multi_query is a clean technique negative, not a measurement
+  artifact**: the positive control proves every single result set was
+  genuinely perturbed, yet ranking stayed dead flat (|Δ| ≤ 0.0015). The
+  technique's headroom — vocabulary-mismatch recall — does not exist on
+  this corpus: recall@10 is saturated at 1.000 and BGE-M3 dense already
+  bridges paraphrase-level wording variation. Paraphrases preserve topic
+  by construction, so against same-topic C5 confusables they retrieve the
+  same distractors and RRF rank-summing re-orders nothing. Latency lands
+  exactly where the Cost expectation predicted: one ppq round-trip puts
+  **+3.0 s on the gated hot path, 4.3× the frozen 700 ms bar** — the
+  ADR-0014 situation, reopen path identical (local low-latency serving).
+- **decompose under-triggered as designed and predicted**: 1/60 questions
+  matched the deliberately narrow shapes — and notably **0 of the 5
+  `multi_hop` heldout questions did** (trigger-shape gap, the recorded
+  heldout-set TODO of reopen trigger 2). On its single firing the result
+  was a full fix: h49 (chapter_synthesis, twin-clause shape) MRR@10
+  0.5 → 1.0, nDCG@10 0.6309 → 1.0 — which is the entire +0.0084 aggregate
+  lift (0.5/60). Per the frozen subset-honesty clause this is recorded
+  reopen evidence, not a pass: the per-trigger mechanism works; the
+  trigger rate cannot move an aggregate.
+- **both exposes RRF paraphrase dilution**: with the decomposer first
+  under the shared cap (2 sub-queries + 1 paraphrase for h49), the
+  paraphrase rank-lists pulled the confusable back above the gold —
+  chapter_synthesis subset MRR@10 0.8333 vs decompose's 1.0, i.e. `both`
+  **lost** decompose's h49 fix. Composing expanders is not free even when
+  one of them works.
+
+No arm passes the frozen rule → **Accepted (with data)**, default stays
+`"disabled"`, reopen triggers below stand. Subset lifts recorded in the
+report (`by_type`/`by_language`); none deciding.
 
 ## Reopen triggers
 

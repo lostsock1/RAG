@@ -1,0 +1,3124 @@
+{
+  "report": "retrieval_query_understanding",
+  "measured_at": "2026-06-12T14:36:03+00:00",
+  "question_count": 60,
+  "rig": {
+    "stack": "session eval_stack (same corpus/index/embedder; no re-ingestion needed)",
+    "shape": "parent expansion ON, stub reranker, dense-only lexical stub, top_k=20",
+    "control": "identical retriever without an understander (paired latency + pool diff)",
+    "llm": "ppq meta-llama/Llama-3.3-70B-Instruct, 1 paraphrase call per gated search"
+  },
+  "decision_rule": {
+    "frozen": "ADR-0021: flip iff (overall MRR@10 or nDCG@10 lift >= +0.02) AND (recall@10 drop <= 0.02) AND (added gated-route P50 <= 700 ms); subset lifts record-only; cheaper passing arm wins unless a costlier passing arm adds >= +0.02; decompose zero-trigger = not_exercised, distinct from no_win",
+    "verdicts": {
+      "decompose": "no_win",
+      "multi_query": "no_win",
+      "both": "no_win"
+    },
+    "adopt_arm": null
+  },
+  "baseline_reference": {
+    "recall@5": 0.9833,
+    "recall@10": 1.0,
+    "recall@20": 1.0,
+    "ndcg@5": 0.8701,
+    "ndcg@10": 0.8754,
+    "ndcg@20": 0.8754,
+    "mrr@10": 0.8337
+  },
+  "arms": {
+    "decompose": {
+      "positive_control": {
+        "expander_calls": 60,
+        "questions_triggering_expansion": 1,
+        "total_expansions": 2,
+        "mean_expansions_per_question": 0.03,
+        "result_set_differs_from_control": 1,
+        "exercised": true
+      },
+      "aggregates": {
+        "recall@5": 0.9833,
+        "recall@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@5": 0.8763,
+        "ndcg@10": 0.8815,
+        "ndcg@20": 0.8815,
+        "mrr@10": 0.8421
+      },
+      "lifts_vs_baseline": {
+        "recall@5": 0.0,
+        "recall@10": 0.0,
+        "recall@20": 0.0,
+        "ndcg@5": 0.0062,
+        "ndcg@10": 0.0061,
+        "ndcg@20": 0.0061,
+        "mrr@10": 0.0084
+      },
+      "by_type": {
+        "chapter_synthesis": {
+          "question_count": 3,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "comparison": {
+          "question_count": 1,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "contract_clause": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "definition": {
+          "question_count": 16,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.9644,
+          "ndcg@10": 0.9644,
+          "ndcg@20": 0.9644,
+          "mrr@10": 0.9531
+        },
+        "exact_lookup": {
+          "question_count": 10,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.828,
+          "ndcg@10": 0.828,
+          "ndcg@20": 0.828,
+          "mrr@10": 0.77
+        },
+        "formula": {
+          "question_count": 8,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8772,
+          "ndcg@10": 0.8772,
+          "ndcg@20": 0.8772,
+          "mrr@10": 0.8375
+        },
+        "multi_hop": {
+          "question_count": 5,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.7785,
+          "ndcg@10": 0.7785,
+          "ndcg@20": 0.7785,
+          "mrr@10": 0.7
+        },
+        "needle": {
+          "question_count": 7,
+          "recall@5": 0.8571,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.7231,
+          "ndcg@10": 0.7682,
+          "ndcg@20": 0.7682,
+          "mrr@10": 0.6964
+        },
+        "policy_procedure": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "table": {
+          "question_count": 6,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8154,
+          "ndcg@10": 0.8154,
+          "ndcg@20": 0.8154,
+          "mrr@10": 0.75
+        }
+      },
+      "by_language": {
+        "de": {
+          "question_count": 7,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.9473,
+          "ndcg@10": 0.9473,
+          "ndcg@20": 0.9473,
+          "mrr@10": 0.9286
+        },
+        "en": {
+          "question_count": 44,
+          "recall@5": 0.9773,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8396,
+          "ndcg@10": 0.8468,
+          "ndcg@20": 0.8468,
+          "mrr@10": 0.796
+        },
+        "mixed": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "pt": {
+          "question_count": 7,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        }
+      },
+      "latency": {
+        "control": {
+          "mean_ms": 92.6,
+          "p50_ms": 77.1,
+          "p95_ms": 136.9
+        },
+        "arm": {
+          "mean_ms": 84.1,
+          "p50_ms": 78.6,
+          "p95_ms": 92.2
+        },
+        "added_p50_ms": 1.5,
+        "added_mean_ms": -8.5
+      },
+      "quality_pass": false,
+      "latency_pass": true,
+      "verdict": "no_win",
+      "per_question": [
+        {
+          "question_id": "h01",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h03",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h04",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.4307,
+            "recall@10": 1.0,
+            "ndcg@10": 0.4307,
+            "recall@20": 1.0,
+            "ndcg@20": 0.4307,
+            "mrr@10": 0.25
+          }
+        },
+        {
+          "question_id": "h05",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h06",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h07",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h08",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h09",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h10",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h11",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h12",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h13",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h14",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h15",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h16",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.3869,
+            "recall@10": 1.0,
+            "ndcg@10": 0.3869,
+            "recall@20": 1.0,
+            "ndcg@20": 0.3869,
+            "mrr@10": 0.2
+          }
+        },
+        {
+          "question_id": "h17",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h18",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h19",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h21",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h22",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h25",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h26",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h27",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h29",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.3869,
+            "recall@10": 1.0,
+            "ndcg@10": 0.3869,
+            "recall@20": 1.0,
+            "ndcg@20": 0.3869,
+            "mrr@10": 0.2
+          }
+        },
+        {
+          "question_id": "h30",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h31",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h32",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h34",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h35",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h37",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h39",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h40",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h41",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h43",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h45",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h47",
+          "type": "chapter_synthesis",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h49",
+          "type": "chapter_synthesis",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n03",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n05",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n06",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n12",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 0.0,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "ndcg@10": 0.3155,
+            "recall@20": 1.0,
+            "ndcg@20": 0.3155,
+            "mrr@10": 0.125
+          }
+        },
+        {
+          "question_id": "n15",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n17",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "n19",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.4307,
+            "recall@10": 1.0,
+            "ndcg@10": 0.4307,
+            "recall@20": 1.0,
+            "ndcg@20": 0.4307,
+            "mrr@10": 0.25
+          }
+        },
+        {
+          "question_id": "m01",
+          "type": "definition",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m02",
+          "type": "exact_lookup",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m03",
+          "type": "formula",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m04",
+          "type": "multi_hop",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "m05",
+          "type": "contract_clause",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m06",
+          "type": "policy_procedure",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m08",
+          "type": "chapter_synthesis",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m09",
+          "type": "definition",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m10",
+          "type": "exact_lookup",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m11",
+          "type": "multi_hop",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m12",
+          "type": "formula",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m13",
+          "type": "contract_clause",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m14",
+          "type": "policy_procedure",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m16",
+          "type": "table",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m18",
+          "type": "exact_lookup",
+          "language": "mixed",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m19",
+          "type": "comparison",
+          "language": "mixed",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        }
+      ]
+    },
+    "multi_query": {
+      "positive_control": {
+        "expander_calls": 60,
+        "questions_triggering_expansion": 60,
+        "total_expansions": 180,
+        "mean_expansions_per_question": 3.0,
+        "result_set_differs_from_control": 60,
+        "exercised": true
+      },
+      "aggregates": {
+        "recall@5": 0.9833,
+        "recall@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@5": 0.8686,
+        "ndcg@10": 0.8746,
+        "ndcg@20": 0.8746,
+        "mrr@10": 0.8325
+      },
+      "lifts_vs_baseline": {
+        "recall@5": 0.0,
+        "recall@10": 0.0,
+        "recall@20": 0.0,
+        "ndcg@5": -0.0015,
+        "ndcg@10": -0.0008,
+        "ndcg@20": -0.0008,
+        "mrr@10": -0.0012
+      },
+      "by_type": {
+        "chapter_synthesis": {
+          "question_count": 3,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.877,
+          "ndcg@10": 0.877,
+          "ndcg@20": 0.877,
+          "mrr@10": 0.8333
+        },
+        "comparison": {
+          "question_count": 1,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "contract_clause": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "definition": {
+          "question_count": 16,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.9332,
+          "ndcg@10": 0.9332,
+          "ndcg@20": 0.9332,
+          "mrr@10": 0.9115
+        },
+        "exact_lookup": {
+          "question_count": 10,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8649,
+          "ndcg@10": 0.8649,
+          "ndcg@20": 0.8649,
+          "mrr@10": 0.82
+        },
+        "formula": {
+          "question_count": 8,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8827,
+          "ndcg@10": 0.8827,
+          "ndcg@20": 0.8827,
+          "mrr@10": 0.8438
+        },
+        "multi_hop": {
+          "question_count": 5,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.7785,
+          "ndcg@10": 0.7785,
+          "ndcg@20": 0.7785,
+          "mrr@10": 0.7
+        },
+        "needle": {
+          "question_count": 7,
+          "recall@5": 0.8571,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.7231,
+          "ndcg@10": 0.774,
+          "ndcg@20": 0.774,
+          "mrr@10": 0.7024
+        },
+        "policy_procedure": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "table": {
+          "question_count": 6,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8154,
+          "ndcg@10": 0.8154,
+          "ndcg@20": 0.8154,
+          "mrr@10": 0.75
+        }
+      },
+      "by_language": {
+        "de": {
+          "question_count": 7,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.9473,
+          "ndcg@10": 0.9473,
+          "ndcg@20": 0.9473,
+          "mrr@10": 0.9286
+        },
+        "en": {
+          "question_count": 44,
+          "recall@5": 0.9773,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8293,
+          "ndcg@10": 0.8374,
+          "ndcg@20": 0.8374,
+          "mrr@10": 0.783
+        },
+        "mixed": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "pt": {
+          "question_count": 7,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        }
+      },
+      "latency": {
+        "control": {
+          "mean_ms": 92.6,
+          "p50_ms": 77.1,
+          "p95_ms": 136.9
+        },
+        "arm": {
+          "mean_ms": 4012.2,
+          "p50_ms": 3107.5,
+          "p95_ms": 9259.1
+        },
+        "added_p50_ms": 3030.4,
+        "added_mean_ms": 3919.6
+      },
+      "quality_pass": false,
+      "latency_pass": false,
+      "verdict": "no_win",
+      "per_question": [
+        {
+          "question_id": "h01",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h03",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h04",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.4307,
+            "recall@10": 1.0,
+            "ndcg@10": 0.4307,
+            "recall@20": 1.0,
+            "ndcg@20": 0.4307,
+            "mrr@10": 0.25
+          }
+        },
+        {
+          "question_id": "h05",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h06",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h07",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h08",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h09",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h10",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.5,
+            "recall@10": 1.0,
+            "ndcg@10": 0.5,
+            "recall@20": 1.0,
+            "ndcg@20": 0.5,
+            "mrr@10": 0.3333
+          }
+        },
+        {
+          "question_id": "h11",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h12",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h13",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h14",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h15",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h16",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.3869,
+            "recall@10": 1.0,
+            "ndcg@10": 0.3869,
+            "recall@20": 1.0,
+            "ndcg@20": 0.3869,
+            "mrr@10": 0.2
+          }
+        },
+        {
+          "question_id": "h17",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h18",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h19",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h21",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h22",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h25",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h26",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h27",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h29",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.4307,
+            "recall@10": 1.0,
+            "ndcg@10": 0.4307,
+            "recall@20": 1.0,
+            "ndcg@20": 0.4307,
+            "mrr@10": 0.25
+          }
+        },
+        {
+          "question_id": "h30",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h31",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h32",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h34",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h35",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h37",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h39",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h40",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h41",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h43",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h45",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h47",
+          "type": "chapter_synthesis",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h49",
+          "type": "chapter_synthesis",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "n03",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n05",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n06",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n12",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 0.0,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "ndcg@10": 0.3562,
+            "recall@20": 1.0,
+            "ndcg@20": 0.3562,
+            "mrr@10": 0.1667
+          }
+        },
+        {
+          "question_id": "n15",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n17",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "n19",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.4307,
+            "recall@10": 1.0,
+            "ndcg@10": 0.4307,
+            "recall@20": 1.0,
+            "ndcg@20": 0.4307,
+            "mrr@10": 0.25
+          }
+        },
+        {
+          "question_id": "m01",
+          "type": "definition",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m02",
+          "type": "exact_lookup",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m03",
+          "type": "formula",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m04",
+          "type": "multi_hop",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "m05",
+          "type": "contract_clause",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m06",
+          "type": "policy_procedure",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m08",
+          "type": "chapter_synthesis",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m09",
+          "type": "definition",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m10",
+          "type": "exact_lookup",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m11",
+          "type": "multi_hop",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m12",
+          "type": "formula",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m13",
+          "type": "contract_clause",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m14",
+          "type": "policy_procedure",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m16",
+          "type": "table",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m18",
+          "type": "exact_lookup",
+          "language": "mixed",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m19",
+          "type": "comparison",
+          "language": "mixed",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        }
+      ]
+    },
+    "both": {
+      "positive_control": {
+        "expander_calls": 60,
+        "questions_triggering_expansion": 60,
+        "total_expansions": 180,
+        "mean_expansions_per_question": 3.0,
+        "result_set_differs_from_control": 59,
+        "exercised": true
+      },
+      "aggregates": {
+        "recall@5": 0.9833,
+        "recall@10": 1.0,
+        "recall@20": 1.0,
+        "ndcg@5": 0.8708,
+        "ndcg@10": 0.8768,
+        "ndcg@20": 0.8768,
+        "mrr@10": 0.8353
+      },
+      "lifts_vs_baseline": {
+        "recall@5": 0.0,
+        "recall@10": 0.0,
+        "recall@20": 0.0,
+        "ndcg@5": 0.0007,
+        "ndcg@10": 0.0014,
+        "ndcg@20": 0.0014,
+        "mrr@10": 0.0016
+      },
+      "by_type": {
+        "chapter_synthesis": {
+          "question_count": 3,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.877,
+          "ndcg@10": 0.877,
+          "ndcg@20": 0.877,
+          "mrr@10": 0.8333
+        },
+        "comparison": {
+          "question_count": 1,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "contract_clause": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "definition": {
+          "question_count": 16,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.9414,
+          "ndcg@10": 0.9414,
+          "ndcg@20": 0.9414,
+          "mrr@10": 0.9219
+        },
+        "exact_lookup": {
+          "question_count": 10,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8649,
+          "ndcg@10": 0.8649,
+          "ndcg@20": 0.8649,
+          "mrr@10": 0.82
+        },
+        "formula": {
+          "question_count": 8,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8827,
+          "ndcg@10": 0.8827,
+          "ndcg@20": 0.8827,
+          "mrr@10": 0.8438
+        },
+        "multi_hop": {
+          "question_count": 5,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.7785,
+          "ndcg@10": 0.7785,
+          "ndcg@20": 0.7785,
+          "mrr@10": 0.7
+        },
+        "needle": {
+          "question_count": 7,
+          "recall@5": 0.8571,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.7231,
+          "ndcg@10": 0.774,
+          "ndcg@20": 0.774,
+          "mrr@10": 0.7024
+        },
+        "policy_procedure": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "table": {
+          "question_count": 6,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8154,
+          "ndcg@10": 0.8154,
+          "ndcg@20": 0.8154,
+          "mrr@10": 0.75
+        }
+      },
+      "by_language": {
+        "de": {
+          "question_count": 7,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.9473,
+          "ndcg@10": 0.9473,
+          "ndcg@20": 0.9473,
+          "mrr@10": 0.9286
+        },
+        "en": {
+          "question_count": 44,
+          "recall@5": 0.9773,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 0.8322,
+          "ndcg@10": 0.8403,
+          "ndcg@20": 0.8403,
+          "mrr@10": 0.7867
+        },
+        "mixed": {
+          "question_count": 2,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        },
+        "pt": {
+          "question_count": 7,
+          "recall@5": 1.0,
+          "recall@10": 1.0,
+          "recall@20": 1.0,
+          "ndcg@5": 1.0,
+          "ndcg@10": 1.0,
+          "ndcg@20": 1.0,
+          "mrr@10": 1.0
+        }
+      },
+      "latency": {
+        "control": {
+          "mean_ms": 92.6,
+          "p50_ms": 77.1,
+          "p95_ms": 136.9
+        },
+        "arm": {
+          "mean_ms": 3279.5,
+          "p50_ms": 2812.1,
+          "p95_ms": 8875.5
+        },
+        "added_p50_ms": 2735.0,
+        "added_mean_ms": 3186.9
+      },
+      "quality_pass": false,
+      "latency_pass": false,
+      "verdict": "no_win",
+      "per_question": [
+        {
+          "question_id": "h01",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h03",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h04",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.4307,
+            "recall@10": 1.0,
+            "ndcg@10": 0.4307,
+            "recall@20": 1.0,
+            "ndcg@20": 0.4307,
+            "mrr@10": 0.25
+          }
+        },
+        {
+          "question_id": "h05",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h06",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h07",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h08",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h09",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h10",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h11",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h12",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h13",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h14",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h15",
+          "type": "definition",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h16",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.3869,
+            "recall@10": 1.0,
+            "ndcg@10": 0.3869,
+            "recall@20": 1.0,
+            "ndcg@20": 0.3869,
+            "mrr@10": 0.2
+          }
+        },
+        {
+          "question_id": "h17",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h18",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h19",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h21",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h22",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h25",
+          "type": "exact_lookup",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h26",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h27",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h29",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.4307,
+            "recall@10": 1.0,
+            "ndcg@10": 0.4307,
+            "recall@20": 1.0,
+            "ndcg@20": 0.4307,
+            "mrr@10": 0.25
+          }
+        },
+        {
+          "question_id": "h30",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h31",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h32",
+          "type": "formula",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h34",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h35",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h37",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h39",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h40",
+          "type": "table",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h41",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h43",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h45",
+          "type": "multi_hop",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "h47",
+          "type": "chapter_synthesis",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "h49",
+          "type": "chapter_synthesis",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n03",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n05",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n06",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n12",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 0.0,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "ndcg@10": 0.3562,
+            "recall@20": 1.0,
+            "ndcg@20": 0.3562,
+            "mrr@10": 0.1667
+          }
+        },
+        {
+          "question_id": "n15",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "n17",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "n19",
+          "type": "needle",
+          "language": "en",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.4307,
+            "recall@10": 1.0,
+            "ndcg@10": 0.4307,
+            "recall@20": 1.0,
+            "ndcg@20": 0.4307,
+            "mrr@10": 0.25
+          }
+        },
+        {
+          "question_id": "m01",
+          "type": "definition",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m02",
+          "type": "exact_lookup",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m03",
+          "type": "formula",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m04",
+          "type": "multi_hop",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 0.6309,
+            "recall@10": 1.0,
+            "ndcg@10": 0.6309,
+            "recall@20": 1.0,
+            "ndcg@20": 0.6309,
+            "mrr@10": 0.5
+          }
+        },
+        {
+          "question_id": "m05",
+          "type": "contract_clause",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m06",
+          "type": "policy_procedure",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m08",
+          "type": "chapter_synthesis",
+          "language": "de",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m09",
+          "type": "definition",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m10",
+          "type": "exact_lookup",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m11",
+          "type": "multi_hop",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m12",
+          "type": "formula",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m13",
+          "type": "contract_clause",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m14",
+          "type": "policy_procedure",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m16",
+          "type": "table",
+          "language": "pt",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m18",
+          "type": "exact_lookup",
+          "language": "mixed",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        },
+        {
+          "question_id": "m19",
+          "type": "comparison",
+          "language": "mixed",
+          "metrics": {
+            "recall@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "ndcg@10": 1.0,
+            "recall@20": 1.0,
+            "ndcg@20": 1.0,
+            "mrr@10": 1.0
+          }
+        }
+      ]
+    }
+  }
+}
