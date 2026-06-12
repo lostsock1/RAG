@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     reranker_candidate_limit: int = 20
     retrieval_parent_expansion: bool = True  # master plan E1
     retrieval_parent_expansion_max_characters: int = Field(default=2048, ge=256)  # E1
+    # ADR-0021 query understanding. "multi_query" paraphrases via the llm_*
+    # provider (one call per gated search); "decompose" is LLM-free heuristic
+    # multi-hop splitting; never on exact/quoted routes; "disabled" is
+    # byte-identical to today.
+    query_understanding: Literal["disabled", "multi_query", "decompose", "both"] = "disabled"
+    query_understanding_max_expansions: int = Field(default=3, ge=1, le=5)
+    query_understanding_llm_max_output_tokens: int = Field(default=256, ge=16)
     context_builder_max_characters: int = Field(default=4000, ge=1)
     context_builder_max_blocks: int | None = Field(default=None, ge=1)
     llm_backend: Literal["disabled", "stub", "ppq"] = "disabled"

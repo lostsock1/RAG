@@ -5,6 +5,7 @@ from typing import Callable
 
 from app.services.retrieval.base import QueryEmbedder, RetrievalHit, RetrievalQuery
 from app.services.retrieval.fusion import reciprocal_rank_fusion
+from app.services.retrieval.query_understanding import QueryUnderstander
 from app.services.retrieval.reranker import Reranker, StubReranker
 from app.services.retrieval.router import QueryRouter
 
@@ -22,6 +23,8 @@ class HybridSearchRetriever:
         rerank_candidate_limit: int | None = None,
         parent_expansion_enabled: bool = True,
         parent_expansion_max_characters: int = 2048,
+        query_understander: QueryUnderstander | None = None,
+        max_query_expansions: int = 3,
         fuse: Callable[[list[list[str]]], list[str]] = reciprocal_rank_fusion,
     ) -> None:
         self._router = router
@@ -33,24 +36,31 @@ class HybridSearchRetriever:
         self._rerank_candidate_limit = rerank_candidate_limit
         self._parent_expansion_enabled = parent_expansion_enabled
         self._parent_expansion_max_characters = parent_expansion_max_characters
+        # ADR-0021: expansion is enabled iff an understander is injected; when
+        # None the single-query path below is byte-identical to today's.
+        self._query_understander = query_understander
+        self._max_query_expansions = max_query_expansions
         self._fuse = fuse
 
     def search(self, query: RetrievalQuery) -> list[RetrievalHit]:
         route = self._router.classify(query.query)
         if route.mode == "exact":
+            # ADR-0021: exact/quoted routes never expand — the understander
+            # is not consulted on this lane at all (ADR-0008 latency tier 1).
             return [
                 replace(hit, route="exact")
                 for hit in self._lexical_retriever.search(query)[: query.top_k]
             ]
 
-        query_embedding = self._query_embedder.embed_query(query.query)
-        lexical_hits = self._lexical_retriever.search(query)
-        dense_hits = self._vector_retriever.search_dense(query, query_embedding)
-        sparse_hits = self._vector_retriever.search_sparse(query, query_embedding)
+        hit_lists: list[list[RetrievalHit]] = []
+        for query_text in self._expanded_queries(query.query):
+            per_query = query if query_text == query.query else replace(query, query=query_text)
+            query_embedding = self._query_embedder.embed_query(query_text)
+            hit_lists.append(self._lexical_retriever.search(per_query))
+            hit_lists.append(self._vector_retriever.search_dense(per_query, query_embedding))
+            hit_lists.append(self._vector_retriever.search_sparse(per_query, query_embedding))
         fused_hits = self._fuse_hits(
-            lexical_hits=lexical_hits,
-            dense_hits=dense_hits,
-            sparse_hits=sparse_hits,
+            hit_lists=hit_lists,
             top_k=self._resolve_rerank_candidate_limit(query.top_k),
         )
         if not fused_hits:
@@ -65,17 +75,36 @@ class HybridSearchRetriever:
         )
         return self._expand_parent_hits(ranked_hits, top_k=query.top_k)
 
+    def _expanded_queries(self, original: str) -> list[str]:
+        """Original query first, then capped, deduped expansions (ADR-0021).
+
+        Order matters twice: the original query's rank lists are fused first
+        (stable RRF tie-breaks favor them), and the reranker downstream always
+        scores against the original query, never a rewrite.
+        """
+        queries = [original]
+        if self._query_understander is None:
+            return queries
+        seen = {original.strip().lower()}
+        for rewrite in self._query_understander.expand(original):
+            normalized = rewrite.strip()
+            if not normalized or normalized.lower() in seen:
+                continue
+            seen.add(normalized.lower())
+            queries.append(normalized)
+            if len(queries) - 1 >= self._max_query_expansions:
+                break
+        return queries
+
     def _fuse_hits(
         self,
         *,
-        lexical_hits: list[RetrievalHit],
-        dense_hits: list[RetrievalHit],
-        sparse_hits: list[RetrievalHit],
+        hit_lists: list[list[RetrievalHit]],
         top_k: int,
     ) -> list[RetrievalHit]:
         hit_by_candidate_id: dict[str, RetrievalHit] = {}
         rank_lists: list[list[str]] = []
-        for hit_list in (lexical_hits, dense_hits, sparse_hits):
+        for hit_list in hit_lists:
             candidate_ids: list[str] = []
             for hit in hit_list:
                 candidate_id = hit.chunk_id or hit.document_id
