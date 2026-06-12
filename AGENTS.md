@@ -49,7 +49,7 @@ This project uses a five-agent split. Pick or invoke the agent that matches the 
 
 For deep multi-source research (decision-critical, ADR-bound), planner and primary builder both dispatch `search/deepeye`. Researcher and reviewer flag DeepEye candidates but do not dispatch directly.
 
-**Default for the current phase (no code yet): `uber-rag-planner`.** Switch to `uber-rag` (primary builder) when actual implementation work begins.
+**Default for the current phase: `uber-rag` (primary builder).** Implementation is well underway — master-plan Phases A–E are closed (backend suite 592 passed); Phase F (book profile + frontend E2E) is next. Use `uber-rag-planner` for ADRs and phase-gate reviews.
 
 ## Startup Protocol (Required)
 
@@ -78,14 +78,16 @@ At the start of every task:
 | Backend | FastAPI (OpenAPI-first) |
 | Auth | Keycloak (OIDC) |
 | Database | PostgreSQL |
-| Object store | MinIO |
+| Object store | SeaweedFS via S3-compatible adapter (ADR-0009; superseded MinIO) |
 | Vector store | Qdrant |
-| Search engine | OpenSearch |
-| Embeddings | BGE-M3 |
-| Reranker | BGE-reranker-v2-m3 |
-| LLM | Llama 3.3 70B (llama.cpp or vLLM) |
-| Ingestion workers | Temporal or Celery |
-| Document parser | Docling |
+| Search engine | OpenSearch (ADR-0001) |
+| Embeddings | BGE-M3 (ADR-0013) |
+| Reranker | BGE-reranker-v2-m3 (ADR-0014; config-off pending the latency path) |
+| LLM | Llama 3.3 70B Instruct via ppq.ai API (ADR-0004; local vLLM/llama.cpp deferred until GPU) |
+| Ingestion workers | In-process dispatcher (default) / Temporal (opt-in, ADR-0010) |
+| Document parser | Docling (ADR-0011) |
+
+**Models are frozen (binding user directive, 2026-06-11):** BGE-M3, bge-reranker-v2-m3, ppq.ai Llama 3.3 70B (MiniCheck verifier variants config-only). The platform targets the CPU-only VPS; generation is API calls, no GPU. Do not propose model swaps or local serving until the freeze lifts — see `HANDOVER.md` and the master plan's Phase E descope note.
 
 ## Development Workflow
 

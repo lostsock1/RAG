@@ -45,6 +45,7 @@ tests/
 - Use typed request/response models.
 - Keep adapters behind interfaces.
 - Add explicit error models.
+- Error messages must be user-actionable in plain language — state what happened and what to do next (e.g. "Document parsing failed: the uploaded file does not contain extractable text. Try running OCR first or upload a text-based PDF."), never a bare stack trace or internal code. Reviewer gate: user-facing clarity. Phase F's exit criterion ("a non-engineer can…") makes this testable in the UI.
 - Add idempotency keys for ingestion and reindexing operations.
 - Log audit events for security-relevant actions.
 - Avoid long synchronous operations in API handlers.

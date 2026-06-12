@@ -806,8 +806,19 @@ for the E2E rig (pick Playwright unless evidence says otherwise).
 - **Files**: upload route/schema (`profile: Literal["loose","book"] = "loose"`),
   ingestion run metadata, eval fixtures gain ≥ 2 book documents, heldout textbook
   questions activated
+- **Do (added 2026-06-12, pre-Phase-F ingestion)**: when authoring the activated
+  textbook heldout questions, include a real multi-hop subset whose question
+  shapes are sourced from the multi-hop benchmarks already in
+  `STACK_REFERENCES.md` (MultiHop-RAG, MuSiQue, HotpotQA, 2WikiMultiHopQA) —
+  E3 showed the current 5 `multi_hop` questions match the decompose
+  heuristic's shapes 0/5 (the recorded trigger-shape gap), while its lone
+  firing fully fixed a chapter-synthesis question (h49). Span-isolation
+  invariant applies as always. Landing this subset fires **ADR-0021 reopen
+  trigger 2**: re-run the decompose arm (heuristic, LLM-free, ~free) before
+  citing its verdict.
 - **Accept**: profile persisted and visible in ingestion jobs API; textbook subset of
-  heldout runs against book-profile chunks (numbers recorded).
+  heldout runs against book-profile chunks (numbers recorded); if the multi-hop
+  subset landed, the decompose arm re-run is recorded per ADR-0021 trigger 2.
 
 ### F3 — Frontend: finish the three pages + chat UI against the real API (L×2 sessions)
 - **Files**: `apps/web/**`, `packages/clients/typescript/**`

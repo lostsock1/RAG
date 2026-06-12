@@ -2,7 +2,11 @@
 
 This file is the durable reference map for Uber-RAG. Update it after research. Prefer official docs and primary papers. Include access dates and implementation impact.
 
-Last reviewed: 2026-05-21.
+Last reviewed: 2026-06-12 (Phase F entry).
+
+**Model rows are frozen (binding user directive, 2026-06-11):** BGE-M3 (ADR-0013), bge-reranker-v2-m3 (ADR-0014), ppq.ai Llama 3.3 70B (ADR-0004), MiniCheck verifier variants config-only — CPU-only VPS, generation via API, no GPU. Phase-gate row-walks skip the embedding/reranker/LLM/verifier rows until the freeze lifts; their reopen triggers live in the respective ADRs.
+
+Breadth counterpart: `~/.config/opencode/agents/RAG/_stack_refs.md` is the status-tagged candidate survey (every candidate, Accepted/Candidate/Rejected/Deferred); this file is the depth doc (what is actually wired, with implementation impact). The two are kept in sync at phase gates. As of 2026-06-12 the breadth file is behind this one (last reviewed 2026-05-15; still lists MinIO as object-store default vs ADR-0009 SeaweedFS, and pre-freeze model statuses).
 
 ## OpenCode agent configuration
 
@@ -10,8 +14,8 @@ Last reviewed: 2026-05-21.
   - Notes: Markdown agents live in `.opencode/agents/` or `~/.config/opencode/agents/`. Agent files use YAML frontmatter. `mode` can be `primary`, `subagent`, or `all`. Current docs prefer `steps` over legacy `maxSteps`.
 - OpenCode Permissions: https://opencode.ai/docs/permissions/
   - Notes: Use `permission`; legacy `tools` config is deprecated. Permissions support `allow`, `ask`, and `deny`; object syntax supports patterns. Built-in keys include read, edit, glob, grep, bash, task, webfetch, websearch, external_directory, doom_loop.
-- OpenCode Config: https://open-code.ai/en/docs/config
-  - Notes: Project config can live in `opencode.json`; `.opencode/agents/` is supported.
+- OpenCode Config: https://opencode.ai/docs/config
+  - Notes: Project config can live in `opencode.json`; `.opencode/agents/` is supported. (URL normalized 2026-06-12 to the canonical `opencode.ai` domain used by the other entries; the previously recorded `open-code.ai` is an off-domain mirror.)
 
 ## Frontend
 
@@ -19,9 +23,15 @@ Last reviewed: 2026-05-21.
 - React: https://react.dev/
 - TypeScript: https://www.typescriptlang.org/docs/
 
+Frontend E2E rig (Phase F entry gate; decision pending — master plan says pick Playwright unless entry-gate evidence says otherwise):
+- Playwright docs: https://playwright.dev/docs/intro
+- Playwright repo: https://github.com/microsoft/playwright
+- Cypress docs: https://docs.cypress.io/
+
 Implementation impact:
 - UI must call public FastAPI only.
-- UI must not directly access Qdrant, OpenSearch, PostgreSQL, MinIO, LLM, or worker services.
+- UI must not directly access Qdrant, OpenSearch, PostgreSQL, object storage, LLM, or worker services.
+- Phase F F4 runs the chosen E2E rig in CI against the compose stack (`AUTH_MODE=dev`, stub LLM, seeded fixture corpus); specs wait on API state, not timeouts.
 
 ## API backend
 
@@ -206,6 +216,13 @@ Implementation impact:
 - `vectara/hallucination_evaluation_model` (HHEM-2.x): Apache-2.0 but requires `trust_remote_code=True` (HHEMv2 custom architecture) — rejected for default per the ADR-0014 trust_remote_code posture; revisit if standard-architecture release appears.
 - `ibm-granite/granite-guardian-3.1/3.2`: Apache-2.0, 2–3B, generation-style judging — GPU-era reopen candidates.
 - Full comparison + extracted inference recipe: `docs/uber-rag/research/2026-06-11-phase-d-entry.md`.
+
+## Meta research sources
+
+- Awesome-AI-Memory (curated RAG/memory papers, projects, benchmarks): https://github.com/IAAR-Shanghai/Awesome-AI-Memory
+
+Implementation impact:
+- Pre-check this index before dispatching DeepEye on any RAG- or memory-shaped question, and pass relevant starting points into the DeepEye prompt (research hierarchy per `~/.config/opencode/agents/RAG/_shared.md` and `DEEPEYE_INTEGRATION.md`).
 
 ## DeepEye and workflow-centric agent research
 
