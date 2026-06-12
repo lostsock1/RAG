@@ -1,4 +1,4 @@
-# HANDOVER — Phase E: E3 CLOSED (no win); next task is E4 reindex CLI (written 2026-06-12, end of seventh session)
+# HANDOVER — Phase E within-freeze scope COMPLETE (E3 closed no-win, E4a reindex CLI landed); next is Phase F (written 2026-06-12, end of seventh session)
 
 For a fresh session continuing the master plan. Read in this order:
 
@@ -6,10 +6,11 @@ For a fresh session continuing the master plan. Read in this order:
 2. `docs/superpowers/plans/2026-06-10-sota-master-plan.md` — **the canonical
    forward plan**. Phases A–D carry ✅ COMPLETE blocks; Phase E carries ✅
    blocks for E0a (+ ADR-0019 follow-ups), E1, the reranker arm, the
-   distractor corpus, E2, and now **E3**, plus the dated **DESCOPED** note
-   (models frozen). Next open task: "### E4 — Reindex tooling" — **the
-   reindex-CLI half only** (the conditional embedder/reranker bake-offs and
-   all of E5 stay deferred under the freeze).
+   distractor corpus, E2, **E3**, and **E4a**, plus the dated **DESCOPED**
+   note (models frozen) and the dated **Phase E exit assessment**
+   (within-freeze scope complete; E4b + E5 deferred, not cancelled, and do
+   not block Phase F). Next open work: "## Phase F — Book profile +
+   frontend E2E" (start with its entry gate).
 3. `docs/uber-rag/PROJECT_STATE.md` — status header + Recent-changes rows.
 
 ## Binding user directive (2026-06-11)
@@ -22,11 +23,12 @@ need VPS re-verification before SLA-relevant defaults ship.
 
 ## Where things stand
 
-Backend suite: **580 passed, 3 skipped** (verified on this exact tree,
+Backend suite: **592 passed, 3 skipped** (verified on this exact tree,
 2026-06-12). Pushed: up to `f847e3a`. **Local-only (push ONLY when the user
 says "push")**: `54be1d3` (ADR-0021 rule frozen pre-measurement), `3e3210d`
 (E3 seams + 26 tests), `b3370a0` (Settings wiring, truthful no-creds
-failure), `a63379f` (bake-off + report + ADR outcome), plus the
+failure), `a63379f` (E3 bake-off + report + ADR outcome), `7da1fa0` (E3
+docs closeout), `f341566` (E4a reindex CLI + 12 tests), plus the
 session-close docs commit after this file.
 
 ## E3 — CLOSED this session (full detail in ADR-0021 / PROJECT_STATE / TASKS)
@@ -78,19 +80,45 @@ zero-trigger = not_exercised ≠ no_win.
   per-trigger evidence is positive — h49); E2-reopen rig upgrades
   (real-BM25 arm / book corpus); baseline shift (reranker ONNX flip etc.).
 
-## NEXT — E4, reindex-CLI half (master plan "### E4 — Reindex tooling")
+## E4a — DONE this session (reindex CLI; full detail in PROJECT_STATE/TASKS/plan)
 
-Not started. Spec summary: management CLI (`apps/api/app/cli/reindex.py` or
-`scripts/reindex.py` — match repo conventions) that streams chunks from
-Postgres → re-embeds → re-upserts Qdrant + OpenSearch with the CURRENT ACL
-payload shape; idempotent, resumable, per-tenant scoped. Needed by A5 and
-E2 (any future `contextual_augmentation` enablement requires re-ingesting
-or reindexing existing corpora — ADR-0020's "reindex implication"). Accept:
-round-trip test proves ingest → reindex → identical retrieval results. The
-embedder/reranker bake-off half of E4 stays DEFERRED (models frozen).
-After E4(a): assess Phase E exit criteria (E5 closure is freeze-blocked —
-record it as deferred in the exit assessment rather than silently open),
-then Phase F (book profile + frontend E2E).
+`python -m app.cli.reindex --tenant-id … [--document-id …]
+[--after-document-id …] [--database-url …]` (`apps/api/app/cli/reindex.py`).
+Streams the tenant's documents from Postgres in stable id order, re-embeds
+leaf `search_text` (persisted ADR-0020 `context_prefix` honored),
+re-upserts Qdrant + OpenSearch with the **current**
+`get_document_index_acl_metadata` payload. Idempotent (deterministic ids),
+resumable (`--after-document-id`, per-document boundary logged), truthful
+failure (no bind / out-of-tenant ids / missing grant), never substitutes
+stubs: `build_embedder` = BGE-M3 (frozen ADR-0013),
+`build_vector_indexer`/`build_lexical_indexer` map the qdrant_*/
+opensearch_* settings — the codebase's FIRST Settings→ingestion-indexer
+factories. Acceptance round-trip proven (identical ranked ids+scores,
+OpenSearch `_source` equality, idempotent re-run) plus ACL-freshness (a
+post-ingest grant reaches the reindexed payload; the ingest-time payload
+provably lacks it). 12 integration tests
+(`apps/api/app/tests/integration/test_reindex_cli.py`).
+
+**Observed gap (recorded, NOT acted on — out of E4a scope):** production
+dispatcher construction (`main.py` + `temporal_worker.
+build_pipeline_runner_from_settings`) passes no embedder/indexers, so
+`PipelineRunner` defaults to **stubs** — real deployments do not write real
+indexes yet (consistent with the VPS not running Qdrant/OpenSearch). When
+real index serving ships, wire the new `build_*` factories into both
+dispatcher paths (mirror the contextualizer wiring pattern, truthful
+failure when unconfigured).
+
+## NEXT — Phase F: book profile + frontend E2E (master plan "## Phase F")
+
+Phase E is exhausted within the freeze (exit assessment recorded in the
+plan; E4b + E5 deferred, not cancelled, non-blocking). Phase F starts with
+its **entry gate** (researcher): Docling current release notes
+(heading/page-anchor extraction fidelity), Next.js 15 App Router stability
+check, Playwright vs Cypress for the E2E rig (pick Playwright unless
+evidence says otherwise). Then the F-tasks per the canonical spec (book
+profile chunking is the first big one — note `persist_chunks` currently
+supports single-parent documents only and will need the multi-parent
+mapping strategy the docstring flags).
 
 Also live but unscheduled (freeze-compatible): ADR-0014 reranker latency
 path — ONNX CPU serving (~5× per the ADR's DeepEye note) and/or smaller
@@ -135,7 +163,9 @@ rerank candidate pool; quality already passes on the distractor corpus
 ## Verification commands
 
 ```bash
-python -m pytest apps/api/app/tests/ -q                           # 580 passed, 3 skipped on this tree
+python -m pytest apps/api/app/tests/ -q                           # 592 passed, 3 skipped on this tree
+python -m pytest apps/api/app/tests/integration/test_reindex_cli.py -q  # E4a round-trip gate (12)
+PYTHONPATH=apps/api python -m app.cli.reindex --help              # CLI entrypoint smoke
 python -m pytest tests/eval/test_retrieval_quality.py -q          # baseline (MRR@10 0.8337; aggregates must match committed; revert id churn)
 python -m pytest tests/eval/test_retrieval_parent_expansion.py -q # E1 gate
 python -m pytest tests/eval/test_retrieval_reranker_arm.py -q -s  # quality_pass=true, flip=false (latency)
@@ -154,4 +184,5 @@ containment-dedupe test, FlagEmbedding-free reranker guard, truthful
 startup failure for `contextual_augmentation="llm"` without creds AND for
 `query_understanding` LLM-backed modes without creds, understander=None
 byte-identical retriever path, exact/quoted routes never consulting the
-understander.
+understander, E4a reindex round-trip identity + ACL-freshness +
+out-of-tenant refusal.

@@ -696,6 +696,32 @@ upgrades; baseline shift).
   truthful 503 if enabled without an LLM backend.
 
 ### E4 — Reindex tooling + (conditional) embedder/reranker bake-offs (L, conditional)
+
+**✅ E4a (reindex CLI) COMPLETE — 2026-06-12; E4b (bake-offs) stays
+DEFERRED under the models freeze.** `apps/api/app/cli/reindex.py`
+(`python -m app.cli.reindex --tenant-id … [--document-id …]
+[--after-document-id …] [--database-url …]`): streams the tenant's
+documents from Postgres in stable id order, re-embeds leaf `search_text`
+(persisted ADR-0020 `context_prefix` honored), re-upserts Qdrant +
+OpenSearch with the **current** ACL payload
+(`get_document_index_acl_metadata` — policy id/version, sensitivity rank,
+expiry as of NOW, not the ingest-time stamp). Idempotent (deterministic
+point/doc ids), resumable (`--after-document-id`, per-document boundary
+logged), per-tenant scoped, truthful failure (no DB bind / out-of-tenant
+ids / missing ACL grant; never substitutes stubs — `build_embedder` =
+BGE-M3 per frozen ADR-0013, `build_vector_indexer`/`build_lexical_indexer`
+map the existing qdrant_*/opensearch_* settings — the codebase's first
+Settings→ingestion-indexer factories). Acceptance proven by the round-trip
+test: ingest → reindex into fresh indexes → **identical ranked ids and
+scores** (+ OpenSearch id-keyed `_source` equality + idempotent second
+run), plus the ACL-freshness property (an `AclAllowedUser` grant added
+after ingest reaches the reindexed payload while the live ingest-time
+payload provably lacks it). 12 integration tests; suite **592 passed,
+3 skipped**. Observed gap recorded for later wiring work: production
+dispatcher construction (main.py + temporal worker) still defaults to
+stub embedder/indexers — the new factories are the missing piece when
+real index serving ships.
+
 - **Files**: new management CLI `apps/api/app/cli/reindex.py` (or
   `scripts/reindex.py` — match repo conventions), ADR-0013/0014 reopen notes if
   triggered
@@ -737,6 +763,19 @@ upgrades; baseline shift).
 committed baseline (and is config-default-on) or is documented as no-win and left
 off. Baseline JSONs updated; CI gate thresholds re-pinned to the new baseline.
 E5's ADR-0004 reopen is closed either way (superseded or reconfirmed with data).
+
+**Phase E exit assessment — 2026-06-12 (within-freeze scope COMPLETE):**
+every in-freeze upgrade was measured under a pre-frozen rule and is
+documented either way — E1 expansion (deltas 0.0000, conformed + merged),
+reranker arm (quality passes post-distractor, latency blocks the flip —
+ADR-0014 reopen = ONNX/smaller-pool, unscheduled), E2 contextual
+augmentation (ADR-0020 no-win, config-off), E3 query understanding
+(ADR-0021 no-win, config-off), E4a reindex CLI (round-trip-proven).
+Baseline JSONs and the CI gate remain pinned to the committed
+post-distractor numbers (no flips occurred, so no re-pin was due). NOT
+closable under the freeze: E4b bake-offs and E5 (ADR-0004 reopen) are
+**deferred, not cancelled** — Phase E's last two boxes reactivate when the
+freeze lifts; they do not block Phase F.
 
 ---
 
