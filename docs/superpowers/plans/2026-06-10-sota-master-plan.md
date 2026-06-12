@@ -609,6 +609,26 @@ whole-doc blobs) + eval/production parity + correct reranker input for the
 E2 real-reranker arm.
 
 ### E2 — ADR-0020 + contextual chunk augmentation stage (L)
+
+**✅ E2 COMPLETE — 2026-06-11. ADR-0020 Accepted with data: NO WIN, default
+stays `disabled`.** Rule frozen and committed before measurement (the
+"≥ +0.03 recall@10" margin below was voided — recall@10 saturated at 1.000
+post-distractor; judged on ranking lift instead: MRR@10 or nDCG@10 ≥ +0.02,
+recall@10 drop ≤ 0.02, ingest cost acknowledged, breadcrumb wins ties).
+Foundation + 30 TDD tests + Settings wiring (in-process AND Temporal,
+truthful llm-creds failure) landed; suite 549 passed / 3 skipped; disabled
+path bit-identical (7 stages pinned). Bake-off on isolated re-ingested
+stacks, positive control 313/313 leaves prefixed both arms:
+**breadcrumb MRR@10 +0.0090 / nDCG@10 +0.0065** (sub-bar; ~56 s ingest);
+**llm MRR@10 −0.0867 / nDCG@10 −0.0686 / recall@10 −0.0167** (actively
+harmful: topic-level situating context pulls same-topic confusables closer
+— exactly the C5 distractor structure; 1428 s = 4.56 s/leaf ppq serial).
+Report: `tests/eval/reports/retrieval_contextual_augmentation.json`.
+Caveats → ADR-0020 reopen triggers: dense-only rig (contextual-BM25 share
+unmeasured), short-doc corpus (book-profile heading hierarchies untested),
+prompt-caching cost collapse, E3 baseline shift. Both arms stay merged and
+config-selectable.
+
 - **Files**: `docs/uber-rag/adr/0020-contextual-chunk-augmentation.md`,
   `apps/api/app/workflows/stages.py` (+ `pipeline_runner.py`) new optional
   `contextualize` stage between `chunk` and `embed`, chunk schema/model gains
