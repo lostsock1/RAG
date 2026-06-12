@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from app.services.contextualizers.base import ChunkContextualizer
 
 from app.services.ocr import OcrService
 from app.services.parsers.base import DocumentParser
@@ -37,6 +40,7 @@ class InProcessDispatcher:
         embedder: Embedder | None = None,
         vector_indexer: VectorIndexer | None = None,
         lexical_indexer: LexicalIndexer | None = None,
+        contextualizer: "ChunkContextualizer | None" = None,
         worker_id: UUID | None = None,
     ) -> None:
         self._runner = runner or PipelineRunner(
@@ -48,6 +52,7 @@ class InProcessDispatcher:
             embedder=embedder,
             vector_indexer=vector_indexer,
             lexical_indexer=lexical_indexer,
+            contextualizer=contextualizer,
             worker_id=worker_id,
         )
         # Retain direct attribute access for existing tests that inspect internals

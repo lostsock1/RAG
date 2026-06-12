@@ -6,6 +6,7 @@ from importlib import import_module
 from typing import Any, Callable
 
 from app.core.config import Settings, get_settings
+from app.services.contextualizers.factory import build_chunk_contextualizer
 from app.services.ocr import build_ocr_service
 from app.services.parsers.factory import build_document_parser
 from app.services.storage import build_storage_adapter
@@ -74,6 +75,7 @@ def build_pipeline_runner_from_settings(settings: Settings) -> PipelineRunner:
         parser_profile=parser_profile,
         ocr_service=build_ocr_service(settings),
         storage=build_storage_adapter(settings),
+        contextualizer=build_chunk_contextualizer(settings),
     )
 
 

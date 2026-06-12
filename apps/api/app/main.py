@@ -79,6 +79,7 @@ async def lifespan(app: FastAPI):
         )
 
     if settings.parser_backend:
+        from app.services.contextualizers.factory import build_chunk_contextualizer
         from app.workflows.dispatcher import InProcessDispatcher
 
         parser, parser_backend, parser_profile = build_document_parser(settings)
@@ -96,6 +97,7 @@ async def lifespan(app: FastAPI):
                 parser_profile=parser_profile,
                 ocr_service=build_ocr_service(settings),
                 storage=storage,
+                contextualizer=build_chunk_contextualizer(settings),
                 worker_id=worker_id,
             )
 
