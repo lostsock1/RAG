@@ -63,6 +63,7 @@ Full ADRs live in `adr/`. Index:
 - [ADR-0018 — Sentence-Incremental Verified Streaming](adr/0018-incremental-verified-streaming.md) — Accepted 2026-06-10
 - [ADR-0019 — Grounding Verifier: MiniCheck-Flan-T5-Large](adr/0019-grounding-verifier.md) — Rejected with data 2026-06-11 (canary criterion passed 1.00; faithfulness 0.578 + latency 3964 ms failed frozen bars; backend stays config-selectable; canaries guard the blind spot nightly)
 - [ADR-0020 — Contextual Chunk Augmentation (Breadcrumb + LLM Arms)](adr/0020-contextual-chunk-augmentation.md) — Accepted with data 2026-06-11 (frozen rule applied: breadcrumb +0.0090 MRR@10 sub-bar, llm −0.0867 actively harmful on the distractor corpus; default stays `disabled`, both arms config-selectable; positive control 313/313; dense-only-rig + short-doc-corpus caveats recorded as reopen triggers)
+- [ADR-0021 — Query Understanding: Route-Gated Multi-Query + Heuristic Decomposition](adr/0021-query-understanding.md) — Proposed 2026-06-11, decision rule frozen before measurement (overall MRR@10 or nDCG@10 lift ≥ +0.02, recall@10 drop ≤ 0.02, added gated-route P50 ≤ 700 ms; subset wins record-only; cheaper arm wins ties; decompose "not exercised" ≠ "no win")
 
 ## Proposed / Deferred decisions
 
