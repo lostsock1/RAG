@@ -1,10 +1,14 @@
 # ADR-0020: Contextual Chunk Augmentation (Breadcrumb + LLM Arms)
 
-Status: **Proposed — decision rule frozen 2026-06-11, bake-off pending.**
-This ADR is committed *before* the measurement per house discipline (the
-rule must not be shaped by the numbers it judges). The bake-off table and
-the final Accepted-with-arm / Accepted-with-data outcome will be appended
-below without altering the frozen rule.
+Status: **Accepted (with data), 2026-06-11** — frozen rule applied
+mechanically to the bake-off: **neither arm passes; `contextual_augmentation`
+default stays `"disabled"`**. Breadcrumb lifts ranking in the right direction
+but below the bar (MRR@10 +0.0090, nDCG@10 +0.0065); the LLM arm actively
+*hurts* on the distractor corpus (MRR@10 −0.0867, nDCG@10 −0.0686). Both arms
+remain merged and config-selectable; the implementation, tests, and wiring
+stay (the 8-stage augmented path is fully covered). See "Measurement results"
+below. The decision rule was frozen and committed before measurement
+(`3941a40`) and was not altered.
 Date: 2026-06-11
 
 ## Context
@@ -119,11 +123,13 @@ below stand.
 
 ## Decision
 
-Pending the bake-off. The implementation (landed 2026-06-11, disabled-path
-bit-identical, suite 511/3) ships **config-off**:
-`contextual_augmentation: Literal["disabled","breadcrumb","llm"] =
-"disabled"` — exactly the ADR-0014 rollout pattern: merged, selectable,
-eval-gated, default off until the frozen rule passes.
+**No arm is adopted; the default stays `"disabled"`** (frozen rule applied
+to the 2026-06-11 bake-off — see Measurement results). The implementation
+(disabled-path bit-identical, suite green) stays merged and
+config-selectable: `contextual_augmentation:
+Literal["disabled","breadcrumb","llm"] = "disabled"` — exactly the ADR-0014
+rollout pattern: merged, selectable, eval-gated, default off because the
+frozen rule did not pass.
 
 ## Consequences
 
@@ -151,6 +157,53 @@ eval-gated, default off until the frozen rule passes.
 - One more pipeline stage (8 vs 7) when enabled; stage-skip idempotency
   must hold (covered by tests).
 
+## Measurement results (2026-06-11)
+
+Report: `tests/eval/reports/retrieval_contextual_augmentation.json`
+(60 evidence-backed heldout questions, 27-doc corpus incl. the 8 C5
+distractors, dense-only rig — stub lexical retriever, stub reranker, parent
+expansion off, i.e. the committed-baseline retrieval shape; each arm
+re-ingested the corpus through its own isolated SQLite + in-memory-Qdrant +
+BGE-M3 stack).
+
+**Positive control (both arms): 313/313 leaf chunks contextualized and
+persisted with non-empty `context_prefix`, `search_text != text` for all
+313** — the outcome below is a real measurement of augmentation, not a
+silent no-op reproducing the baseline.
+
+| metric | baseline (committed) | breadcrumb | lift | llm | lift |
+|---|---|---|---|---|---|
+| MRR@10 | 0.8337 | 0.8427 | **+0.0090** | 0.7470 | **−0.0867** |
+| nDCG@10 | 0.8754 | 0.8819 | **+0.0065** | 0.8068 | **−0.0686** |
+| recall@5 | 0.9833 | 0.9667 | −0.0166 | 0.9500 | −0.0333 |
+| recall@10 | 1.000 | 1.000 | 0.0 | 0.9833 | −0.0167 |
+| ingest cost | — | 56 s corpus-wide (~0) | | 1428 s (**4.56 s/leaf** × 313, ppq serial) | |
+
+**Frozen-rule application:** breadcrumb fails the ranking-lift bar (both
+lifts < +0.02; recall guard ok). The llm arm fails everything it can fail:
+ranking strongly negative, recall@10 −0.0167 (within the guard but
+negative), and it is the costly arm. `adopt_arm = null` → **default stays
+`"disabled"`**.
+
+**Why the LLM arm hurt (analysis, not excuse):** the recipe's situating
+context is *topic-level* ("Description of the second law of
+thermodynamics…"), and the C5 distractor corpus is built precisely from
+same-topic confusables. Prepending generic topic words to every chunk pulls
+same-topic chunks *closer together* in embedding space — the opposite of
+what ranking on this corpus needs — while diluting the chunk's specific
+content. Anthropic's reported gains came from long multi-section documents
+where a chunk is ambiguous *within* its own document; our fixture docs are
+short and single-page, so the chunk already carries most of its context.
+The breadcrumb arm (title disambiguation) is directionally right and cheap,
+just sub-significance on a corpus whose titles already differ.
+
+**Measurement scope caveats (recorded in the report):** (a) the rig is
+dense-only — the contextual-BM25 share of the technique's reported gain
+(35% → 49% failure-rate reduction) is structurally invisible here; (b) the
+corpus is short-document; book-profile corpora with deep heading hierarchies
+are where breadcrumbs carry real signal. Both are reopen conditions, not
+reasons to discount the measured result.
+
 ## Reopen triggers
 
 1. **Corpus shift:** a production corpus with deep structure (books) shows
@@ -165,6 +218,10 @@ eval-gated, default off until the frozen rule passes.
    than replaces, BM25-side augmentation.
 4. **E3 query understanding** lands and changes the ranking baseline
    materially — stale lifts must be re-measured before citing this ADR.
+5. **The eval rig gains a real lexical (BM25) arm:** the contextual-BM25
+   share of the technique — invisible to the 2026-06-11 dense-only
+   measurement — becomes measurable. Re-run at least the breadcrumb arm
+   (near-free) before relying on this ADR's no-win for hybrid retrieval.
 
 ## References
 
