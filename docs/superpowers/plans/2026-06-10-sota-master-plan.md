@@ -651,6 +651,35 @@ config-selectable.
   disabled path bit-for-bit identical to today.
 
 ### E3 — ADR-0021 + query understanding: multi-query + decomposition (L)
+
+**✅ E3 COMPLETE — 2026-06-12. ADR-0021 Accepted with data: NO WIN (all
+three arms), default stays `disabled`.** Rule frozen and committed before
+measurement (MRR@10 or nDCG@10 lift ≥ +0.02, recall@10 drop ≤ 0.02, added
+gated-route P50 ≤ 700 ms; subset wins record-only; cheaper passing arm
+wins ties; decompose zero-trigger = not_exercised ≠ no_win). Seams +
+26 unit tests + Settings wiring (truthful startup failure for LLM-backed
+modes without `llm_*` creds; decompose needs none) landed first; suite
+**580 passed / 3 skipped**; understander=None path byte-identical;
+exact/quoted routes never consult the understander. Bake-off on the
+session eval stack (no re-ingestion — query understanding changes nothing
+at ingest) with paired no-understander control; rig equivalence verified
+per-question. **multi_query: ranking dead flat (MRR@10 −0.0012 / nDCG@10
+−0.0008) at +3030 ms added P50 (4.3× the bar)** — a clean technique
+negative, not a no-op: positive control proved 60/60 paraphrase calls
+(3.0/question) and 60/60 result sets perturbed; recall@10 is saturated at
+1.000 so the vocabulary-mismatch headroom doesn't exist, and
+topic-preserving paraphrases retrieve the same C5 confusables.
+**decompose: 1/60 trigger (0/5 multi_hop questions matched — heldout
+trigger-shape TODO); the lone firing fully fixed h49 (MRR@10 0.5→1.0) =
+the entire +0.0084 aggregate** — subset-honesty clause: reopen evidence,
+not a pass. **both: +2735 ms AND lost decompose's h49 fix to RRF
+paraphrase dilution** (chapter_synthesis 0.8333 vs decompose's 1.0).
+Report: `tests/eval/reports/retrieval_query_understanding.json`. All
+arms stay merged + config-selectable; reopen paths in ADR-0021 (local
+low-latency serving for multi_query; multi-hop heldout additions for
+decompose — now with positive per-trigger evidence; E2-reopen rig
+upgrades; baseline shift).
+
 - **Files**: `docs/uber-rag/adr/0021-query-understanding.md`,
   `apps/api/app/services/retrieval/query_understanding.py`,
   `router.py` (route signal), `hybrid_retriever.py` (merge), config gates, tests

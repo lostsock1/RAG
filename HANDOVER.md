@@ -1,4 +1,4 @@
-# HANDOVER — Phase E: E2 CLOSED (no win); next task is E3 query understanding (written 2026-06-11, end of sixth session)
+# HANDOVER — Phase E: E3 CLOSED (no win); next task is E4 reindex CLI (written 2026-06-12, end of seventh session)
 
 For a fresh session continuing the master plan. Read in this order:
 
@@ -6,9 +6,10 @@ For a fresh session continuing the master plan. Read in this order:
 2. `docs/superpowers/plans/2026-06-10-sota-master-plan.md` — **the canonical
    forward plan**. Phases A–D carry ✅ COMPLETE blocks; Phase E carries ✅
    blocks for E0a (+ ADR-0019 follow-ups), E1, the reranker arm, the
-   distractor corpus, and now **E2**, plus the dated **DESCOPED** note
-   (models frozen). Next open task: "### E3 — ADR-0021 + query
-   understanding: multi-query + decomposition (L)".
+   distractor corpus, E2, and now **E3**, plus the dated **DESCOPED** note
+   (models frozen). Next open task: "### E4 — Reindex tooling" — **the
+   reindex-CLI half only** (the conditional embedder/reranker bake-offs and
+   all of E5 stay deferred under the freeze).
 3. `docs/uber-rag/PROJECT_STATE.md` — status header + Recent-changes rows.
 
 ## Binding user directive (2026-06-11)
@@ -17,65 +18,84 @@ For a fresh session continuing the master plan. Read in this order:
 ppq.ai Llama 3.3 70B (MiniCheck verifier variants config-only). The platform
 lives on the **CPU-only VPS**, generation via **API calls, no GPU**. E4
 bake-offs and E5 are deferred; latency bars are CPU bars; dev-Mac numbers
-need VPS re-verification before SLA-relevant defaults ship. E3 proceeds on
-technique merits via the existing `LlmBackend` seam (freeze-compatible).
+need VPS re-verification before SLA-relevant defaults ship.
 
 ## Where things stand
 
-Backend suite: **549 passed, 3 skipped** (verified on this exact tree).
-Pushed: up to `c3b0f1a`. **Local-only (push ONLY when the user says
-"push")**: `6f875cb` (distractor corpus), `2c21d3a` (E2 foundation),
-`3941a40` (ADR-0020 rule frozen pre-measurement), `6c80f7b` (30 E2 tests),
-`f92037b` (Settings→contextualizer wiring), `fffb316` (bake-off + ADR
-outcome), plus the session-close docs commit after this file.
+Backend suite: **580 passed, 3 skipped** (verified on this exact tree,
+2026-06-12). Pushed: up to `f847e3a`. **Local-only (push ONLY when the user
+says "push")**: `54be1d3` (ADR-0021 rule frozen pre-measurement), `3e3210d`
+(E3 seams + 26 tests), `b3370a0` (Settings wiring, truthful no-creds
+failure), `a63379f` (bake-off + report + ADR outcome), plus the
+session-close docs commit after this file.
 
-## E2 — CLOSED this session (full detail in ADR-0020 / PROJECT_STATE / TASKS)
+## E3 — CLOSED this session (full detail in ADR-0021 / PROJECT_STATE / TASKS)
 
-**Outcome: ADR-0020 Accepted with data — NO WIN, `contextual_augmentation`
-default stays `"disabled"`.** Rule was frozen and committed BEFORE
-measurement (`3941a40`): adopt iff (MRR@10 or nDCG@10 lift ≥ +0.02 over the
-committed post-distractor baseline) AND recall@10 drop ≤ 0.02 AND ingest
-cost acknowledged; breadcrumb wins ties unless llm adds a further +0.02.
+**Outcome: ADR-0021 Accepted with data — NO WIN on all three arms,
+`query_understanding` default stays `"disabled"`.** Rule was frozen and
+committed BEFORE measurement (`54be1d3`): flip iff (MRR@10 or nDCG@10 lift
+≥ +0.02) AND (recall@10 drop ≤ 0.02) AND (added gated-route P50 ≤ 700 ms);
+subset wins record-only; cheaper passing arm wins ties; decompose
+zero-trigger = not_exercised ≠ no_win.
 
-- Bake-off (`tests/eval/test_retrieval_contextual_augmentation.py`, report
-  `tests/eval/reports/retrieval_contextual_augmentation.json`): isolated
-  re-ingested stacks per arm (NOT `eval_stack` — it stays byte-identical),
-  positive control passed both arms (313/313 leaves prefixed,
-  `search_text != text`).
-- **breadcrumb**: MRR@10 +0.0090 / nDCG@10 +0.0065 — right direction,
-  sub-bar; ~56 s corpus ingest (≈ free). **llm**: MRR@10 −0.0867 / nDCG@10
-  −0.0686 / recall@10 −0.0167 — actively harmful; 1428 s (4.56 s/leaf, ppq
-  serial). Mechanism: topic-level situating context pulls same-topic
-  confusables closer in embedding space — exactly the C5 distractor
-  structure. Anthropic's gains presume long multi-section docs.
-- Recorded reopen triggers (ADR-0020): real-BM25 eval arm (rig is
-  dense-only — contextual-BM25 share unmeasured), book-profile corpora
-  (deep heading hierarchies), prompt-caching/local-LLM cost collapse, E3
-  baseline shift.
-- Everything stays merged + config-selectable: migration
-  `20260611_0010`, `Chunk.search_text`, `contextualizers/` package
-  (breadcrumb/llm/stub + `factory.build_chunk_contextualizer`), optional
-  8th `contextualize` stage, OpenSearch `text`=augmented /
-  `display_text`=original, wiring in `main.py` AND
-  `temporal_worker.build_pipeline_runner_from_settings` (truthful startup
-  failure when `"llm"` lacks `llm_base_url`/`llm_api_key`).
+- Bake-off (`tests/eval/test_retrieval_query_understanding.py`, report
+  `tests/eval/reports/retrieval_query_understanding.json`): arms run on the
+  SESSION eval stack (query understanding changes nothing at ingest — no
+  isolated re-ingestion needed, unlike E2) via the new
+  `eval_stack.retrieval_components` hook; paired no-understander control on
+  the same stack gives the latency reference and pool-diff; rig equivalence
+  was verified per-question (arms reproduce the committed baseline exactly
+  on unperturbed questions).
+- **multi_query**: ranking dead flat (MRR@10 −0.0012 / nDCG@10 −0.0008,
+  recall flat at 1.000) at **+3030 ms added P50** (bar: 700) — a clean
+  technique negative, NOT a no-op: positive control proved 60/60 paraphrase
+  calls (3.0/question, 180 total) and 60/60 result sets perturbed.
+  Mechanism: recall@10 is saturated at 1.000 (no vocabulary-mismatch
+  headroom) and topic-preserving paraphrases retrieve the same C5
+  same-topic confusables, so RRF rank-summing re-orders nothing.
+- **decompose**: triggered on **1/60** (and 0/5 multi_hop questions — the
+  heuristic's shapes don't match the heldout multi-hop phrasings; recorded
+  trigger-shape TODO). Its lone firing FULLY fixed h49 (chapter_synthesis,
+  twin-clause: MRR@10 0.5→1.0) = the entire +0.0084 aggregate — frozen
+  subset-honesty clause: reopen evidence, not a pass. +1.5 ms (~free).
+- **both**: +2735 ms AND **lost decompose's h49 fix to RRF paraphrase
+  dilution** (chapter_synthesis 0.8333 vs decompose's 1.0; decomposer runs
+  first under the shared cap, but the paraphrase rank-lists pulled the
+  confusable back above the gold). Composing expanders isn't free even when
+  one of them works.
+- Everything stays merged + config-selectable: `query_understanding:
+  Literal["disabled","multi_query","decompose","both"] = "disabled"`,
+  `query_understanding_max_expansions`, seams in
+  `services/retrieval/query_understanding.py`, merge in
+  `hybrid_retriever.py` (expansions widen fusion input only; rerank scores
+  the ORIGINAL query; exact/quoted routes never consult the understander;
+  None-path byte-identical), wiring in `runtime.py` (truthful startup
+  failure for LLM-backed modes without `llm_base_url`/`llm_api_key`;
+  decompose requires none).
+- Reopen paths (ADR-0021): local low-latency LLM serving (latency was the
+  predicted binding constraint — the ADR-0014 situation); heldout gains
+  real multi-hop/comparative questions matching decompose's shapes (its
+  per-trigger evidence is positive — h49); E2-reopen rig upgrades
+  (real-BM25 arm / book corpus); baseline shift (reranker ONNX flip etc.).
 
-## NEXT — E3 (master plan "### E3 — ADR-0021 + query understanding")
+## NEXT — E4, reindex-CLI half (master plan "### E4 — Reindex tooling")
 
-Not started. Spec summary: route-gated multi-query (N=3 paraphrases via the
-existing `LlmBackend` seam, parallel retrieval, RRF-merge through the
-existing `fusion.py`, then rerank) + heuristic decomposition for multi-hop;
-config `query_understanding: Literal["disabled","multi_query","decompose",
-"both"] = "disabled"`; deterministic stub paraphraser for tests; never on
-exact/quoted routes (ADR-0008). Accept: eval-gated like E2 (multi-hop/needle
-subsets are where wins should show), P50 search-latency increase ≤ 700 ms on
-gated routes measured and recorded, truthful 503 if enabled without an LLM
-backend. House discipline learned in E1/E2 applies: **freeze the ADR-0021
-decision rule (judge on ranking/recall lift vs the committed post-distractor
-baseline) BEFORE measuring, and build the positive control into the arm**
-(e.g., assert paraphrase count > 0 and that merged candidate pools differ
-from the single-query pool — a silently-disabled arm must not reproduce the
-baseline as "no win").
+Not started. Spec summary: management CLI (`apps/api/app/cli/reindex.py` or
+`scripts/reindex.py` — match repo conventions) that streams chunks from
+Postgres → re-embeds → re-upserts Qdrant + OpenSearch with the CURRENT ACL
+payload shape; idempotent, resumable, per-tenant scoped. Needed by A5 and
+E2 (any future `contextual_augmentation` enablement requires re-ingesting
+or reindexing existing corpora — ADR-0020's "reindex implication"). Accept:
+round-trip test proves ingest → reindex → identical retrieval results. The
+embedder/reranker bake-off half of E4 stays DEFERRED (models frozen).
+After E4(a): assess Phase E exit criteria (E5 closure is freeze-blocked —
+record it as deferred in the exit assessment rather than silently open),
+then Phase F (book profile + frontend E2E).
+
+Also live but unscheduled (freeze-compatible): ADR-0014 reranker latency
+path — ONNX CPU serving (~5× per the ADR's DeepEye note) and/or smaller
+rerank candidate pool; quality already passes on the distractor corpus
+(+0.0413 MRR@10), only the 2222 ms CPU overhead blocks the flip.
 
 ## Environment & gotchas (this machine)
 
@@ -86,25 +106,27 @@ baseline as "no win").
   RoBERTa-L, bge-reranker-v2-m3.
 - `PPQ_API_KEY` set in the shell env; never print it. ppq base URL:
   `https://api.ppq.ai/v1`, model `meta-llama/Llama-3.3-70B-Instruct`
-  (settings default). ~3–4.6 s/call measured.
+  (settings default). ~3–4.6 s/call measured (E3 added-P50 3030 ms agrees).
 - `api.github.com` times out; `github.com`, raw.githubusercontent.com,
   anthropic.com, arxiv.org, HF hub all reachable.
 - Eval reports policy: canonical JSON committed under `tests/eval/reports/`;
   numbers without a committed report are not citable. Re-running
   quality/expansion tests rewrites reports with run-specific chunk ids —
   aggregates must stay bit-identical; revert churn unless aggregates
-  legitimately changed (verified again this session: re-run reproduced
-  MRR@10 0.8337 exactly; churn reverted). Committed baseline =
-  post-distractor numbers (MRR@10 0.8337, nDCG@10 0.8754, recall@10 1.000).
+  legitimately changed. Committed baseline = post-distractor numbers
+  (MRR@10 0.8337, nDCG@10 0.8754, recall@10 1.000).
 - Corpus span-isolation invariant: no fixture doc may contain a heldout
   evidence span verbatim (check before editing corpus docs).
 - `persist_chunks` deletes+reinserts on re-run; retries are safe only
   because completed stages skip (`_is_stage_completed`) — do not call
   persist_chunks outside the chunk-stage guard or context prefixes get wiped.
-- The eval `eval_stack` is session-scoped, byte-identical-baseline-bearing;
-  arms that change ingestion build their own stack and must save/restore the
-  global `session_factory` bind (see `_augmented_stack` in
-  `tests/eval/test_retrieval_contextual_augmentation.py` for the pattern).
+- The eval `eval_stack` is session-scoped and byte-identical-baseline-
+  bearing. Arms that change INGESTION build their own stack (E2 pattern:
+  `_augmented_stack` in `test_retrieval_contextual_augmentation.py`,
+  save/restore the global `session_factory` bind). Arms that only change
+  RETRIEVAL compose services over `eval_stack.retrieval_components`
+  (E3 pattern: `_build_service` in `test_retrieval_query_understanding.py`)
+  — far cheaper, no re-ingestion.
 - anyio pytest plugin: real-LLM tests must pin one backend or they run twice.
 - Commit style: conventional commits, trailer
   `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`; commit per task,
@@ -113,11 +135,13 @@ baseline as "no win").
 ## Verification commands
 
 ```bash
-python -m pytest apps/api/app/tests/ -q                           # 549 passed, 3 skipped on this tree
+python -m pytest apps/api/app/tests/ -q                           # 580 passed, 3 skipped on this tree
 python -m pytest tests/eval/test_retrieval_quality.py -q          # baseline (MRR@10 0.8337; aggregates must match committed; revert id churn)
 python -m pytest tests/eval/test_retrieval_parent_expansion.py -q # E1 gate
 python -m pytest tests/eval/test_retrieval_reranker_arm.py -q -s  # quality_pass=true, flip=false (latency)
 python -m pytest apps/api/app/tests/integration/test_ingestion_dispatch.py -q  # 7-stage disabled / 8-stage augmented pins
+# E3 bake-off re-run (~8 min, ~120 ppq calls; needs PPQ_API_KEY) — only with intent:
+# python -m pytest tests/eval/test_retrieval_query_understanding.py -q -s
 # E2 bake-off re-run (expensive: ~25 min, ~313 ppq calls) — only with intent:
 # python -m pytest tests/eval/test_retrieval_contextual_augmentation.py -q -s
 ```
@@ -127,4 +151,7 @@ pipeline (`len(stages) == 7` assertions) and the 8-stage augmented pin,
 OpenSearch `display_text` original-text mapping, ADR-0017 SLA numbers,
 negative compliance 1.00, ACL leakage, canary catch-rate, E1
 containment-dedupe test, FlagEmbedding-free reranker guard, truthful
-startup failure for `contextual_augmentation="llm"` without creds.
+startup failure for `contextual_augmentation="llm"` without creds AND for
+`query_understanding` LLM-backed modes without creds, understander=None
+byte-identical retriever path, exact/quoted routes never consulting the
+understander.
