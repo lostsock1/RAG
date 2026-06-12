@@ -24,12 +24,15 @@ need VPS re-verification before SLA-relevant defaults ship.
 ## Where things stand
 
 Backend suite: **592 passed, 3 skipped** (verified on this exact tree,
-2026-06-12). Pushed: up to `f847e3a`. **Local-only (push ONLY when the user
-says "push")**: `54be1d3` (ADR-0021 rule frozen pre-measurement), `3e3210d`
-(E3 seams + 26 tests), `b3370a0` (Settings wiring, truthful no-creds
-failure), `a63379f` (E3 bake-off + report + ADR outcome), `7da1fa0` (E3
-docs closeout), `f341566` (E4a reindex CLI + 12 tests), plus the
-session-close docs commit after this file.
+2026-06-12). **Everything is pushed** (user said "push" at session close
+2026-06-12): the seventh session's commits `54be1d3` (ADR-0021 rule frozen
+pre-measurement), `3e3210d` (E3 seams + 26 tests), `b3370a0` (Settings
+wiring, truthful no-creds failure), `a63379f` (E3 bake-off + report + ADR
+outcome), `7da1fa0` (E3 docs closeout), `f341566` (E4a reindex CLI +
+12 tests), `1bf2dc6` (E4a docs + Phase E exit assessment), and this
+handover refresh are all on origin/main. Nothing local-only remains.
+House rule unchanged for future sessions: push ONLY when the user says
+"push".
 
 ## E3 — CLOSED this session (full detail in ADR-0021 / PROJECT_STATE / TASKS)
 
