@@ -61,9 +61,39 @@ This is a 1–2 day change given the interface discipline, not a replumbing.
 - **Surya OCR** (https://github.com/VikParuchuri/surya) — rejected. Newer, promising for layout-aware extraction, but less mature than Tesseract and not yet in Docling's integration path. Revisit in Phase 7 if advanced retrieval requires better table/formula extraction from scans.
 - **Cloud OCR APIs** — rejected immediately. Violates air-gapped readiness.
 
+## Implementation status (parked — 2026-06-13)
+
+The OCR **provenance** seam shipped in Phase 2 (`app/services/ocr.py`:
+`OcrService` / `DoclingOcrService`, `OcrProvenance` on the parsed artifact, wired
+into both dispatch paths and the quality report). Two gaps are **knowingly parked**
+— the initial corpus is digital-born and Phase F uses a digital-born textbook
+fixture, so there is no scanned-corpus need yet:
+
+1. **Engine not wired to the decision.** The Docling adapter
+   (`app/services/parsers/docling_backend.py`) constructs `DocumentConverter()`
+   with defaults. Docling's default pipeline *does* run OCR
+   (`PdfPipelineOptions.do_ocr=True`, `ocr_options.kind="auto"` — verified
+   2026-06-13), so scanned PDFs are OCR'd — but via Docling's **auto** engine,
+   **not** the `settings.ocr_engine="tesseract"` (`app/core/config.py`) this ADR
+   mandates. The setting is currently ignored.
+2. **Provenance is a stub.** `DoclingOcrService.inspect()` always returns
+   `status="unverified"` — the pipeline never reports whether OCR actually ran.
+
+The architectural room already exists (the `OcrService` seam, the `ocr_engine`
+setting, and `OcrProvenance`), so honoring this is **config wiring + a detection
+pass, not replumbing** — consistent with this ADR's "Upgrade path" estimate.
+Tracked as a parked backlog item in `TASKS.md`; revisit trigger added below.
+
 ## Revisit triggers
 
 Reopen this ADR if any of the following happens:
+
+- **OCR fidelity wiring (parked 2026-06-13):** a scanned / image-heavy document
+  enters the corpus, OR book-profile ingestion needs scanned textbooks — then
+  honor `settings.ocr_engine` in the Docling adapter (pass explicit
+  `PdfPipelineOptions` / `ocr_options`), make `DoclingOcrService` report real OCR
+  usage from the converter output (replace the permanent `"unverified"`), and
+  re-confirm Tesseract vs Docling's `auto` engine on the actual corpus.
 
 - The Phase 2 quality report shows OCR confidence below 70% on more than 5% of pages on the production corpus.
 - A specific document type (scanned German legal documents, Portuguese academic papers) consistently underperforms in retrieval eval due to OCR errors.

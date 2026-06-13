@@ -197,3 +197,18 @@ Canonical specs: `docs/superpowers/plans/2026-06-10-sota-master-plan.md` § Phas
 - [x] E4a — reindex CLI — **done 2026-06-12** (`apps/api/app/cli/reindex.py`, `python -m app.cli.reindex`). Streams a tenant's documents from Postgres in stable id order, re-embeds leaf `search_text` (persisted ADR-0020 `context_prefix` honored), re-upserts Qdrant + OpenSearch with the **current** `get_document_index_acl_metadata` payload (policy id/version, sensitivity rank, expiry — not the ingest-time snapshot). Idempotent via deterministic point/doc ids; resumable via `--after-document-id`; per-tenant scoped with truthful failure on out-of-tenant ids, missing DB bind, or missing ACL grant; entrypoint builds real BGE-M3 + real indexers from settings (first Settings→ingestion-indexer factories), never stubs. 12 integration tests incl. the master-plan acceptance round-trip (ingest → reindex → identical ranked ids AND scores; OpenSearch `_source` id-keyed equality; idempotent re-run) and the ACL-freshness property (grant added after ingest reaches the reindexed payload; live ingest-time payload provably lacks it). Suite **592 passed, 3 skipped**.
 - [ ] E4b — conditional embedder/reranker bake-offs **deferred 2026-06-11 (models frozen per user directive — CPU-only VPS, API generation, no GPU)**; reactivates when the freeze lifts.
 - [ ] E5 — answering-LLM bake-off (ADR-0004 scheduled reopen) — **deferred 2026-06-11 (models frozen)**; reactivates when the freeze lifts.
+
+## Master plan Phase F: book profile + frontend E2E (2026-06-13 →)
+
+Canonical specs: `docs/superpowers/plans/2026-06-10-sota-master-plan.md` § Phase F.
+
+- [x] Phase F entry gate — done 2026-06-13 (live research, sourced: `docs/uber-rag/research/2026-06-13-phase-f-entry-gate.md`). Docling v2.102.1 (hierarchy + anchors confirmed); Next.js 16.2.x is stable (repo on 15.3 — recommend bump at F3, planner/user to confirm); Playwright chosen for F4.
+- [x] F0 — Docling pinned (`[parsing]` extra) + adapter body-tree hierarchy/anchor extraction — done 2026-06-13. First real Docling run; fixed 3 latent adapter bugs (empty page text, `blocks=[]`, table markdown missing `doc`). Frozen stack intact. Suite **597 passed, 3 skipped**.
+- [ ] F1 — book profile chunker (consumes `page.blocks`; chapter→section→leaf, heading-path breadcrumbs, page anchors → citations; factory/router by profile; digital-born textbook PDF fixture, span-isolation-safe). **Next.**
+- [ ] F2 — profile selection at upload + profile-aware eval (incl. a real multi-hop heldout subset → fires ADR-0021 reopen trigger 2).
+- [ ] F3 — frontend: finish 3 pages + chat UI against the real API (adopt Next.js 16 at session 1 per the entry gate, pending user/planner confirm).
+- [ ] F4 — Playwright E2E in CI (happy path + ACL spec).
+
+### Parked / deferred (non-blocking)
+
+- [ ] **OCR fidelity wiring — parked 2026-06-13 (per user direction; ADR-0006 § Implementation status).** Provenance seam exists but `DoclingOcrService.inspect()` is a permanent `"unverified"` stub, and the Docling adapter ignores `settings.ocr_engine="tesseract"` (Docling's default `auto` engine runs instead; `do_ocr=True` by default so scanned PDFs *are* OCR'd, just not by the mandated engine). Architectural room already exists (OcrService seam + `ocr_engine` setting + OcrProvenance). **Revisit trigger:** a scanned/image-heavy doc enters the corpus, or book-profile ingestion needs scanned textbooks — then pass explicit `PdfPipelineOptions`/`ocr_options` to Docling, report real OCR usage, and re-confirm Tesseract vs `auto` on the actual corpus. Config wiring + detection pass, not replumbing.

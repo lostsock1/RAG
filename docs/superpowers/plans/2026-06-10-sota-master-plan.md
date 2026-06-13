@@ -898,6 +898,16 @@ the new contract. Suite **597 passed, 3 skipped**. F1 unblocked.
 can upload a textbook + a loose document, ask questions, see citations, see audit" —
 demonstrated by the E2E suite.
 
+**Parked (non-blocking, per user direction 2026-06-13)** — **OCR fidelity wiring.**
+ADR-0006 (Accepted) keeps Docling's built-in OCR with Tesseract as the mandated
+engine, and the provenance seam shipped in Phase 2 — but two gaps are knowingly
+parked: the Docling adapter ignores `settings.ocr_engine` (Docling's default `auto`
+engine runs; `do_ocr=True` so scanned PDFs *are* OCR'd, just not by Tesseract), and
+`DoclingOcrService.inspect()` is a permanent `"unverified"` stub. Not scheduled in
+Phase F (its fixtures are digital-born). Revisit trigger + full detail in
+ADR-0006 § "Implementation status" and `TASKS.md` § "Parked / deferred". Honoring it
+is config wiring + a detection pass, not replumbing — the seam already exists.
+
 ---
 
 ## Phase G — Operational hardening (the original Phase 6)
