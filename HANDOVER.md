@@ -1,4 +1,21 @@
-# HANDOVER — Phase E within-freeze scope COMPLETE (E3 closed no-win, E4a reindex CLI landed); next is Phase F (written 2026-06-12, end of seventh session)
+# HANDOVER — Phase F STARTED: entry gate DONE + F0 (Docling hierarchy) landed; next is F1 book chunker (written 2026-06-13, eighth session)
+
+## Eighth session (2026-06-13) — what landed (all committed, NOT pushed; house rule: push only when the user says "push")
+
+Commits on top of origin/main: `1029c7b` (pre-Phase-F agent-resource ingestion — AGENTS.md stack table reconciled to ADRs), `eaff143` (Phase F entry gate, live-researched + sourced), `710dace` (F0 — Docling pin + adapter hierarchy extraction). Backend suite **597 passed, 3 skipped** (was 592; +5 F0 tests).
+
+- **Phase F entry gate — DONE** (`docs/uber-rag/research/2026-06-13-phase-f-entry-gate.md`, live WebFetch on Tier-1 sources): (1) **Docling** v2.102.1 current, v2 series, `DoclingDocument` exposes the hierarchy + page anchors; (2) **Next.js** repo pins `^15.3` but stable is **16.2.x** — recommend bumping to 16 at F3 start (small cost at 3 pages: async params, `middleware.ts`→`proxy.ts`, `next lint`→ESLint CLI, Turbopack default; NOT a stack swap so no ADR — planner/user to confirm timing); (3) **Playwright** confirmed over Cypress (used in F4).
+- **F0 — DONE**: pinned `docling>=2.102,<3` (`[parsing]` extra → `[ingestion]`), installed **docling 2.102.1 / docling-core 2.82.0**. **Frozen stack intact** (transformers 5.8.1 / torch 2.12 / FlagEmbedding 1.4.0; Docling needs `transformers<5.9.0,>=4.34.0`; only in-range pydantic-settings 2.13→2.14). First real Docling run fixed **3 latent adapter bugs** (empty page text vs real `PageItem`; `blocks=[]` discarding hierarchy; table `export_to_markdown()` missing the `doc` arg). `docling_backend.py` now walks the body tree via `iterate_items()` → per-page prose `text` (loose contract preserved) + rich `blocks` (block_type, page anchor, bbox, heading `level`, `heading_path` breadcrumb). `ParsedBlock` gained `level`+`heading_path` (defaulted, backward-compatible). Docling API pinned by introspection: `SectionHeaderItem.level` = 1-based depth (title = 0); `iterate_items()` walks BODY layer (furniture excluded); `prov[0].page_no`/`bbox.{l,t,r,b}`.
+
+## NEXT — F1: book profile chunker (master plan "### F1", now unblocked by F0)
+
+Build `apps/api/app/services/chunkers/book.py` consuming `page.blocks` (the F0 hierarchy: each block has block_type, heading `level`, `heading_path` breadcrumb, page anchor, bbox). Per ADR-0012: deep hierarchy (chapter → section → leaf), leaf 128–512 tok / parent 1024–2048 tok consistent with the loose profile, heading-path breadcrumbs populated (this is what makes E2 breadcrumb mode shine on books), page anchors → `Chunk.page_start`/`page_end` → citations gain page numbers. Atomic tables/figures. Add a chunker factory/router by `profile` (loose vs book); leave `loose.py` untouched (it reads `page.text` + `artifact.tables`, never `blocks`, so it is unaffected). **Open input for F1**: pick a small **public-domain textbook PDF** fixture with real chapter/section depth + a table + page numbers that contains **no heldout evidence span verbatim** (corpus span-isolation invariant — heldout topics are physics/chemistry/economics/law/math/biology; choose a different-topic text, e.g. a Gutenberg/OpenStax excerpt on an unrelated subject). F0's real-`convert()` test used Markdown (pageless) so it asserts hierarchy, not page anchors — F1's PDF fixture is where page anchors get proven end-to-end. `persist_chunks` currently supports single-parent documents only (docstring flags the multi-parent mapping strategy needed).
+
+---
+
+## Seventh-session handover (Phase E close) follows below.
+
+# (archived) HANDOVER — Phase E within-freeze scope COMPLETE (E3 closed no-win, E4a reindex CLI landed); next is Phase F (written 2026-06-12, end of seventh session)
 
 For a fresh session continuing the master plan. Read in this order:
 
