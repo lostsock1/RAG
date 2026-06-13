@@ -42,6 +42,7 @@ async def upload_document_route(
     source_type: str = Form(...),
     document_type: str | None = Form(default=None),
     language: str | None = Form(default=None),
+    profile: str = Form(default="loose"),
     file: UploadFile = File(...),
     context: RequestContext = Depends(require_scopes(["documents:write"])),
 ) -> DocumentUploadResponse:
@@ -81,6 +82,7 @@ async def upload_document_route(
                     source_type=source_type,
                     document_type=document_type,
                     language=language,
+                    profile=profile,
                 ),
             ),
             storage=get_storage_adapter(request),
@@ -97,5 +99,9 @@ async def upload_document_route(
         await dispatcher.dispatch(result.ingestion_run_id)
 
     return DocumentUploadResponse.model_validate(
-        {**DocumentResponse.model_validate(result.document).model_dump(), "ingestion_run_id": result.ingestion_run_id}
+        {
+            **DocumentResponse.model_validate(result.document).model_dump(),
+            "ingestion_run_id": result.ingestion_run_id,
+            "profile": result.profile,
+        }
     )

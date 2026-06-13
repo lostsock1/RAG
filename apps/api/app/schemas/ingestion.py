@@ -16,6 +16,7 @@ class IngestionRunResponse(BaseModel):
     tenant_id: UUID
     status: str
     workflow_backend: str
+    profile: str
     parser_backend: str
     source_hash: str
     created_at: datetime
@@ -36,3 +37,4 @@ class IngestionJobResponse(IngestionRunResponse):
 
 class DocumentUploadResponse(DocumentResponse):
     ingestion_run_id: UUID
+    profile: str = "loose"

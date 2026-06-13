@@ -423,6 +423,38 @@ def test_create_ingestion_run_writes_workflow_backend(seeded_run: IngestionRun) 
         assert r2 is not None and r2.workflow_backend == "temporal"
 
 
+def test_create_ingestion_run_writes_profile(seeded_run: IngestionRun) -> None:
+    """F2: create_ingestion_run persists the document profile; it defaults to loose."""
+    with session_factory() as session:
+        existing_run = session.scalar(select(IngestionRun).where(IngestionRun.id == seeded_run.id))
+        assert existing_run is not None
+        document_id = existing_run.document_id
+        tenant_id = existing_run.tenant_id
+        source_hash = existing_run.source_hash
+
+    run_default = create_ingestion_run(
+        document_id=document_id,
+        tenant_id=tenant_id,
+        parser_backend="docling-local",
+        source_hash=source_hash,
+    )
+    run_book = create_ingestion_run(
+        document_id=document_id,
+        tenant_id=tenant_id,
+        parser_backend="docling-local",
+        source_hash=source_hash,
+        profile="book",
+    )
+    assert run_default.profile == "loose"
+    assert run_book.profile == "book"
+
+    with session_factory() as session:
+        r_default = session.scalar(select(IngestionRun).where(IngestionRun.id == run_default.id))
+        r_book = session.scalar(select(IngestionRun).where(IngestionRun.id == run_book.id))
+        assert r_default is not None and r_default.profile == "loose"
+        assert r_book is not None and r_book.profile == "book"
+
+
 def test_retry_preserves_original_workflow_backend(seeded_run: IngestionRun) -> None:
     """P0-7: retrying a run must not overwrite its original workflow_backend."""
     # Set the run to a known backend and status.

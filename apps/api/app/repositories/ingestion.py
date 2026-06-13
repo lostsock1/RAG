@@ -28,6 +28,7 @@ def create_ingestion_run(
     parser_backend: str,
     source_hash: str,
     workflow_backend: str = "in_process",
+    profile: str = "loose",
 ) -> IngestionRun:
     run = IngestionRun(
         document_id=document_id,
@@ -36,6 +37,7 @@ def create_ingestion_run(
         source_hash=source_hash,
         status="queued",
         workflow_backend=workflow_backend,
+        profile=profile,
     )
 
     with session_factory() as session:

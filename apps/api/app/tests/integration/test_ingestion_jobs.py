@@ -177,6 +177,61 @@ def test_get_ingestion_job_returns_status_payload(
         assert audit_event.details["document_id"] == upload.json()["id"]
 
 
+def test_upload_book_profile_persists_and_is_visible_in_jobs_api(
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    """F2: the document profile chosen at upload is snapshotted on the run and
+    surfaced in the upload response, the jobs list, and the job detail."""
+    upload = client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers,
+        files={"file": ("textbook.txt", b"hello world", "text/plain")},
+        data={"title": "Textbook", "source_type": "loose_document", "profile": "book"},
+    )
+
+    assert upload.status_code == 201
+    assert upload.json()["profile"] == "book"
+
+    run_id = upload.json()["ingestion_run_id"]
+
+    listed = client.get("/api/v1/ingestion/jobs", headers=auth_headers)
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["profile"] == "book"
+
+    detail = client.get(f"/api/v1/ingestion/jobs/{run_id}", headers=auth_headers)
+    assert detail.status_code == 200
+    assert detail.json()["profile"] == "book"
+
+    with session_factory() as session:
+        run = session.scalar(select(IngestionRun).where(IngestionRun.id == UUID(run_id)))
+        assert run is not None
+        assert run.profile == "book"
+
+
+def test_upload_defaults_to_loose_profile(
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    """Omitting profile falls back to loose, preserving prior default behaviour."""
+    upload = client.post(
+        "/api/v1/documents/upload",
+        headers=auth_headers,
+        files={"file": ("notes.txt", b"hello world", "text/plain")},
+        data={"title": "Notes", "source_type": "loose_document"},
+    )
+
+    assert upload.status_code == 201
+    assert upload.json()["profile"] == "loose"
+
+    detail = client.get(
+        f"/api/v1/ingestion/jobs/{upload.json()['ingestion_run_id']}",
+        headers=auth_headers,
+    )
+    assert detail.status_code == 200
+    assert detail.json()["profile"] == "loose"
+
+
 def test_retry_ingestion_job_redispatches_failed_run(
     client: TestClient,
     auth_headers: dict[str, str],

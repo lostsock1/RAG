@@ -17,6 +17,10 @@ class IngestionRun(Base):
     tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(length=32), nullable=False, default="queued", server_default="queued")
     workflow_backend: Mapped[str] = mapped_column(String(length=32), nullable=False, default="temporal", server_default="temporal")
+    # Document profile (loose|book) chosen at upload — drives chunker selection
+    # in run_chunk_stage. Snapshotted on the run (peer of parser_backend /
+    # workflow_backend / source_hash) so re-ingestion uses the run's own choice.
+    profile: Mapped[str] = mapped_column(String(length=16), nullable=False, default="loose", server_default="loose")
     parser_backend: Mapped[str] = mapped_column(String(length=64), nullable=False)
     source_hash: Mapped[str] = mapped_column(String(length=128), nullable=False)
     worker_id: Mapped[UUID | None] = mapped_column(Uuid(), nullable=True, default=None)

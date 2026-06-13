@@ -116,11 +116,13 @@ class PipelineRunner:
 
             tenant_id = claimed_run.tenant_id
             document_id = claimed_run.document_id
+            # Document profile (loose|book) snapshotted on the run at upload —
+            # selects the chunker (replaces the old source_type heuristic).
+            profile = claimed_run.profile
 
             doc = session.scalar(select(Document).where(Document.id == document_id))
             object_key = doc.object_key if doc else ""
             content_type = "application/octet-stream"
-            source_type = doc.source_type if doc else "loose_document"
             document_title = doc.title if doc else ""
 
         stages = ensure_ingestion_stages(run_id=run_id, tenant_id=tenant_id, stage_names=self._stage_names)
@@ -192,7 +194,7 @@ class PipelineRunner:
                     stage_id=stage_map["chunk"].id,
                     document_id=document_id,
                     artifact=artifact,
-                    source_type=source_type,
+                    profile=profile,
                 )
                 if chunks is not None:
                     persist_chunks(

@@ -45,6 +45,11 @@ paths:
                 language:
                   type: string
                   description: ISO 639-1 language code (e.g., de, en, pt)
+                profile:
+                  type: string
+                  enum: [loose, book]
+                  default: loose
+                  description: Document profile selecting the chunker (book = hierarchy-aware)
                 acl:
                   $ref: "#/components/schemas/AclGrant"
       responses:
@@ -1060,6 +1065,7 @@ components:
           required: [ingestion_run_id]
           properties:
             ingestion_run_id: { type: string, format: uuid }
+            profile: { type: string, enum: [loose, book], default: loose }
 
     ChunkList:
       type: object
@@ -1085,7 +1091,7 @@ components:
     # ── Ingestion ──────────────────────────────────────────────
     IngestionJob:
       type: object
-      required: [id, document_id, tenant_id, status, workflow_backend, parser_backend, source_hash, created_at, updated_at]
+      required: [id, document_id, tenant_id, status, workflow_backend, profile, parser_backend, source_hash, created_at, updated_at]
       description: Persisted ingestion-run metadata only. In the Phase 2 foundation slice, `workflow_backend` is `scaffold` when the run is executed through the accepted workflow-backend-neutral dispatcher seam.
       properties:
         id: { type: string, format: uuid }
@@ -1093,6 +1099,7 @@ components:
         tenant_id: { type: string, format: uuid }
         status: { type: string }
         workflow_backend: { type: string }
+        profile: { type: string, enum: [loose, book], description: "Document profile (loose|book) snapshotted at upload" }
         parser_backend: { type: string }
         source_hash: { type: string }
         created_at: { type: string, format: date-time }

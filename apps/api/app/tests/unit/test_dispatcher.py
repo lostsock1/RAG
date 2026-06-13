@@ -28,7 +28,7 @@ from app.repositories.ingestion import (
     update_run_status,
     update_stage_status,
 )
-from app.schemas.parsed_artifacts import OcrProvenance, ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
+from app.schemas.parsed_artifacts import OcrProvenance, ParsedArtifact, ParsedBlock, ParsedPage, ParsedTable, ParserProvenance
 from app.services.ocr import OcrResult, StubOcrService
 from app.services.parsers.docling_backend import DoclingDocumentParser
 from app.services.parsers.remote_backend import RemoteDocumentParser
@@ -923,12 +923,92 @@ def test_run_chunk_stage_produces_chunks(seeded_env):
         stage_id=chunk_stage_id,
         document_id=document_id,
         artifact=test_artifact,
-        source_type="loose_document",
+        profile="loose",
     )
 
     assert chunks is not None
     assert len(chunks) > 0
     assert all(c.document_id == document_id for c in chunks)
+
+
+def _make_hierarchical_artifact(document_id) -> ParsedArtifact:
+    """A two-section page shaped like the F0 adapter's rich block output."""
+    ch = ["Statistics Primer", "Chapter 1: Distributions"]
+    s11 = ch + ["1.1 The Normal Distribution"]
+    s12 = ch + ["1.2 The Poisson Distribution"]
+    normal = "The normal distribution is a continuous symmetric distribution described by its mean and variance."
+    poisson = "The Poisson distribution models counts of independent events occurring at a constant average rate."
+    blocks = [
+        ParsedBlock(block_type="title", text="Statistics Primer", heading_path=["Statistics Primer"], level=0),
+        ParsedBlock(block_type="section_header", text="Chapter 1: Distributions", heading_path=ch, level=1),
+        ParsedBlock(block_type="section_header", text="1.1 The Normal Distribution", heading_path=s11, level=2),
+        ParsedBlock(block_type="text", text=normal, heading_path=s11),
+        ParsedBlock(block_type="section_header", text="1.2 The Poisson Distribution", heading_path=s12, level=2),
+        ParsedBlock(block_type="text", text=poisson, heading_path=s12),
+    ]
+    prose = "\n\n".join(b.text for b in blocks if b.text and b.block_type == "text")
+    return ParsedArtifact(
+        document_id=document_id,
+        pages=[ParsedPage(page_number=1, text=prose, blocks=blocks)],
+        tables=[],
+        provenance=ParserProvenance(parser_backend="docling-local", parser_version="2.102.1", profile="local-cpu"),
+    )
+
+
+def _run_chunk_with_profile(seeded_env, artifact, profile: str):
+    from app.workflows.stages import run_chunk_stage
+
+    stages = ensure_ingestion_stages(
+        run_id=seeded_env["run_id"],
+        tenant_id=seeded_env["tenant_id"],
+        stage_names=["chunk"],
+    )
+    chunks = run_chunk_stage(
+        run_id=seeded_env["run_id"],
+        stage_id=stages[0].id,
+        document_id=seeded_env["document_id"],
+        artifact=artifact,
+        profile=profile,
+    )
+    chunk_stage = next(s for s in get_stages_for_run(run_id=seeded_env["run_id"]) if s.stage_name == "chunk")
+    return chunks, chunk_stage
+
+
+def test_run_chunk_stage_routes_book_profile_to_book_chunker(seeded_env) -> None:
+    """A book-profile run produces hierarchy-aware section parents (ADR-0012)."""
+    artifact = _make_hierarchical_artifact(seeded_env["document_id"])
+    chunks, chunk_stage = _run_chunk_with_profile(seeded_env, artifact, "book")
+
+    assert chunks is not None
+    section_parents = [c for c in chunks if c.parent_id is None and c.unit_type == "section"]
+    assert len(section_parents) == 2  # one per content-bearing section
+    breadcrumbs = {tuple(p.heading_path) for p in section_parents}
+    assert ("Statistics Primer", "Chapter 1: Distributions", "1.1 The Normal Distribution") in breadcrumbs
+    assert chunk_stage.details["profile"] == "book"
+
+
+def test_run_chunk_stage_loose_profile_does_not_use_book_chunker(seeded_env) -> None:
+    """The same hierarchical artifact under the loose profile yields the flat
+    chunker's 'document' root and no 'section' parents — proving the persisted
+    profile (not block shape) selects the chunker."""
+    artifact = _make_hierarchical_artifact(seeded_env["document_id"])
+    chunks, chunk_stage = _run_chunk_with_profile(seeded_env, artifact, "loose")
+
+    assert chunks is not None
+    assert not any(c.unit_type == "section" for c in chunks)  # 'section' is book-only
+    assert any(c.parent_id is None and c.unit_type == "document" for c in chunks)
+    assert chunk_stage.details["profile"] == "loose"
+
+
+def test_run_chunk_stage_unknown_profile_defaults_to_loose(seeded_env) -> None:
+    """A malformed/legacy profile value must not crash the pipeline — it falls
+    back to the loose chunker."""
+    artifact = _make_hierarchical_artifact(seeded_env["document_id"])
+    chunks, chunk_stage = _run_chunk_with_profile(seeded_env, artifact, "nonsense")
+
+    assert chunks is not None
+    assert not any(c.unit_type == "section" for c in chunks)
+    assert chunk_stage.details["profile"] == "loose"
 
 
 def test_get_document_index_acl_metadata_returns_real_group_ids(seeded_env) -> None:

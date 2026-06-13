@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -11,6 +12,9 @@ class DocumentUploadForm(BaseModel):
     source_type: str
     document_type: str | None = None
     language: str | None = None
+    # Document profile selects the chunker (ADR-0012): "book" gets the
+    # hierarchy-aware chunker, "loose" gets the flat structure-aware one.
+    profile: Literal["loose", "book"] = "loose"
 
 
 class DocumentResponse(BaseModel):

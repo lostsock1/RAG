@@ -864,6 +864,7 @@ is deferred to F2 (profile-aware eval activates the textbook heldout subset).
   tests untouched and green.
 
 ### F2 — Profile selection at upload + profile-aware eval (S)
+> **F2.1 landed 2026-06-13** — profile selection at upload + jobs API + profile-routed chunking. `profile: loose|book` (default loose) is snapshotted on the **IngestionRun** (migration `20260613_0011`, server_default backfills loose) and surfaced in the upload response + jobs list/detail; `run_chunk_stage` now routes off the **persisted** run profile instead of the old `source_type != "loose_document"` guess (defensive unknown→loose coerce). Loose path byte-identical → eval baseline preserved. OpenAPI updated; +6 tests; suite 605 non-slow. **Remaining**: book eval fixtures + textbook heldout activation, multi-hop subset (ADR-0021 trigger 2), textbook PDF page-anchor e2e.
 - **Files**: upload route/schema (`profile: Literal["loose","book"] = "loose"`),
   ingestion run metadata, eval fixtures gain ≥ 2 book documents, heldout textbook
   questions activated

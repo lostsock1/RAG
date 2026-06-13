@@ -33,6 +33,7 @@ class UploadPayload:
 class UploadResult:
     document: Document
     ingestion_run_id: UUID
+    profile: str
 
 
 def build_object_key(*, tenant_id: UUID, source_hash: str) -> str:
@@ -105,6 +106,7 @@ def upload_document(
         parser_backend=parser_backend,
         source_hash=source_hash,
         workflow_backend=workflow_backend,
+        profile=payload.form.profile,
     )
 
     write_document_upload_audit_event(
@@ -119,4 +121,4 @@ def upload_document(
         ingestion_run_id=run.id,
     )
 
-    return UploadResult(document=document, ingestion_run_id=run.id)
+    return UploadResult(document=document, ingestion_run_id=run.id, profile=run.profile)

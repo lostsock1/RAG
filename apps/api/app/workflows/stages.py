@@ -166,18 +166,29 @@ def run_chunk_stage(
     stage_id: UUID,
     document_id: UUID,
     artifact: ParsedArtifact,
-    source_type: str,
+    profile: str,
 ) -> list[Chunk] | None:
-    """Run the chunk stage. Returns None if stage was already completed (skipped)."""
+    """Run the chunk stage. Returns None if stage was already completed (skipped).
+
+    ``profile`` is the document profile (loose|book) snapshotted on the ingestion
+    run at upload; it selects the chunker (ADR-0012). Unknown values fall back to
+    loose so a malformed legacy row can never crash the pipeline.
+    """
     if _is_stage_completed(run_id=run_id, stage_name="chunk"):
         logger.info("Stage chunk already completed for run %s, skipping.", run_id)
         return None
 
     update_stage_status(stage_id=stage_id, status="running")
 
-    profile = DocumentProfile.LOOSE if source_type == "loose_document" else DocumentProfile.BOOK
-    chunker = build_chunker(profile)
-    chunks = chunker.chunk(artifact, profile=profile)
+    try:
+        document_profile = DocumentProfile(profile)
+    except ValueError:
+        logger.warning(
+            "Unknown document profile %r for run %s; defaulting to loose.", profile, run_id
+        )
+        document_profile = DocumentProfile.LOOSE
+    chunker = build_chunker(document_profile)
+    chunks = chunker.chunk(artifact, profile=document_profile)
 
     # Ensure all chunks reference the actual document ID, not the artifact's
     # potentially-stale document_id (the parser may have used a placeholder).
@@ -193,7 +204,7 @@ def run_chunk_stage(
             "chunk_count": len(chunks),
             "leaf_count": sum(1 for c in chunks if c.parent_id is not None),
             "parent_count": sum(1 for c in chunks if c.parent_id is None),
-            "profile": profile.value,
+            "profile": document_profile.value,
         },
     )
 
