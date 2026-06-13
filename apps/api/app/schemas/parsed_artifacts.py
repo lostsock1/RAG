@@ -13,6 +13,15 @@ class ParsedBlock(BaseModel):
     block_type: str | None = None
     text: str | None = None
     bbox: list[float] | None = Field(default=None, min_length=4, max_length=4)
+    # Hierarchy fields populated by the Docling adapter's body-tree walk (book
+    # profile). Both are optional + defaulted so existing payloads and the loose
+    # profile (which never sets them) remain valid under extra="forbid".
+    # `level` is the heading depth for header blocks (0 = document title, 1 = top
+    # section, 2 = subsection, …) and None for body content. `heading_path` is the
+    # chain of section-header texts above the block — the breadcrumb the book
+    # chunker turns into Chunk.heading_path and E2 breadcrumb context.
+    level: int | None = None
+    heading_path: list[str] = Field(default_factory=list)
 
 
 class ParsedPage(BaseModel):

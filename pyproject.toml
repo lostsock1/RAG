@@ -42,10 +42,20 @@ vector-db = [
 search = [
     "opensearch-py>=2.7,<3",
 ]
+parsing = [
+    # Docling is the accepted parser (ADR-0011). Major-pinned to avoid a future
+    # v3 re-architecture surprise; floor at the 2.102 line verified at the Phase F
+    # entry gate (DoclingDocument body-tree hierarchy + per-item page anchors).
+    # Pulls docling-core/-ibm-models/-parse + rapidocr; layout/OCR model weights
+    # download on first convert(). Verified not to disturb the frozen
+    # transformers 5.8.1 / torch 2.12 / FlagEmbedding stack.
+    "docling>=2.102,<3",
+]
 ingestion = [
     "uber-rag[ml]",
     "uber-rag[vector-db]",
     "uber-rag[search]",
+    "uber-rag[parsing]",
 ]
 eval = [
     "sentence-transformers>=3.3,<4",

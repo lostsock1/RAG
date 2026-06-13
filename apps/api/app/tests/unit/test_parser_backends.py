@@ -22,6 +22,39 @@ from app.services.parsers.remote_backend import RemoteDocumentParser
 CanonicalProfile = Literal["local-cpu", "local-gpu", "remote-api"]
 
 
+class _FakeItem:
+    """Minimal stand-in for a DoclingDocument body item (TextItem/SectionHeaderItem)
+    matching the attributes the adapter reads: label.value, text, prov, level."""
+
+    def __init__(
+        self,
+        label: str,
+        text: str,
+        *,
+        page_no: int = 1,
+        level: int | None = None,
+        bbox: tuple[float, float, float, float] = (0.0, 0.0, 10.0, 20.0),
+    ) -> None:
+        self.label = SimpleNamespace(value=label)
+        self.text = text
+        self.prov = [SimpleNamespace(page_no=page_no, bbox=SimpleNamespace(l=bbox[0], t=bbox[1], r=bbox[2], b=bbox[3]))]
+        if level is not None:
+            self.level = level
+
+
+class _FakeDoc:
+    """Stand-in for a DoclingDocument exposing the new adapter contract:
+    iterate_items() yielding (item, tree_level) and a tables list."""
+
+    def __init__(self, items: list[_FakeItem], tables: list | None = None) -> None:
+        self._items = items
+        self.tables = tables or []
+
+    def iterate_items(self):
+        for item in self._items:
+            yield item, 1
+
+
 def _build_artifact(*, profile: CanonicalProfile = "local-cpu") -> ParsedArtifact:
     return ParsedArtifact(
         document_id=UUID("11111111-1111-1111-1111-111111111111"),
@@ -334,26 +367,13 @@ def test_docling_parser_reuses_converter(
 
     converter_construction_count = 0
 
-    class FakePage:
-        def __init__(self) -> None:
-            self.page_no = 1
-
-        def export_to_markdown(self) -> str:
-            return "page text"
-
-    class FakeDocument:
-        def __init__(self) -> None:
-            self.pages = {1: FakePage()}
-            self.tables = []
-
     class FakeDocumentConverter:
         def __init__(self) -> None:
             nonlocal converter_construction_count
             converter_construction_count += 1
 
         def convert(self, _source: Path):
-            from types import SimpleNamespace
-            return SimpleNamespace(document=FakeDocument())
+            return SimpleNamespace(document=_FakeDoc([_FakeItem("text", "page text")]))
 
     monkeypatch.setattr(
         docling_backend,
@@ -483,14 +503,6 @@ def test_docling_document_parser_normalizes_pages_and_tables_from_local_file(
     source_file.parent.mkdir(parents=True, exist_ok=True)
     source_file.write_bytes(b"%PDF-1.4")
 
-    class FakePage:
-        def __init__(self, page_no: int, markdown: str) -> None:
-            self.page_no = page_no
-            self._markdown = markdown
-
-        def export_to_markdown(self) -> str:
-            return self._markdown
-
     class FakeTable:
         def __init__(self, page_no: int, markdown: str, bbox: tuple[float, float, float, float]) -> None:
             self.page_no = page_no
@@ -500,15 +512,15 @@ def test_docling_document_parser_normalizes_pages_and_tables_from_local_file(
         def export_to_markdown(self) -> str:
             return self._markdown
 
-    class FakeDocument:
-        def __init__(self) -> None:
-            self.pages = {1: FakePage(1, "Page one")}
-            self.tables = [FakeTable(1, "|a|b|", (0.0, 0.0, 10.0, 20.0))]
-
     class FakeDocumentConverter:
         def convert(self, source: Path):
             assert source == source_file
-            return SimpleNamespace(document=FakeDocument())
+            return SimpleNamespace(
+                document=_FakeDoc(
+                    [_FakeItem("text", "Page one")],
+                    tables=[FakeTable(1, "|a|b|", (0.0, 0.0, 10.0, 20.0))],
+                )
+            )
 
     monkeypatch.setattr(
         docling_backend,
@@ -576,23 +588,10 @@ def test_docling_document_parser_uses_local_source_path_when_provided(
     local_file = tmp_path / "materialized.pdf"
     local_file.write_bytes(b"%PDF-1.4")
 
-    class FakePage:
-        def __init__(self, page_no: int, markdown: str) -> None:
-            self.page_no = page_no
-            self._markdown = markdown
-
-        def export_to_markdown(self) -> str:
-            return self._markdown
-
-    class FakeDocument:
-        def __init__(self) -> None:
-            self.pages = {1: FakePage(1, "Materialized page")}
-            self.tables = []
-
     class FakeDocumentConverter:
         def convert(self, source: Path):
             assert Path(source) == local_file
-            return SimpleNamespace(document=FakeDocument())
+            return SimpleNamespace(document=_FakeDoc([_FakeItem("text", "Materialized page")]))
 
     monkeypatch.setattr(
         docling_backend,
@@ -624,23 +623,10 @@ def test_docling_document_parser_falls_back_to_storage_root_when_no_local_source
     source_file.parent.mkdir(parents=True, exist_ok=True)
     source_file.write_bytes(b"%PDF-1.4")
 
-    class FakePage:
-        def __init__(self, page_no: int, markdown: str) -> None:
-            self.page_no = page_no
-            self._markdown = markdown
-
-        def export_to_markdown(self) -> str:
-            return self._markdown
-
-    class FakeDocument:
-        def __init__(self) -> None:
-            self.pages = {1: FakePage(1, "Fallback page")}
-            self.tables = []
-
     class FakeDocumentConverter:
         def convert(self, source: Path):
             assert Path(source) == source_file
-            return SimpleNamespace(document=FakeDocument())
+            return SimpleNamespace(document=_FakeDoc([_FakeItem("text", "Fallback page")]))
 
     monkeypatch.setattr(
         docling_backend,

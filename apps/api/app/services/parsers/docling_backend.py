@@ -9,7 +9,13 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from app.schemas.parsed_artifacts import ParsedArtifact, ParsedPage, ParsedTable, ParserProvenance
+from app.schemas.parsed_artifacts import (
+    ParsedArtifact,
+    ParsedBlock,
+    ParsedPage,
+    ParsedTable,
+    ParserProvenance,
+)
 from app.services.parsers.base import DocumentParser, ParseRequest
 
 
@@ -80,6 +86,20 @@ class DoclingDocumentParser(DocumentParser):
             ) from exc
 
 
+# DoclingDocument item labels (DocItemLabel values), compared as strings so the
+# adapter does not import the enum at module load. Verified against docling-core
+# 2.82: headings carry `section_header`/`title`; `SectionHeaderItem.level` is the
+# 1-based heading depth (title is the level-0 root).
+_HEADING_LABELS = frozenset({"title", "section_header"})
+# Labels excluded from a page's prose `text` (the loose chunker splits page.text
+# into paragraphs and reads tables separately, so tables/figures must not also
+# land in the prose stream and double-count).
+_NON_PROSE_LABELS = frozenset({"table", "picture", "chart"})
+# Furniture safety net. `iterate_items()` walks the BODY content layer by default
+# and already excludes running heads/footers, but guard explicitly.
+_FURNITURE_LABELS = frozenset({"page_header", "page_footer"})
+
+
 def _normalize_docling_result(
     *,
     request: ParseRequest,
@@ -91,8 +111,8 @@ def _normalize_docling_result(
 
     return ParsedArtifact(
         document_id=UUID(request.document_id),
-        pages=_normalize_pages(document.pages),
-        tables=_normalize_tables(getattr(document, "tables", [])),
+        pages=_extract_pages_and_blocks(document),
+        tables=_normalize_tables(document),
         provenance=ParserProvenance(
             parser_backend=parser_backend,
             parser_version=parser_version,
@@ -101,40 +121,73 @@ def _normalize_docling_result(
     )
 
 
-def _normalize_pages(raw_pages: Any) -> list[ParsedPage]:
-    if isinstance(raw_pages, dict):
-        page_items = sorted(raw_pages.items())
-        return [
-            ParsedPage(
-                page_number=_resolve_page_number(page, fallback=page_number),
-                text=_page_text(page),
-                blocks=[],
-            )
-            for page_number, page in page_items
-        ]
+def _extract_pages_and_blocks(document: Any) -> list[ParsedPage]:
+    """Walk the DoclingDocument body tree in reading order.
 
-    normalized_pages: list[ParsedPage] = []
-    for index, page in enumerate(_iter_items(raw_pages), start=1):
-        normalized_pages.append(
-            ParsedPage(
-                page_number=_resolve_page_number(page, fallback=index),
-                text=_page_text(page),
-                blocks=[],
-            )
+    Produces, per page: prose `text` (loose-profile contract — text-like items
+    only, tables/figures excluded) and rich `blocks` carrying block type, page
+    anchor, bbox, heading level, and the section-header breadcrumb (book-profile
+    contract). The heading breadcrumb is tracked with a stack keyed on
+    `SectionHeaderItem.level`; the document title is the level-0 root.
+    """
+    pages: dict[int, dict[str, list]] = {}
+    heading_stack: list[tuple[int, str]] = []
+    current_page = 1
+
+    for item, _tree_level in document.iterate_items():
+        label = _label_of(item)
+        if label is None or label in _FURNITURE_LABELS:
+            continue
+
+        text = (getattr(item, "text", None) or "").strip()
+        page_no, bbox = _first_prov(item)
+        if page_no is not None:
+            current_page = page_no
+        page_no = page_no or current_page
+
+        # Maintain the heading breadcrumb.
+        block_level: int | None = None
+        if label == "title":
+            block_level = 0
+            heading_stack = [(0, text)] if text else []
+        elif label == "section_header":
+            block_level = int(getattr(item, "level", 1) or 1)
+            heading_stack = [(lvl, t) for (lvl, t) in heading_stack if lvl < block_level]
+            if text:
+                heading_stack.append((block_level, text))
+
+        heading_path = [t for (_lvl, t) in heading_stack]
+
+        block = ParsedBlock(
+            block_type=label,
+            text=text or None,
+            bbox=bbox,
+            level=block_level,
+            heading_path=heading_path,
         )
+        bucket = pages.setdefault(page_no, {"texts": [], "blocks": []})
+        bucket["blocks"].append(block)
+        if text and label not in _NON_PROSE_LABELS:
+            bucket["texts"].append(text)
 
-    normalized_pages.sort(key=lambda page: page.page_number)
-    return normalized_pages
+    return [
+        ParsedPage(
+            page_number=page_no,
+            text="\n\n".join(pages[page_no]["texts"]),
+            blocks=pages[page_no]["blocks"],
+        )
+        for page_no in sorted(pages)
+    ]
 
 
-def _normalize_tables(raw_tables: Any) -> list[ParsedTable]:
+def _normalize_tables(document: Any) -> list[ParsedTable]:
     normalized_tables: list[ParsedTable] = []
-    for table in _iter_items(raw_tables):
+    for table in _iter_items(getattr(document, "tables", [])):
         normalized_tables.append(
             ParsedTable(
                 page_number=_resolve_table_page_number(table),
                 bbox=_resolve_table_bbox(table),
-                markdown=_table_markdown(table),
+                markdown=_table_markdown(table, document),
             )
         )
 
@@ -149,23 +202,23 @@ def _resolve_docling_version() -> str:
         return "unknown"
 
 
-def _resolve_page_number(page: Any, *, fallback: int) -> int:
-    return int(
-        getattr(page, "page_number", None)
-        or getattr(page, "page_no", None)
-        or fallback
-    )
+def _label_of(item: Any) -> str | None:
+    label = getattr(item, "label", None)
+    return getattr(label, "value", label) if label is not None else None
 
 
-def _page_text(page: Any) -> str:
-    if hasattr(page, "export_to_markdown"):
-        return str(page.export_to_markdown())
-
-    text = getattr(page, "text", None)
-    if text is not None:
-        return str(text)
-
-    return ""
+def _first_prov(item: Any) -> tuple[int | None, list[float] | None]:
+    prov_items = getattr(item, "prov", None)
+    if not prov_items:
+        return None, None
+    first = prov_items[0]
+    raw_page = getattr(first, "page_no", None)
+    page_no = int(raw_page) if raw_page is not None else None
+    bbox = None
+    box = getattr(first, "bbox", None)
+    if box is not None and all(hasattr(box, attr) for attr in ("l", "t", "r", "b")):
+        bbox = [float(box.l), float(box.t), float(box.r), float(box.b)]
+    return page_no, bbox
 
 
 def _resolve_table_page_number(table: Any) -> int:
@@ -198,9 +251,16 @@ def _resolve_table_bbox(table: Any) -> list[float]:
     return [0.0, 0.0, 0.0, 0.0]
 
 
-def _table_markdown(table: Any) -> str:
-    if hasattr(table, "export_to_markdown"):
-        return str(table.export_to_markdown())
+def _table_markdown(table: Any, document: Any) -> str:
+    # docling-core 2.x: TableItem.export_to_markdown(doc) takes the owning
+    # document; the no-arg form is deprecated and loses cell content. Fall back
+    # to the no-arg call (older docling / injected fakes) then a plain attribute.
+    exporter = getattr(table, "export_to_markdown", None)
+    if callable(exporter):
+        try:
+            return str(exporter(document))
+        except TypeError:
+            return str(exporter())
 
     markdown = getattr(table, "markdown", None)
     if markdown is not None:

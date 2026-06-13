@@ -801,7 +801,20 @@ for the E2E rig (pick Playwright unless evidence says otherwise).
 - **Playwright**: confirmed over Cypress (adoption, speed, footprint, and free
   self-hosted CI parallelization that fits the air-gapped invariant). Used in F4.
 
-### F0 — Docling pin + adapter hierarchy extraction (M) *(added by entry gate)*
+### F0 — Docling pin + adapter hierarchy extraction (M) — ✅ DONE 2026-06-13 *(added by entry gate)*
+**Outcome**: pinned `docling>=2.102,<3` (`[parsing]` extra → `[ingestion]`); installed
+docling 2.102.1 / docling-core 2.82.0 with the frozen stack intact (transformers
+5.8.1 / torch 2.12 / FlagEmbedding unchanged; only an in-range pydantic-settings
+bump). The first real Docling run exposed and fixed **three latent adapter bugs**
+(empty page text vs real `PageItem`; `blocks=[]` discarding all hierarchy; table
+`export_to_markdown()` missing the `doc` arg). `docling_backend.py` now walks the
+body tree via `iterate_items()`, emitting per-page prose `text` (loose contract
+preserved) + rich `blocks` (block_type, page anchor, bbox, heading `level`,
+`heading_path` breadcrumb). `ParsedBlock` gained `level` + `heading_path` (defaulted,
+backward-compatible). Tests: 4 unit (synthetic real docling-core types) + 1 `slow`
+real-`convert()` integration (Markdown fixture) + 4 existing parser fakes migrated to
+the new contract. Suite **597 passed, 3 skipped**. F1 unblocked.
+
 - **Files**: `pyproject.toml` (pin `docling>=2.102,<3`), `STACK_REFERENCES.md` entry
   (change-discipline), `apps/api/app/services/parsers/docling_backend.py` (walk the
   `DoclingDocument` body tree → emit heading path + item type + page anchor via `prov`
