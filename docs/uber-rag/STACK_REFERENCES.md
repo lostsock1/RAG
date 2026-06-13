@@ -20,18 +20,20 @@ Breadth counterpart: `~/.config/opencode/agents/RAG/_stack_refs.md` is the statu
 ## Frontend
 
 - Next.js App Router: https://nextjs.org/docs/app
+- Next.js 16 upgrade guide: https://nextjs.org/docs/app/guides/upgrading/version-16
 - React: https://react.dev/
 - TypeScript: https://www.typescriptlang.org/docs/
 
-Frontend E2E rig (Phase F entry gate; decision pending — master plan says pick Playwright unless entry-gate evidence says otherwise):
+Frontend E2E rig — **Decision: Playwright** (Phase F entry gate, 2026-06-13; research `research/2026-06-13-phase-f-entry-gate.md`). Confirmed over Cypress: ≈45% vs ≈14% adoption, ~2× faster headless, ~10 MB vs ~500 MB footprint, and **free native CI parallelization on self-hosted runners** (Cypress needs paid Cypress Cloud) — the last is an air-gapped/self-hosted invariant fit, not just cost.
 - Playwright docs: https://playwright.dev/docs/intro
 - Playwright repo: https://github.com/microsoft/playwright
-- Cypress docs: https://docs.cypress.io/
+- Cypress docs (considered, not adopted): https://docs.cypress.io/
 
 Implementation impact:
 - UI must call public FastAPI only.
 - UI must not directly access Qdrant, OpenSearch, PostgreSQL, object storage, LLM, or worker services.
-- Phase F F4 runs the chosen E2E rig in CI against the compose stack (`AUTH_MODE=dev`, stub LLM, seeded fixture corpus); specs wait on API state, not timeouts.
+- Phase F F4 runs Playwright in CI against the compose stack (`AUTH_MODE=dev`, stub LLM, seeded fixture corpus); specs wait on API state, not timeouts; `retries=1`.
+- **Version currency (Phase F entry, 2026-06-13)**: repo pins `next: ^15.3` / `react: ^19.1`; current stable is **Next.js 16.2.x** (16 stable 2025-10-21), React 19 GA. App Router is the production default. **Recommendation: bump to Next.js 16 at the start of F3** while the frontend is still 3 pages (`node_modules` absent → F3 begins with `npm ci` regardless). Repo-specific 15→16 cost is small: async `params`/`searchParams` (login page only), `middleware.ts`→`proxy.ts` (trivial sync cookie guard, no edge runtime), `next lint`→ESLint CLI, Turbopack default. Minimums Node 20.9+ / TS 5.1+ (repo TS `^5.8` OK). Official `@next/codemod@canary upgrade latest` automates most of it. This is a version bump within an accepted stack — **not a stack swap**, so no ADR/benchmark gate; planner/user to confirm the F3-start timing.
 
 ## API backend
 
@@ -132,6 +134,7 @@ Implementation impact:
 - Keep parser version, artifact hash, page anchors, layout, table, and OCR quality metadata.
 - Book ingestion requires hierarchy extraction.
 - Phase 2 entry review reframed this row from “OCR engine choice” to “structured document-understanding architecture across local CPU, local GPU, and remote API deployments”; see ADR-0011.
+- **Phase F entry review (2026-06-13, research `research/2026-06-13-phase-f-entry-gate.md`)**: latest release **v2.102.1 (2026-06-12)**, very active, still the v2 series (no v3 break pending); v2.100.0 added an EPUB backend. The `DoclingDocument` model exposes everything the book profile needs — `body` tree (reading order via `children`), `groups` (chapters), `texts` (incl. section headers), `tables`/`pictures`, `furniture` (running heads), and per-item `prov` (page anchors + bbox); `iterate_items()` traverses it. **Gap to close in F1: Docling is not yet pinned/installed, and the current adapter (`apps/api/app/services/parsers/docling_backend.py`) emits only flat pages + tables (`blocks=[]`) — it discards the hierarchy/anchors.** F1 must pin `docling>=2.102,<3` (add an entry here per change-discipline), extend the adapter to surface the body-tree hierarchy + `prov` anchors, then build the book chunker on top. The textbook-fixture acceptance test will exercise real Docling for the first time.
 
 ## Workflow orchestration
 

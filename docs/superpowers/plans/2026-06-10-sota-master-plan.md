@@ -787,11 +787,45 @@ chat with citations, and inspect sources in a browser.
 extraction fidelity), Next.js 15 App Router stability check, Playwright vs Cypress
 for the E2E rig (pick Playwright unless evidence says otherwise).
 
-### F1 — Book profile chunker (L)
+**Entry gate — DONE 2026-06-13** (research `docs/uber-rag/research/2026-06-13-phase-f-entry-gate.md`):
+- **Docling**: current = v2.102.1 (2026-06-12), v2 series, no v3 break; `DoclingDocument`
+  exposes the full chapter→section→heading tree (`body`/`groups`/`texts`/`furniture`)
+  with per-item `prov` page anchors + bbox, plus `iterate_items()`. **But Docling is
+  not pinned/installed and the existing adapter discards hierarchy** (`docling_backend.py`
+  emits flat pages + tables, `blocks=[]`) — F1 scope grows (see F0 below).
+- **Next.js**: repo pins `^15.3`; current stable is **16.2.x** (16 stable 2025-10-21).
+  App Router is the production default. **Recommend bumping to Next.js 16 at F3 start**
+  (frontend is 3 pages, `node_modules` absent → near-free now; async params + the trivial
+  `middleware.ts`→`proxy.ts` + `next lint`→ESLint CLI are one-liners at this size). Version
+  bump within an accepted stack, not a stack swap → no ADR; planner/user to confirm timing.
+- **Playwright**: confirmed over Cypress (adoption, speed, footprint, and free
+  self-hosted CI parallelization that fits the air-gapped invariant). Used in F4.
+
+### F0 — Docling pin + adapter hierarchy extraction (M) *(added by entry gate)*
+- **Files**: `pyproject.toml` (pin `docling>=2.102,<3`), `STACK_REFERENCES.md` entry
+  (change-discipline), `apps/api/app/services/parsers/docling_backend.py` (walk the
+  `DoclingDocument` body tree → emit heading path + item type + page anchor via `prov`
+  + bbox into `ParsedPage.blocks`, instead of flat `export_to_markdown()` pages),
+  `apps/api/app/schemas/parsed_artifacts.py` if `blocks` needs a richer shape,
+  `apps/api/app/tests/integration/test_docling_parser_adapter.py` (exercise REAL Docling
+  on a tiny PDF fixture for the first time — currently all-doubles)
+- **Do**: this is the prerequisite F1 implicitly needs. Docling has never actually run
+  in this repo (lazy import + injected test converter everywhere). Surface the structure
+  the book chunker consumes; keep the loose profile's page/table output a derivable view
+  so loose-profile parsing/tests stay green. Confirm CPU cold-start + model-download size
+  on the VPS (freeze: Docling is CPU/local, no API).
+- **Accept**: real-Docling fixture test green; heading hierarchy + page anchors present in
+  the parsed artifact; loose-profile parser tests untouched and green.
+
+### F1 — Book profile chunker (L) *(depends on F0)*
+- **Prereq**: F0 (Docling pinned + adapter surfaces hierarchy/anchors). Without F0
+  the chunker has no structured tree to consume — the current adapter hands it flat
+  page markdown only.
 - **Files**: `apps/api/app/services/chunkers/book.py`, chunker factory/router by
   profile, `apps/api/app/services/chunkers/loose.py` untouched, schema additions
   (chapter/section identifiers, page anchors), tests with a real textbook PDF fixture
-  parsed by Docling (commit a small public-domain textbook excerpt as fixture)
+  parsed by Docling (commit a small public-domain textbook excerpt as fixture;
+  must not contain any heldout evidence span verbatim — corpus span-isolation invariant)
 - **Do**: per ADR-0012's book direction: deep hierarchy (chapter → section →
   leaf), leaf 128–512 tok / parent 1024–2048 tok consistent with loose profile,
   heading-path breadcrumbs populated (this is what makes E2 breadcrumb mode shine on
@@ -822,9 +856,13 @@ for the E2E rig (pick Playwright unless evidence says otherwise).
 
 ### F3 — Frontend: finish the three pages + chat UI against the real API (L×2 sessions)
 - **Files**: `apps/web/**`, `packages/clients/typescript/**`
-- **Do**: session 1 — `npm ci`, fix the build, wire login (Keycloak OIDC code flow
-  or dev-mode token), upload with progress, documents list, ingestion status (poll
-  jobs API). Session 2 — chat page consuming the ADR-0018 SSE grammar (progressive
+- **Do**: session 1 — `npm ci`, **adopt Next.js 16** (entry-gate recommendation:
+  `@next/codemod@canary upgrade latest`; async `params`/`searchParams`; rename
+  `middleware.ts`→`proxy.ts` + function `middleware`→`proxy`; replace `next lint`
+  with the ESLint CLI; Turbopack is default — confirm Node ≥ 20.9), fix the build,
+  wire login (Keycloak OIDC code flow or dev-mode token), upload with progress,
+  documents list, ingestion status (poll jobs API). Session 2 — chat page consuming
+  the ADR-0018 SSE grammar (progressive
   sentences, retraction handling = replace text with not-enough-evidence message,
   citation chips → source viewer panel using
   `GET /api/v1/search/sources/{chunk_id}`), ACL editor (bootstrap policy GET/PUT).
