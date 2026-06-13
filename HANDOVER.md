@@ -1,6 +1,66 @@
-# HANDOVER — Phase F: entry gate + F0 + F1 DONE (book chunker + multi-parent persistence); next is F2 (written 2026-06-13, eighth session)
+# HANDOVER — Phase F: F0+F1 done; F2.1 (profile selection) + F2.4 (PDF page-anchor e2e) DONE; F2.2 (book eval arm) + F2.3 (multi-hop) remain (written 2026-06-13, ninth session)
 
-## Eighth session (2026-06-13) — what landed (all committed, NOT pushed; house rule: push only when the user says "push")
+## Ninth session (2026-06-13) — F2.1 + F2.4 landed
+
+User said "push, then start". The push was a **no-op** — `fde333a` and all
+prior eighth-session commits were already on `origin/main` (the eighth-session
+note below claiming "NOT pushed" was stale). Then F2.1 + F2.4 landed:
+
+- **F2.1 — profile selection at upload + jobs API + profile-routed chunking**
+  (`5f0e451`, **pushed**). Upload takes `profile: loose|book` (default loose),
+  snapshotted on `IngestionRun` (migration `20260613_0011`, server_default
+  backfills loose) + surfaced in the upload response and jobs list/detail.
+  `run_chunk_stage` now routes off the **persisted** run profile
+  (`pipeline_runner` reads `claimed_run.profile`) instead of the old
+  `source_type != "loose_document"` guess; defensive unknown→loose coerce.
+  Loose path byte-identical → committed eval baseline preserved (eval ingests
+  default-loose; real-pipeline wiring already exercised by
+  `test_ingestion_dispatch.py`). OpenAPI updated. +6 tests; suite **605** non-slow.
+- **F2.4 — textbook PDF page-anchor e2e** (`29ad6e4`, committed, **NOT pushed**).
+  Committed a digital-born 2-page music-theory PDF
+  (`apps/api/app/tests/fixtures/textbook_excerpt.pdf` + `generate_textbook_pdf.py`),
+  authored with the already-present **PyMuPDF (`fitz`)** — **no new project dep**
+  (test reads the committed PDF, needs only Docling). New `slow` e2e: real
+  `DocumentConverter().convert()` → `BookDocumentChunker` proves page anchors
+  flow into `page_start`/`page_end` (Ch1→p1, Ch2→p2 — the guarantee pageless
+  Markdown can't give). **Real-Docling-PDF finding pinned:** the layout model
+  tags every heading `section_header` `level=1` (no font-size→depth), so PDF
+  heading_paths are **flat** (one section per heading), unlike the Markdown
+  backend's nested chapter→section breadcrumbs. Docling runs default layout+OCR
+  on the PDF (heavier, network-touching first run — parked ADR-0006 `auto`
+  behavior; PDF text layer makes extraction exact). 1 slow test green (13.6 s).
+
+### NEXT — F2.2 (book eval arm, measurement-sensitive) then F2.3
+
+**F2.2 design (investigated, not yet built):** the eval `eval_stack`
+(`tests/eval/conftest.py`) ingests all 27 `sample_corpus/*.md` docs via the
+custom `_MarkdownParser` (which emits `blocks=[]`) as **loose**. Book-profile
+chunking needs hierarchy blocks, so book-profile eval is currently impossible.
+Plan:
+1. **Upgrade `_MarkdownParser`** to extract markdown `#/##/###` → `ParsedBlock`
+   hierarchy (section_header + text blocks with nested `heading_path`
+   breadcrumbs, `level = hashes-1`, single page). Keep `page.text` (full) and
+   `tables=[]` UNCHANGED so the **loose chunker is byte-identical** → loose
+   baseline preserved (loose ignores `blocks`). Cheap + unit-testable; safe.
+2. **Isolated book-profile arm** (E2 `_augmented_stack` pattern: save/restore
+   the global `session_factory` bind so the session-scoped `eval_stack`
+   baseline is untouched): re-ingest the `category: textbook` corpus docs with
+   `profile=book`, run the textbook-category heldout questions, record a NEW
+   report under `tests/eval/reports/` (do NOT mutate the committed loose
+   baseline `retrieval_quality.json`). This step runs **real BGE-M3 on CPU**
+   (~minutes) — the cost item.
+   - Markdown book chunks are pageless (page=1); F2.4's PDF already owns the
+     page-anchor proof, so the eval arm proves hierarchy-based retrieval.
+3. **F2.3** (separate, also expensive): author a real multi-hop heldout subset
+   (MultiHop-RAG/MuSiQue/HotpotQA/2Wiki shapes — E3 matched 0/5 current
+   `multi_hop`), then **re-run the ADR-0021 decompose arm** (heuristic,
+   LLM-free, ~free compute but it's the trigger-2 reopen evidence). Span
+   isolation applies to all new corpus/questions.
+
+Baseline-integrity rules still bind: committed report aggregates must stay
+bit-identical; new measurements are new reports/arms, never baseline mutations.
+
+## Eighth session (2026-06-13) — what landed (all committed, now on origin/main; house rule: push only when the user says "push")
 
 Commits on top of origin/main: `1029c7b` (pre-Phase-F agent-resource ingestion — AGENTS.md stack table reconciled to ADRs), `eaff143` (Phase F entry gate, live-researched + sourced), `710dace` (F0 — Docling pin + adapter hierarchy extraction). Backend suite **597 passed, 3 skipped** (was 592; +5 F0 tests).
 
