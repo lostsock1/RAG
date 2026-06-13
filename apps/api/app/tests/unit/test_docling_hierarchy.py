@@ -149,13 +149,15 @@ def test_page_text_is_prose_only_loose_profile_contract() -> None:
     # The table is surfaced via artifact.tables (loose-profile input) ...
     assert len(artifact.tables) == 1
     assert artifact.tables[0].page_number == 2
-    # ... and ALSO as a block in the hierarchy (book-profile input), under 1.2.
+    # ... and ALSO as a block in the hierarchy (book-profile input), under 1.2,
+    # carrying its markdown as text so the book chunker can emit an atomic table leaf.
     table_block = next(b for page in artifact.pages for b in page.blocks if b.block_type == "table")
     assert table_block.heading_path == [
         "Introduction to Physics",
         "Chapter 1: Motion",
         "1.2 Acceleration",
     ]
+    assert table_block.text and "m/s" in table_block.text
 
 
 def test_real_docling_path_smoke_via_parser_injected_none() -> None:

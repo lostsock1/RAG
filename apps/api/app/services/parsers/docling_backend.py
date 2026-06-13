@@ -140,6 +140,11 @@ def _extract_pages_and_blocks(document: Any) -> list[ParsedPage]:
             continue
 
         text = (getattr(item, "text", None) or "").strip()
+        if label == "table":
+            # TableItems carry no `.text`; surface the markdown so the book
+            # chunker can emit atomic table leaves. Tables are in _NON_PROSE_LABELS
+            # so this never pollutes a page's prose `text`.
+            text = _table_markdown(item, document).strip()
         page_no, bbox = _first_prov(item)
         if page_no is not None:
             current_page = page_no

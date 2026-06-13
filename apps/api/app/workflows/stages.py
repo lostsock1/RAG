@@ -21,7 +21,7 @@ from app.services.parsers.base import DocumentParser, ParseRequest
 from app.services.parsers.docling_backend import DoclingDocumentParser
 from app.services.parsers.remote_backend import RemoteDocumentParser
 from app.services.quality_report import build_quality_report
-from app.services.chunkers.loose import LooseDocumentChunker
+from app.services.chunkers.factory import build_chunker
 from app.services.embedders.base import Embedder
 from app.services.indexers.base import VectorIndexer, LexicalIndexer
 
@@ -176,7 +176,7 @@ def run_chunk_stage(
     update_stage_status(stage_id=stage_id, status="running")
 
     profile = DocumentProfile.LOOSE if source_type == "loose_document" else DocumentProfile.BOOK
-    chunker = LooseDocumentChunker()
+    chunker = build_chunker(profile)
     chunks = chunker.chunk(artifact, profile=profile)
 
     # Ensure all chunks reference the actual document ID, not the artifact's
