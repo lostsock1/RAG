@@ -112,6 +112,7 @@ def test_persist_chunks_creates_rows(seeded_db):
     parent_id = uuid4()
     schema_chunks = [
         Chunk(
+            id=parent_id,
             document_id=doc_id,
             unit_type="document",
             heading_path=[],
@@ -139,6 +140,64 @@ def test_persist_chunks_creates_rows(seeded_db):
     assert len(result) == 2
     assert result[0].unit_type == "document"
     assert result[1].unit_type == "paragraph"
+
+
+def test_persist_chunks_multi_parent_links_each_child_to_its_section(seeded_db):
+    """F1: book-profile chunking emits multiple section parents. Each leaf must
+    link to its OWN section's DB row, resolved via the parent's chunker id."""
+    doc_id = seeded_db["document_id"]
+    run_id = seeded_db["run_id"]
+
+    section_a = uuid4()
+    section_b = uuid4()
+    chunks = [
+        Chunk(id=section_a, document_id=doc_id, unit_type="section", heading_path=["Ch1", "1.1"],
+              page_start=1, page_end=1, text="Section A parent", parent_id=None, chunk_index=0),
+        Chunk(document_id=doc_id, unit_type="paragraph", heading_path=["Ch1", "1.1"],
+              page_start=1, page_end=1, text="Leaf A1", parent_id=section_a, chunk_index=1),
+        Chunk(id=section_b, document_id=doc_id, unit_type="section", heading_path=["Ch1", "1.2"],
+              page_start=2, page_end=2, text="Section B parent", parent_id=None, chunk_index=2),
+        Chunk(document_id=doc_id, unit_type="paragraph", heading_path=["Ch1", "1.2"],
+              page_start=2, page_end=2, text="Leaf B1", parent_id=section_b, chunk_index=3),
+        Chunk(document_id=doc_id, unit_type="paragraph", heading_path=["Ch1", "1.2"],
+              page_start=2, page_end=2, text="Leaf B2", parent_id=section_b, chunk_index=4),
+    ]
+
+    persist_chunks(run_id=run_id, document_id=doc_id, chunks=chunks)
+
+    rows = get_chunks_for_document(document_id=doc_id)
+    by_id = {row.id: row for row in rows}
+    parents = [r for r in rows if r.parent_id is None]
+    leaves = [r for r in rows if r.parent_id is not None]
+
+    # Both section parents persisted; no collapse to a single parent.
+    assert len(parents) == 2
+    assert {p.text for p in parents} == {"Section A parent", "Section B parent"}
+
+    # Each leaf resolves to the DB row of its OWN section (not the other one).
+    links = {leaf.text: by_id[leaf.parent_id].text for leaf in leaves}
+    assert links == {
+        "Leaf A1": "Section A parent",
+        "Leaf B1": "Section B parent",
+        "Leaf B2": "Section B parent",
+    }
+
+
+def test_persist_chunks_rejects_parent_without_id_when_children_present(seeded_db):
+    """The multi-parent contract requires parents to carry a chunker-assigned id
+    that children reference; a parent with id=None plus children is a bug."""
+    doc_id = seeded_db["document_id"]
+    run_id = seeded_db["run_id"]
+
+    bad = [
+        Chunk(document_id=doc_id, unit_type="section", heading_path=[], page_start=1,
+              page_end=1, text="Parent without id", parent_id=None, chunk_index=0),
+        Chunk(document_id=doc_id, unit_type="paragraph", heading_path=[], page_start=1,
+              page_end=1, text="Orphan leaf", parent_id=uuid4(), chunk_index=1),
+    ]
+
+    with pytest.raises(RuntimeError, match="chunker-assigned"):
+        persist_chunks(run_id=run_id, document_id=doc_id, chunks=bad)
 
 
 def test_persist_chunks_idempotent(seeded_db):
@@ -186,6 +245,7 @@ def test_persist_chunks_rolls_back_on_child_insert_failure(seeded_db):
     parent_id = uuid4()
     initial = [
         Chunk(
+            id=parent_id,
             document_id=doc_id,
             unit_type="document",
             heading_path=[],
@@ -224,6 +284,7 @@ def test_persist_chunks_rolls_back_on_child_insert_failure(seeded_db):
     bad_parent_id = uuid4()
     bad_payload = [
         Chunk(
+            id=bad_parent_id,
             document_id=doc_id,
             unit_type="document",
             heading_path=[],
@@ -275,6 +336,7 @@ def _seed_two_chunks(doc_id, run_id) -> None:
         document_id=doc_id,
         chunks=[
             Chunk(
+                id=parent_id,
                 document_id=doc_id,
                 unit_type="document",
                 heading_path=[],
@@ -304,11 +366,13 @@ def test_persist_chunks_round_trips_context_prefix(seeded_db):
     doc_id = seeded_db["document_id"]
     run_id = seeded_db["run_id"]
 
+    parent_id = uuid4()
     persist_chunks(
         run_id=run_id,
         document_id=doc_id,
         chunks=[
             Chunk(
+                id=parent_id,
                 document_id=doc_id,
                 unit_type="document",
                 heading_path=[],
@@ -325,7 +389,7 @@ def test_persist_chunks_round_trips_context_prefix(seeded_db):
                 page_start=1,
                 page_end=1,
                 text="Leaf text",
-                parent_id=uuid4(),
+                parent_id=parent_id,
                 chunk_index=1,
                 context_prefix="Doc > Section (p. 1)",
             ),

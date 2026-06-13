@@ -1,4 +1,4 @@
-# HANDOVER — Phase F STARTED: entry gate DONE + F0 (Docling hierarchy) landed; next is F1 book chunker (written 2026-06-13, eighth session)
+# HANDOVER — Phase F: entry gate + F0 + F1 DONE (book chunker + multi-parent persistence); next is F2 (written 2026-06-13, eighth session)
 
 ## Eighth session (2026-06-13) — what landed (all committed, NOT pushed; house rule: push only when the user says "push")
 
@@ -7,40 +7,43 @@ Commits on top of origin/main: `1029c7b` (pre-Phase-F agent-resource ingestion �
 - **Phase F entry gate — DONE** (`docs/uber-rag/research/2026-06-13-phase-f-entry-gate.md`, live WebFetch on Tier-1 sources): (1) **Docling** v2.102.1 current, v2 series, `DoclingDocument` exposes the hierarchy + page anchors; (2) **Next.js** repo pins `^15.3` but stable is **16.2.x** — recommend bumping to 16 at F3 start (small cost at 3 pages: async params, `middleware.ts`→`proxy.ts`, `next lint`→ESLint CLI, Turbopack default; NOT a stack swap so no ADR — planner/user to confirm timing); (3) **Playwright** confirmed over Cypress (used in F4).
 - **F0 — DONE**: pinned `docling>=2.102,<3` (`[parsing]` extra → `[ingestion]`), installed **docling 2.102.1 / docling-core 2.82.0**. **Frozen stack intact** (transformers 5.8.1 / torch 2.12 / FlagEmbedding 1.4.0; Docling needs `transformers<5.9.0,>=4.34.0`; only in-range pydantic-settings 2.13→2.14). First real Docling run fixed **3 latent adapter bugs** (empty page text vs real `PageItem`; `blocks=[]` discarding hierarchy; table `export_to_markdown()` missing the `doc` arg). `docling_backend.py` now walks the body tree via `iterate_items()` → per-page prose `text` (loose contract preserved) + rich `blocks` (block_type, page anchor, bbox, heading `level`, `heading_path` breadcrumb). `ParsedBlock` gained `level`+`heading_path` (defaulted, backward-compatible). Docling API pinned by introspection: `SectionHeaderItem.level` = 1-based depth (title = 0); `iterate_items()` walks BODY layer (furniture excluded); `prov[0].page_no`/`bbox.{l,t,r,b}`.
 
-## F1 (1/2) DONE 2026-06-13 — book chunker + factory landed (commit `77ef072`)
+## F1 DONE 2026-06-13 — book chunker + multi-parent persistence (commits `77ef072` + F1 2/2)
 
-`apps/api/app/services/chunkers/book.py` (`BookDocumentChunker`) consumes the F0
-`page.blocks` hierarchy → one section parent per `heading_path` group, leaves
-under it, full chapter→section breadcrumb on every chunk, page anchors into
-`page_start/end`, atomic tables, oversized-prose split, heading-less degradation.
-`factory.py` `build_chunker(profile)` routes BOOK→book else loose; wired into
-`run_chunk_stage` (`loose.py` untouched). Adapter tweak: table blocks carry
-`export_to_markdown(doc)` text (still excluded from prose). 10 unit tests; suite
-**607 passed, 3 skipped**.
+1/2: `BookDocumentChunker` (`services/chunkers/book.py`) consumes the F0
+`page.blocks` hierarchy → one section parent per `heading_path` group, full
+chapter→section breadcrumb on every chunk, page anchors into `page_start/end`,
+atomic tables, heading-less degradation; `factory.build_chunker(profile)` routes
+BOOK→book else loose (`loose.py` untouched); wired into `run_chunk_stage`; table
+blocks carry markdown.
+2/2: **`persist_chunks` generalized to multi-parent** — keys the parent_id→DB-id
+map on each parent's chunker-assigned `id` (resolved to the DB id after flush);
+the `len(parents)!=1` guard is gone, replaced by "every parent with children must
+carry an `id`" + a loud error if a child references an unknown parent. `loose.py`
+parent now sets `id=parent_id` for the same convention; 5 existing persist tests
+migrated off the single-parent special case; 2 new multi-parent persist tests + 1
+`slow` real-Docling→book e2e (Markdown: 3 sections→3 parents, atomic table leaf,
+breadcrumbs). Suite **610 passed, 3 skipped**.
 
-## NEXT — F1 (2/2): multi-parent persistence + real-Docling e2e fixture
+**Deferred from F1 → F2**: page anchors are unit-proven (`test_book_chunker`), but
+the Markdown e2e fixture is pageless, so a real textbook **PDF** fixture is the
+only way to prove page anchors end-to-end. No PDF authoring lib is installed
+(reportlab/fpdf absent) and Docling heading-detection on a synthetic PDF is
+unverified — so a committed digital-born textbook-PDF excerpt (span-isolation-safe;
+heldout topics are physics/chem/econ/law/math/biology → pick an unrelated subject)
+should land in F2 where the profile-aware eval activates the textbook heldout subset.
 
-1. **Generalize `persist_chunks`** (`apps/api/app/repositories/chunks.py`): today it
-   raises for multi-parent (`:30`) and maps *all* children to the single parent.
-   The book chunker emits one parent per section, each with a chunker-assigned
-   `id` that its leaves reference. Change the parent_id→DB-id map to key on each
-   parent's `id`; resolve every child via `schema_to_db_id[child.parent_id]`;
-   drop the `len(parent_chunks) != 1` guard; add a guard that parents-with-children
-   carry an `id`. **Also set loose's parent `id=parent_id`** (`loose.py`) for the
-   same convention, and **update the existing persist tests** that build parents
-   with `id=None` (`test_chunks_repository.py`: `creates_rows`,
-   `rolls_back_on_child_insert_failure`, `round_trips_context_prefix`;
-   `test_contextualize_stage.py`) — they rely on the single-parent special case.
-2. **Real-Docling e2e fixture** (`slow`): a small **digital-born textbook PDF**
-   (real text layer → no OCR; real chapter/section depth + a table + page numbers)
-   that contains **no heldout evidence span verbatim** (span-isolation; heldout
-   topics are physics/chem/econ/law/math/biology — pick an unrelated-topic
-   Gutenberg/OpenStax excerpt, or author a deterministic one and verify Docling
-   detects its headings). Parse with profile=book → chunk → persist → assert
-   multi-parent rows + parent-child linkage + page anchors. (F0's real-`convert()`
-   test used Markdown, which is pageless, so page anchors are proven here.)
-   `persist_chunks` deletes+reinserts per document — safe only inside the
-   chunk-stage guard (`_is_stage_completed`).
+## NEXT — F2: profile selection at upload + profile-aware eval (master plan "### F2")
+
+- Upload route/schema gains `profile: Literal["loose","book"] = "loose"`, persisted
+  on the ingestion run + visible in the jobs API; `run_chunk_stage` should take the
+  document's profile from that (today it derives BOOK from `source_type != "loose_document"`).
+- Eval fixtures gain ≥ 2 book documents; activate the textbook heldout subset.
+- **Author a real multi-hop heldout subset** sourced from MultiHop-RAG/MuSiQue/
+  HotpotQA/2Wiki question shapes (E3's decompose heuristic matched 0/5 current
+  multi_hop questions — the recorded trigger-shape gap). Landing it **fires
+  ADR-0021 reopen trigger 2**: re-run the decompose arm (heuristic, LLM-free, ~free)
+  and record the result. Span-isolation invariant applies.
+- Land the deferred textbook **PDF** fixture here for true page-anchor e2e.
 
 ---
 

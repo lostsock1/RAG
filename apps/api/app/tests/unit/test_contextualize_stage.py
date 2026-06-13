@@ -125,6 +125,7 @@ def _persist_parent_and_leaves(doc_id, run_id, *, leaf_count: int = 2) -> None:
     parent_id = uuid4()
     chunks = [
         Chunk(
+            id=parent_id,
             document_id=doc_id,
             unit_type="document",
             heading_path=[],

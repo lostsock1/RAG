@@ -830,7 +830,21 @@ the new contract. Suite **597 passed, 3 skipped**. F1 unblocked.
 - **Accept**: real-Docling fixture test green; heading hierarchy + page anchors present in
   the parsed artifact; loose-profile parser tests untouched and green.
 
-### F1 — Book profile chunker (L) *(depends on F0)*
+### F1 — Book profile chunker (L) — ✅ DONE 2026-06-13 *(depended on F0)*
+**Outcome** (commits `77ef072` + F1 2/2): `BookDocumentChunker` consumes the F0
+`page.blocks` hierarchy → one section parent per `heading_path` group, leaves
+under it, full chapter→section breadcrumb on every chunk, page anchors into
+`page_start/end`, atomic tables, oversized-prose split, heading-less degradation;
+`build_chunker(profile)` factory routes BOOK→book else loose (`loose.py`
+untouched). Adapter tweak: table blocks carry markdown. **`persist_chunks`
+generalized to multi-parent** (keys the parent_id→DB-id map on each parent's
+chunker-assigned `id`; loose now sets its parent `id` too; the single-parent
+guard is gone, replaced by a "parents-with-children must carry an id" guard).
+Tests: 10 book-chunker unit + 2 multi-parent persist (+guard) + 1 `slow`
+real-Docling→book e2e (Markdown fixture: 3 sections → 3 parents, atomic table
+leaf, breadcrumbs). Suite **610 passed, 3 skipped**. Page anchors are unit-proven
+(Markdown is pageless); a real textbook **PDF** fixture for true page-anchor e2e
+is deferred to F2 (profile-aware eval activates the textbook heldout subset).
 - **Prereq**: F0 (Docling pinned + adapter surfaces hierarchy/anchors). Without F0
   the chunker has no structured tree to consume — the current adapter hands it flat
   page markdown only.

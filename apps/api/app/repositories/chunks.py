@@ -24,15 +24,19 @@ def persist_chunks(
     parent_chunks = [c for c in chunks if c.parent_id is None]
     child_chunks = [c for c in chunks if c.parent_id is not None]
 
-    # The single-parent mapping below only works for loose documents that
-    # produce exactly one parent. Book-profile chunking (multi-parent) will
-    # need a different mapping strategy when it lands.
-    if child_chunks and len(parent_chunks) != 1:
-        raise RuntimeError(
-            f"persist_chunks currently supports single-parent documents only "
-            f"(got {len(parent_chunks)} parents and {len(child_chunks)} children). "
-            f"Multi-parent documents require updating the parent_id resolution logic."
-        )
+    # Multi-parent safe: each child references its parent by the parent's
+    # chunker-assigned ``id``, which this function resolves to the DB-assigned id
+    # after flush. Both the loose chunker (one document parent) and the book
+    # chunker (one parent per section) follow this convention. A child whose
+    # parent carries no id cannot be linked — fail loudly rather than orphan it.
+    if child_chunks:
+        parents_without_id = [c for c in parent_chunks if c.id is None]
+        if parents_without_id:
+            raise RuntimeError(
+                "persist_chunks requires every parent chunk to carry a chunker-assigned "
+                "`id` that its children reference via `parent_id`; "
+                f"{len(parents_without_id)} of {len(parent_chunks)} parent(s) had id=None."
+            )
 
     with session_factory() as session:
         if session.bind is None:
@@ -46,11 +50,13 @@ def persist_chunks(
                 delete(ChunkModel).where(ChunkModel.document_id == document_id)
             )
 
-            schema_to_db_id: dict[UUID | int, UUID] = {}
+            schema_to_db_id: dict[UUID, UUID] = {}
             db_rows: list[ChunkModel] = []
 
             # First pass: stage all parents in the session, then a single flush
-            # assigns their UUIDs in one round-trip.
+            # assigns their UUIDs in one round-trip. Map each parent's
+            # chunker-assigned id -> DB id so children (and multiple parents)
+            # resolve unambiguously.
             for chunk in parent_chunks:
                 row = ChunkModel(
                     document_id=chunk.document_id,
@@ -69,19 +75,21 @@ def persist_chunks(
             if parent_chunks:
                 session.flush()
                 for parent_schema, parent_row in zip(parent_chunks, db_rows[: len(parent_chunks)]):
-                    schema_to_db_id[parent_schema.chunk_index] = parent_row.id
+                    if parent_schema.id is not None:
+                        schema_to_db_id[parent_schema.id] = parent_row.id
 
-            # Map chunker-generated parent UUIDs to DB-assigned UUIDs.
-            if parent_chunks:
-                parent_db_id = schema_to_db_id[parent_chunks[0].chunk_index]
-                for child in child_chunks:
-                    assert child.parent_id is not None
-                    schema_to_db_id[child.parent_id] = parent_db_id
-
-            # Second pass: stage children with resolved parent_id.
+            # Second pass: stage children with their parent_id resolved to the DB
+            # id. A child referencing an unknown parent is a chunker bug — fail
+            # loudly rather than persist an orphan or a dangling FK.
             for chunk in child_chunks:
                 assert chunk.parent_id is not None
-                resolved_parent_id = schema_to_db_id.get(chunk.parent_id, chunk.parent_id)
+                resolved_parent_id = schema_to_db_id.get(chunk.parent_id)
+                if resolved_parent_id is None:
+                    raise RuntimeError(
+                        f"persist_chunks: child chunk (index {chunk.chunk_index}) references "
+                        f"parent_id {chunk.parent_id}, which is not among the document's "
+                        f"{len(parent_chunks)} parent chunk(s)."
+                    )
 
                 row = ChunkModel(
                     document_id=chunk.document_id,

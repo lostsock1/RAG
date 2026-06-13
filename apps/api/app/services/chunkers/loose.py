@@ -79,6 +79,7 @@ class LooseDocumentChunker:
         chunks: list[Chunk] = []
 
         parent_chunk = Chunk(
+            id=parent_id,
             document_id=document_id,
             unit_type="document",
             heading_path=[],
