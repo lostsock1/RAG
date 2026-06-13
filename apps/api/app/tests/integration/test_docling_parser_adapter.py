@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import textwrap
+from pathlib import Path
 from typing import Literal
 from typing import cast
 from uuid import UUID
@@ -171,6 +172,67 @@ def test_real_docling_book_profile_chunks_into_sections(tmp_path) -> None:
     table = next(c for c in leaves if c.unit_type == "table")
     assert "m/s" in table.text
     assert table.heading_path == ["Physics Primer", "Chapter 1: Kinematics", "1.2 Acceleration"]
+
+
+@pytest.mark.slow
+def test_real_docling_pdf_book_profile_carries_page_anchors() -> None:
+    """F2.4 e2e: real DocumentConverter().convert() on a committed two-page
+    textbook **PDF** -> BookDocumentChunker, proving per-item page anchors
+    (Docling ``prov[0].page_no``) flow through into chunk ``page_start``/
+    ``page_end``. This is the one thing the pageless Markdown e2e fixtures
+    cannot exercise (their single page is always page 1).
+
+    Real-Docling PDF behavior pinned here (differs from the rule-based Markdown
+    backend): the layout model labels every detected heading as a generic
+    ``section_header`` at ``level=1`` — it infers no heading *depth* from font
+    size — so heading_paths come out **flat** (one section per heading) rather
+    than as nested chapter->section breadcrumbs. Nested-breadcrumb depth is
+    covered by the Markdown e2e + synthetic-block unit tests; this test owns the
+    page-anchor guarantee. (Docling also runs its default layout+OCR pipeline on
+    the PDF, so this is a heavier, network-touching slow test.)
+
+    Fixture is committed (``fixtures/textbook_excerpt.pdf``); regenerate via
+    ``fixtures/generate_textbook_pdf.py``. Subject (music theory) is disjoint
+    from the eval heldout subjects, so it is span-isolation-safe.
+    """
+    pytest.importorskip("docling", reason="docling not installed (install [ingestion] extras)")
+
+    fixture = Path(__file__).resolve().parents[1] / "fixtures" / "textbook_excerpt.pdf"
+    assert fixture.exists(), f"missing committed PDF fixture: {fixture}"
+
+    artifact = DoclingDocumentParser().parse(
+        ParseRequest(
+            document_id="55555555-5555-5555-5555-555555555555",
+            object_key="documents/textbook_excerpt.pdf",
+            content_type="application/pdf",
+            profile="local-cpu",
+            local_source_path=str(fixture),
+        )
+    )
+    # The PDF genuinely has two physical pages.
+    assert {p.page_number for p in artifact.pages} == {1, 2}
+
+    chunks = build_chunker(DocumentProfile.BOOK).chunk(artifact, profile=DocumentProfile.BOOK)
+    leaves = [c for c in chunks if c.parent_id is not None]
+    # Docling detected the headings -> the book chunker built real section parents.
+    section_parents = [c for c in chunks if c.parent_id is None and c.unit_type == "section"]
+    assert len(section_parents) >= 2
+
+    def _page_of(text_prefix: str) -> tuple[int | None, int | None]:
+        matches = [c for c in leaves if c.text.startswith(text_prefix)]
+        assert matches, f"no leaf starting with {text_prefix!r}"
+        pages = {(c.page_start, c.page_end) for c in matches}
+        assert len(pages) == 1, f"leaves for {text_prefix!r} span multiple pages: {pages}"
+        return next(iter(pages))
+
+    # Chapter 1's two sections live on page 1; Chapter 2's on page 2.
+    assert _page_of("The staff consists of five") == (1, 1)
+    assert _page_of("An accidental is a symbol") == (1, 1)
+    assert _page_of("In common time a whole note") == (2, 2)
+    assert _page_of("A time signature is written") == (2, 2)
+
+    # No leaf leaked a null anchor.
+    assert all(c.page_start is not None and c.page_end is not None for c in leaves)
 
 
 def _find_block(artifact: ParsedArtifact, text_prefix: str):
